@@ -48,3 +48,26 @@ Run deterministic schema/page/quote/numeric/format checks before semantic suppor
 
 Create a FeedbackEvent for user corrections. Do not mutate the formal Skill or publish a patch during the paper-reading task.
 
+## Local manual-PDF pipeline
+
+Use the bundled script for the current lightweight runtime slice:
+
+```powershell
+python scripts/litanchor_local.py prepare "paper.pdf" --output-root "runtime/runs" --mode deep
+```
+
+The command creates a private run directory containing `source-bundle.json`, empty `evidence.json`, empty `claims.json`, and `run.json`. It never writes to Obsidian.
+
+Continue only when preflight returns `PASS` or `PASS_WITH_WARNINGS`:
+
+1. Read `source-bundle.json`, preserving physical page boundaries.
+2. Fill `evidence.json` with an array of objects conforming to `schemas/evidence-unit.schema.json`.
+3. Fill `claims.json` with an array of objects conforming to `schemas/claim-record.schema.json`.
+4. Perform semantic support, scope, causality, numeric, and modality review before setting each claim validation status.
+5. Build a preview:
+
+```powershell
+python scripts/litanchor_local.py build "runtime/runs/<run-id>"
+```
+
+`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, numeric values or units absent from the evidence, failed semantic status, and an existing output path. Successful output remains in the private run directory as `preview.md`; copying it to an authorized Obsidian Inbox belongs to a later phase.

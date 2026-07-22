@@ -24,6 +24,21 @@ flowchart TD
     M -->|not authorized| O[Return local artifacts]
 ```
 
+## Implemented local slice (v0.2)
+
+`skills/litanchor-paper-reading/scripts/litanchor_local.py` implements the native-text manual-PDF path through preview generation:
+
+```text
+manual PDF
+→ physical-page preflight/extraction
+→ private SourceBundle
+→ Skill-generated Evidence/Claim ledgers
+→ deterministic page/quote/numeric checks
+→ non-overwriting Markdown preview
+```
+
+It deliberately stops before Zotero lookup, OCR/MinerU fallback and Obsidian export. Semantic evidence selection and modality/scope review remain model responsibilities; the script verifies their declared artifacts and never invents paper content.
+
 ## Stages and exit criteria
 
 1. **Parse request.** Resolve `skim`, `deep`, or `internalize`; set `external_knowledge_allowed=false`; default to `deep` only for an explicit close-reading request.
@@ -69,4 +84,3 @@ Retries are object-scoped and limited to two attempts. After two failures, mark 
 - `解析失败` means the information may exist but could not be read reliably.
 
 These states must never be substituted for one another.
-

@@ -11,7 +11,6 @@ The following files exist only in the local `Test-PDF/` directory and are exclud
 | Neoproterozoic 'snowball Earth' simulations with a coupled climate/ice-sheet model | `10.1038/35013005` | 5 | `ef443959d2c2d7fc2cef5b32791bbc03f9c3701ed55aa7b3bb9064e46b806f48` | dense Nature layout, coupled-model assumptions, figures, hypothesis/modality fidelity |
 | Separation of Internal and Forced Variability of Climate Using a U-Net | `10.1029/2023MS003964` | 20 | `4c31db5f17c7df0e0ae687e4e5ac20e430b0d4b5fedc40ad1ce5550ea45b650a` | machine-learning plus climate domain, architecture, metrics, forced/internal interpretation |
 
-## Known corpus gap
+## Negative-fixture status
 
-All six current files expose extractable text. The corpus still needs a legally redistributable synthetic or public-domain negative fixture for scanned, encrypted, corrupt or deliberately garbled PDF detection. Do not mislabel a normal paper as that failure case.
-
+All six current research papers expose extractable text. Automated tests now generate temporary, legally safe blank and corrupt PDFs to verify native-text fallback and hard failure. Encrypted PDFs, image-only scanned pages with OCR candidates, and deliberately garbled text remain later parser fixtures; they do not block the current native-text-only scope.

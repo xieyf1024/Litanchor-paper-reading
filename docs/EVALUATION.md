@@ -2,7 +2,13 @@
 
 ## Current phase
 
-v0.1 validates Skill structure, templates, schemas, repository privacy rules and test-corpus metadata. It does not report end-to-end paper-reading accuracy because the runtime pipeline is not implemented yet.
+v0.2 retains the v0.1 repository/Skill contract tests and adds local pipeline tests for blank and corrupt PDFs, page-level extraction, schema invariants, quote/page traceability, numeric fidelity, preflight warning propagation and non-overwriting Markdown rendering.
+
+One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
+
+All six local benchmark PDFs also complete native-text preflight with their warning pages preserved; see `evals/reports/corpus-preflight.md`.
+
+A five-page whole-paper `skim` forward test covers research question, gap, method, core results, one key figure, limitations, speculative wording and conclusions; see `evals/reports/full-paper-forward-test.md`. The test remains distinct from an independently annotated gold evaluation.
 
 The local PDFs are excluded from Git. Their non-redistributable inventory is documented in `evals/PDF_CORPUS.md` with titles, DOI where known, page counts, SHA-256 hashes and intended stress dimensions.
 
@@ -50,7 +56,7 @@ At least two papers should receive independent double annotation before disagree
 
 A candidate patch may be promoted only when it fixes a reproducible target case, introduces a regression test, preserves every hard reliability rule, does not increase permissions, shows no retained-set regression and receives maintainer approval. A single personal preference belongs in local configuration rather than the shared Skill.
 
-## v0.1 verification
+## v0.2 verification
 
 Run:
 
@@ -58,5 +64,4 @@ Run:
 python -m unittest discover -s tests -v
 ```
 
-Also run the official Skill validator against `skills/litanchor-paper-reading/`. Both checks must pass before the initial Git commit.
-
+Install `requirements.txt` before running the complete suite; otherwise dependency-specific PDF tests are explicitly skipped. Also run the official Skill validator against `skills/litanchor-paper-reading/`.

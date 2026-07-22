@@ -60,3 +60,6 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 
 The schemas intentionally define contracts rather than extraction implementations in v0.1.
 
+## Runtime file convention
+
+The v0.2 local pipeline stores `evidence.json` as a JSON array of EvidenceUnit objects and `claims.json` as a JSON array of ClaimRecord objects. Each element is checked against the corresponding object contract and cross-checked against SourceBundle physical pages before rendering. Runtime ledgers remain private and are excluded from Git.

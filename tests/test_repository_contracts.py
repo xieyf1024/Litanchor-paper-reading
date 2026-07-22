@@ -15,6 +15,7 @@ class RepositoryContractTests(unittest.TestCase):
             "LICENSE",
             ".gitignore",
             "THIRD_PARTY.md",
+            "requirements.txt",
             "Paper Template.md",
             "科研文献入门.md",
             "docs/PRODUCT.md",
@@ -23,6 +24,7 @@ class RepositoryContractTests(unittest.TestCase):
             "docs/DATA_SCHEMA.md",
             "docs/EVALUATION.md",
             "docs/INTEGRATIONS.md",
+            "skills/litanchor-paper-reading/scripts/litanchor_local.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -47,6 +49,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(paths), 7)
         for relative in paths:
             self.assertTrue((SKILL / relative).is_file(), relative)
+        self.assertIn("scripts/litanchor_local.py", text)
+
+    def test_runtime_dependency_stays_lightweight(self):
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        requirements = [line for line in requirements if line.strip() and not line.lstrip().startswith("#")]
+        self.assertEqual(requirements, ["pypdf>=6.0,<7.0"])
 
     def test_openai_metadata_mentions_skill(self):
         text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")

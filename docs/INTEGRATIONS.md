@@ -2,7 +2,7 @@
 
 ## Current implementation status
 
-v0.1 installs no MCP server, Python package, Obsidian plugin, OCR model or background service. It only defines contracts and safe routing. Any unavailable connector must be reported, never simulated.
+v0.2 uses one lightweight local dependency (`pypdf`) for manual-PDF preparation. It installs no MCP server, Obsidian plugin, OCR model or background service. Zotero and Obsidian remain contracts only; an unavailable connector must be reported, never simulated.
 
 ## Zotero acquisition ladder
 
@@ -44,7 +44,7 @@ zotero://open-pdf/library/items/<attachment-key>?page=<physical-page>
 
 Do not generate a link from an unverified key.
 
-## Information needed before phase 1
+## Information needed before the Zotero/Obsidian integration phase
 
 - Zotero version and whether Zotero 7 Local API is enabled.
 - Whether Better BibTeX is installed and a few non-sensitive test citekeys/Item Keys.

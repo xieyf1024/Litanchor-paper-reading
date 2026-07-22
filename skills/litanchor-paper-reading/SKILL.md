@@ -40,6 +40,8 @@ Read `references/workflow.md` completely, then:
 9. Show a preview, warnings, failed pages, and intended paths before any write.
 10. Export only after explicit authorization and only to the authorized directory.
 
+For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
+
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
 
 ## Keep evidence readable
@@ -59,4 +61,3 @@ Return:
 - whether anything was written, where, and whether an existing file was preserved.
 
 Use `assets/validation-report.md` for successful/warning reports and `assets/failure-report.md` for blocked runs.
-
