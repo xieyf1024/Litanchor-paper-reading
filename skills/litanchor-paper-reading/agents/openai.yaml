@@ -1,0 +1,4 @@
+interface:
+  display_name: "LitAnchor 文锚"
+  short_description: "将 Zotero 论文精读为可追溯的 Obsidian 中文笔记"
+  default_prompt: "Use $litanchor-paper-reading to close-read one paper and prepare an evidence-grounded Chinese Obsidian note."

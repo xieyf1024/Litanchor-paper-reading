@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/source-bundle.schema.json",
+  "title": "LitAnchor SourceBundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "paper_id", "source", "metadata", "pdf", "pages"],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "paper_id": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acquisition_method", "query", "external_knowledge_allowed"],
+      "properties": {
+        "acquisition_method": {
+          "enum": ["zotero_mcp", "zotero_local_api", "zotero_web_api", "manual_pdf"]
+        },
+        "query": {"type": "string", "minLength": 1},
+        "zotero_item_key": {"type": ["string", "null"]},
+        "zotero_attachment_key": {"type": ["string", "null"]},
+        "external_knowledge_allowed": {"const": false}
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "authors"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "authors": {"type": "array", "items": {"type": "string"}},
+        "year": {"type": ["integer", "null"], "minimum": 1000, "maximum": 3000},
+        "journal": {"type": ["string", "null"]},
+        "doi": {"type": ["string", "null"]},
+        "citekey": {"type": ["string", "null"]}
+      }
+    },
+    "annotations": {"type": "array", "items": {"type": "object"}},
+    "pdf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "page_count", "preflight_status"],
+      "properties": {
+        "path": {"type": ["string", "null"]},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "page_count": {"type": "integer", "minimum": 1},
+        "preflight_status": {
+          "enum": ["PASS", "PASS_WITH_WARNINGS", "FALLBACK_REQUIRED", "BLOCKED"]
+        },
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["page_index", "raw_text", "extraction_method", "confidence", "warnings"],
+        "properties": {
+          "page_index": {"type": "integer", "minimum": 1},
+          "printed_page": {"type": ["string", "null"]},
+          "raw_text": {"type": "string"},
+          "extraction_method": {"enum": ["native_text", "layout_parser", "ocr"]},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "warnings": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}
+

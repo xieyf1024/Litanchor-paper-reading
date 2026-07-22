@@ -1,0 +1,5 @@
+* text=auto eol=lf whitespace=-blank-at-eof
+*.pdf -text
+"Paper Template.md" -whitespace
+科研文献入门.md -whitespace
+docs/PROJECT_SPEC_V0.2.md -whitespace

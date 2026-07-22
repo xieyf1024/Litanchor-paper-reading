@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/evidence-unit.schema.json",
+  "title": "LitAnchor EvidenceUnit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id",
+    "evidence_type",
+    "page_index",
+    "section",
+    "quote_original",
+    "epistemic_status",
+    "contains_number",
+    "contains_unit",
+    "confidence",
+    "needs_review"
+  ],
+  "properties": {
+    "evidence_id": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"},
+    "evidence_type": {
+      "enum": [
+        "research_question",
+        "background",
+        "research_gap",
+        "hypothesis",
+        "data",
+        "material",
+        "model",
+        "method_step",
+        "parameter",
+        "metric",
+        "result",
+        "figure",
+        "table",
+        "equation",
+        "discussion",
+        "limitation",
+        "uncertainty",
+        "conclusion"
+      ]
+    },
+    "page_index": {"type": "integer", "minimum": 1},
+    "printed_page": {"type": ["string", "null"]},
+    "section": {"type": "string", "minLength": 1},
+    "block_id": {"type": ["string", "null"]},
+    "bounding_box": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 4, "maxItems": 4}
+      ]
+    },
+    "quote_original": {"type": "string", "minLength": 1},
+    "epistemic_status": {
+      "enum": ["observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"]
+    },
+    "epistemic_markers": {"type": "array", "items": {"type": "string"}},
+    "contains_number": {"type": "boolean"},
+    "contains_unit": {"type": "boolean"},
+    "contains_variable": {"type": "boolean"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "needs_review": {"type": "boolean"},
+    "issues": {"type": "array", "items": {"type": "string"}}
+  }
+}
+

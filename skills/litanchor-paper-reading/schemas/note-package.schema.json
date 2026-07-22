@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/note-package.schema.json",
+  "title": "LitAnchor NotePackage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "paper_id", "status", "files", "issues", "statistics", "quality"],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "paper_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["completed", "completed_with_warnings", "blocked"]},
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["markdown_note", "evidence", "claims", "validation", "run_record"],
+      "properties": {
+        "markdown_note": {"type": ["string", "null"]},
+        "evidence": {"type": ["string", "null"]},
+        "claims": {"type": ["string", "null"]},
+        "validation": {"type": ["string", "null"]},
+        "run_record": {"type": ["string", "null"]},
+        "failure_report": {"type": ["string", "null"]}
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue_id", "severity", "issue_type", "message", "resolved"],
+        "properties": {
+          "issue_id": {"type": "string", "minLength": 1},
+          "severity": {"enum": ["blocker", "error", "warning", "info"]},
+          "issue_type": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1},
+          "page_index": {"type": ["integer", "null"], "minimum": 1},
+          "claim_id": {"type": ["string", "null"]},
+          "evidence_id": {"type": ["string", "null"]},
+          "suggested_action": {"type": ["string", "null"]},
+          "resolved": {"type": "boolean"}
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page_count", "evidence_count", "claim_count", "warning_count", "blocker_count"],
+      "properties": {
+        "page_count": {"type": "integer", "minimum": 0},
+        "evidence_count": {"type": "integer", "minimum": 0},
+        "claim_count": {"type": "integer", "minimum": 0},
+        "figure_count": {"type": "integer", "minimum": 0},
+        "table_count": {"type": "integer", "minimum": 0},
+        "equation_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0},
+        "blocker_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_coverage", "page_reference_accuracy", "numeric_fidelity", "format_valid"],
+      "properties": {
+        "evidence_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "page_reference_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "numeric_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
+        "modality_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
+        "format_valid": {"type": "boolean"}
+      }
+    }
+  }
+}
+

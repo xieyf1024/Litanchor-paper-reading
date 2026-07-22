@@ -1,0 +1,38 @@
+# Local paper corpus: do not redistribute PDFs.
+Test-PDF/
+*.pdf
+
+# Private runtime data and generated Obsidian artifacts.
+runtime/
+evolution/feedback/
+evolution/trajectories/
+evolution/candidates/
+evolution/rejected/
+evolution/reports/
+evolution/compaction/
+.litanchor/
+*.candidate.md
+*.diff.md
+
+# Secrets and local configuration.
+.env
+.env.*
+!.env.example
+config/local*.yaml
+config/user-preferences.yaml
+
+# Python and test caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors and operating systems.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

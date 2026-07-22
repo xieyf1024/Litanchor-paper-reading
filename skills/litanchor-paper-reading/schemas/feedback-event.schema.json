@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/feedback-event.schema.json",
+  "title": "LitAnchor FeedbackEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["feedback_id", "run_id", "paper_id", "category", "user_message", "affected_claims", "status"],
+  "properties": {
+    "feedback_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "paper_id": {"type": "string", "minLength": 1},
+    "category": {"enum": ["routing", "extraction", "evidence", "reasoning", "format", "integration", "safety"]},
+    "user_message": {"type": "string", "minLength": 1},
+    "affected_claims": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "confirmed_error": {"type": ["boolean", "null"]},
+    "proposed_rule": {"type": ["string", "null"]},
+    "target_layer": {"enum": ["routing", "instruction", "resource", "preference", "undetermined"]},
+    "status": {"enum": ["recorded", "reviewed", "promoted", "rejected"]}
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/claim-record.schema.json",
+  "title": "LitAnchor ClaimRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "claim_text_zh",
+    "claim_type",
+    "epistemic_status",
+    "evidence_ids",
+    "page_refs",
+    "numeric_items",
+    "validation"
+  ],
+  "properties": {
+    "claim_id": {"type": "string", "pattern": "^C-[A-Za-z0-9_-]+$"},
+    "claim_text_zh": {"type": "string", "minLength": 1},
+    "claim_type": {
+      "enum": ["question", "background", "gap", "method", "result", "interpretation", "hypothesis", "limitation", "conclusion"]
+    },
+    "epistemic_status": {
+      "enum": ["observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"}
+    },
+    "page_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "numeric_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value_original"],
+        "properties": {
+          "value_original": {"type": "string", "minLength": 1},
+          "unit_original": {"type": ["string", "null"]},
+          "variable": {"type": ["string", "null"]},
+          "condition": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "display_level": {"enum": ["inline", "collapsed", "sidecar"]},
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["traceable", "semantic_support", "numeric_fidelity", "modality_fidelity", "final_status"],
+      "properties": {
+        "traceable": {"type": "boolean"},
+        "semantic_support": {"enum": ["pass", "warning", "fail"]},
+        "numeric_fidelity": {"enum": ["pass", "warning", "fail"]},
+        "modality_fidelity": {"enum": ["pass", "warning", "fail"]},
+        "final_status": {"enum": ["pass", "warning", "fail"]}
+      }
+    }
+  }
+}
+
