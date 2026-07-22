@@ -24,20 +24,26 @@ flowchart TD
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented local slice (v0.2)
+## Implemented local slice (v0.3)
 
-`skills/litanchor-paper-reading/scripts/litanchor_local.py` implements the native-text manual-PDF path through preview generation:
+Three deterministic scripts now implement the local integration path:
 
 ```text
-manual PDF
+Zotero Local API GET or manual PDF
+→ one verified local PDF
 → physical-page preflight/extraction
 → private SourceBundle
 → Skill-generated Evidence/Claim ledgers
 → deterministic page/quote/numeric checks
 → non-overwriting Markdown preview
+→ hash-verified, path-contained, non-overwriting test Inbox export
 ```
 
-It deliberately stops before Zotero lookup, OCR/MinerU fallback and Obsidian export. Semantic evidence selection and modality/scope review remain model responsibilities; the script verifies their declared artifacts and never invents paper content.
+- `scripts/zotero_local.py` restricts the base URL to loopback `/api`, sends only `GET`, requires one exact item and one PDF attachment, and then invokes the existing PDF preparation path.
+- `scripts/litanchor_local.py` performs native-text preparation, validation and preview rendering.
+- `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
+
+The slice deliberately stops before OCR/MinerU fallback, Zotero writes, reverse Obsidian links and full semantic automation. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
 
 ## Stages and exit criteria
 

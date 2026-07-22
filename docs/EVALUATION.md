@@ -2,13 +2,15 @@
 
 ## Current phase
 
-v0.2 retains the v0.1 repository/Skill contract tests and adds local pipeline tests for blank and corrupt PDFs, page-level extraction, schema invariants, quote/page traceability, numeric fidelity, preflight warning propagation and non-overwriting Markdown rendering.
+v0.3 retains the v0.2 local PDF tests and adds tests for loopback-only Zotero URLs, exact/ambiguous item matching, Better BibTeX citekey extraction, unique PDF attachment selection, local file resolution, authorized-root containment, explicit export confirmation, warning acceptance, preview tamper detection and repeat-export blocking.
 
 One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
 
 All six local benchmark PDFs also complete native-text preflight with their warning pages preserved; see `evals/reports/corpus-preflight.md`.
 
 A five-page whole-paper `skim` forward test covers research question, gap, method, core results, one key figure, limitations, speculative wording and conclusions; see `evals/reports/full-paper-forward-test.md`. The test remains distinct from an independently annotated gold evaluation.
+
+A separate v0.3 integration smoke test resolves that same public paper from the live Zotero Local API, confirms that its attachment hash matches the corpus inventory, validates five abstract-grounded claims, generates verified Zotero page links, and writes one note plus four sidecars only under the authorized test root. A repeated export is blocked and the exported note hash matches validation; see `evals/reports/zotero-obsidian-smoke.md`.
 
 The local PDFs are excluded from Git. Their non-redistributable inventory is documented in `evals/PDF_CORPUS.md` with titles, DOI where known, page counts, SHA-256 hashes and intended stress dimensions.
 
@@ -56,7 +58,7 @@ At least two papers should receive independent double annotation before disagree
 
 A candidate patch may be promoted only when it fixes a reproducible target case, introduces a regression test, preserves every hard reliability rule, does not increase permissions, shows no retained-set regression and receives maintainer approval. A single personal preference belongs in local configuration rather than the shared Skill.
 
-## v0.2 verification
+## v0.3 verification
 
 Run:
 

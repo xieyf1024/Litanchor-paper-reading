@@ -17,7 +17,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.2.0"
+SKILL_VERSION = "0.3.0"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -187,10 +187,17 @@ def prepare_pdf(
     year: int | None = None,
     journal: str | None = None,
     doi: str | None = None,
+    citekey: str | None = None,
+    acquisition_method: str = "manual_pdf",
+    source_query: str | None = None,
+    zotero_item_key: str | None = None,
+    zotero_attachment_key: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Extract physical PDF pages into a private run directory."""
     if reading_mode not in {"skim", "deep", "internalize"}:
         raise PipelineError(f"Unsupported reading mode: {reading_mode}")
+    if acquisition_method not in {"manual_pdf", "zotero_local_api"}:
+        raise PipelineError(f"Unsupported acquisition method: {acquisition_method}")
     pdf_path = pdf_path.resolve()
     if not pdf_path.is_file() or pdf_path.suffix.lower() != ".pdf":
         raise PipelineError(f"Input is not a readable PDF file: {pdf_path}")
@@ -263,10 +270,10 @@ def prepare_pdf(
         "schema_version": SCHEMA_VERSION,
         "paper_id": paper_id,
         "source": {
-            "acquisition_method": "manual_pdf",
-            "query": str(pdf_path),
-            "zotero_item_key": None,
-            "zotero_attachment_key": None,
+            "acquisition_method": acquisition_method,
+            "query": source_query or str(pdf_path),
+            "zotero_item_key": zotero_item_key,
+            "zotero_attachment_key": zotero_attachment_key,
             "external_knowledge_allowed": False,
         },
         "metadata": {
@@ -275,7 +282,7 @@ def prepare_pdf(
             "year": year,
             "journal": journal,
             "doi": doi,
-            "citekey": None,
+            "citekey": citekey,
         },
         "annotations": [],
         "pdf": {
@@ -622,6 +629,18 @@ def _escape_table(text: Any) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
+def zotero_page_link(source: dict[str, Any], page_index: int) -> str | None:
+    source_record = source.get("source", {})
+    attachment_key = source_record.get("zotero_attachment_key")
+    if (
+        source_record.get("acquisition_method") != "zotero_local_api"
+        or not isinstance(attachment_key, str)
+        or re.fullmatch(r"[A-Z0-9]{8}", attachment_key) is None
+    ):
+        return None
+    return f"zotero://open-pdf/library/items/{attachment_key}?page={page_index}"
+
+
 def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[Any], run_record: dict[str, Any], status: str) -> str:
     metadata = source["metadata"]
     pdf = source["pdf"]
@@ -643,6 +662,9 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
         f"year: {yaml_scalar(metadata.get('year'))}",
         f"journal: {yaml_scalar(metadata.get('journal'))}",
         f"doi: {yaml_scalar(metadata.get('doi'))}",
+        f"citekey: {yaml_scalar(metadata.get('citekey'))}",
+        f"zotero_item_key: {yaml_scalar(source['source'].get('zotero_item_key'))}",
+        f"zotero_attachment_key: {yaml_scalar(source['source'].get('zotero_attachment_key'))}",
         f"source_file: {yaml_scalar(source['source']['query'])}",
         f"document_hash: {yaml_scalar(pdf['sha256'])}",
         f"reading_mode: {yaml_scalar(run_record.get('reading_mode'))}",
@@ -673,7 +695,14 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
         for claim in selected:
             evidence_ids = claim["evidence_ids"]
             pages = sorted(set(claim["page_refs"]))
-            marker = f"〔{', '.join(evidence_ids)}｜PDF {', '.join(f'p.{page}' for page in pages)}〕"
+            marker_parts = [", ".join(evidence_ids), f"PDF {', '.join(f'p.{page}' for page in pages)}"]
+            links = [
+                f"[打开 p.{page}]({link})"
+                for page in pages
+                if (link := zotero_page_link(source, page)) is not None
+            ]
+            marker_parts.extend(links)
+            marker = f"〔{'｜'.join(marker_parts)}〕"
             lines.append(f"- {claim['claim_text_zh']} {marker}")
             if claim.get("display_level") == "collapsed":
                 for evidence_id in evidence_ids:
@@ -735,6 +764,7 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
     atomic_write_text(destination, markdown, overwrite=False)
     result["files"]["markdown_note"] = str(destination)
     result["quality"]["format_valid"] = True
+    result["quality"]["markdown_sha256"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     atomic_write_json(validation_path, result)
     run_record["status"] = result["status"]
     run_record["completed"] = utc_now()

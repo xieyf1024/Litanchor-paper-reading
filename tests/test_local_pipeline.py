@@ -113,7 +113,7 @@ class LocalPipelineTests(unittest.TestCase):
             "display_level": "collapsed",
             "validation": {"traceable": True, "semantic_support": "pass", "numeric_fidelity": "pass", "modality_fidelity": "pass", "final_status": "pass"},
         }]
-        run_record = {"schema_version": "0.1", "run_id": "run", "paper_id": "pdf-test", "skill_version": "0.2.0", "reading_mode": "skim", "created": "2026-01-01T00:00:00+00:00", "status": "prepared", "artifacts": {}}
+        run_record = {"schema_version": "0.1", "run_id": "run", "paper_id": "pdf-test", "skill_version": "0.3.0", "reading_mode": "skim", "created": "2026-01-01T00:00:00+00:00", "status": "prepared", "artifacts": {}}
         write_json(run_dir / "source-bundle.json", source)
         write_json(run_dir / "evidence.json", evidence)
         write_json(run_dir / "claims.json", claims)

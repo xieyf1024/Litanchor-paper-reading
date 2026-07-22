@@ -42,6 +42,10 @@ Read `references/workflow.md` completely, then:
 
 For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
 
+For a running Zotero desktop client with Local API enabled, use `scripts/zotero_local.py check`, then `prepare` with exactly one title, DOI, citekey, or Item Key. Require one exact bibliographic match and one PDF attachment; ambiguity blocks the run. This adapter is loopback-only and read-only and does not require Zotero MCP.
+
+For an authorized Obsidian test directory, use `scripts/export_obsidian.py` only after `build`. Pass the authorized root and its child Inbox separately, accept warnings explicitly when applicable, and require `--confirm-export`. The script verifies preview integrity, path containment, required sidecars, and zero collisions before writing.
+
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
 
 ## Keep evidence readable

@@ -65,9 +65,9 @@
         "page_reference_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
         "numeric_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
         "modality_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
-        "format_valid": {"type": "boolean"}
+        "format_valid": {"type": "boolean"},
+        "markdown_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     }
   }
 }
-

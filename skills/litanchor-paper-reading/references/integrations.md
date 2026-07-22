@@ -4,8 +4,8 @@
 
 Use this order:
 
-1. An already connected Zotero MCP with read-only operations.
-2. A future Zotero 7 Local API adapter.
+1. `scripts/zotero_local.py` with the local, read-only Zotero API.
+2. An already connected Zotero MCP with read-only operations when a shared MCP interface is needed.
 3. Zotero Web API read-only when explicitly configured.
 4. User-provided PDF.
 
@@ -19,6 +19,8 @@ zotero://open-pdf/library/items/<attachment-key>?page=<physical-page>
 
 Never invent an Item Key, attachment key or page link.
 
+For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with exactly one of `--item-key`, `--title`, `--doi`, or `--citekey`. Require one exact item and one PDF attachment. Do not use a non-loopback API URL or install Zotero MCP during the run.
+
 ## Obsidian export
 
 - Accept one explicitly authorized output directory, preferably a dedicated Literature Inbox.
@@ -31,3 +33,4 @@ Never invent an Item Key, attachment key or page link.
 
 Report every created path and confirm that no existing file was replaced.
 
+Use `scripts/export_obsidian.py` after a successful `build`. Supply the authorized test root and child Inbox separately, add `--confirm-export`, and add `--allow-warnings` only after reviewing the warnings. The exporter must verify the Markdown hash and reject repeated exports.

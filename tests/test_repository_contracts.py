@@ -25,6 +25,8 @@ class RepositoryContractTests(unittest.TestCase):
             "docs/EVALUATION.md",
             "docs/INTEGRATIONS.md",
             "skills/litanchor-paper-reading/scripts/litanchor_local.py",
+            "skills/litanchor-paper-reading/scripts/zotero_local.py",
+            "skills/litanchor-paper-reading/scripts/export_obsidian.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -50,6 +52,8 @@ class RepositoryContractTests(unittest.TestCase):
         for relative in paths:
             self.assertTrue((SKILL / relative).is_file(), relative)
         self.assertIn("scripts/litanchor_local.py", text)
+        self.assertIn("scripts/zotero_local.py", text)
+        self.assertIn("scripts/export_obsidian.py", text)
 
     def test_runtime_dependency_stays_lightweight(self):
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()

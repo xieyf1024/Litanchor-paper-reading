@@ -48,7 +48,7 @@ Run deterministic schema/page/quote/numeric/format checks before semantic suppor
 
 Create a FeedbackEvent for user corrections. Do not mutate the formal Skill or publish a patch during the paper-reading task.
 
-## Local manual-PDF pipeline
+## Local PDF pipeline
 
 Use the bundled script for the current lightweight runtime slice:
 
@@ -57,6 +57,15 @@ python scripts/litanchor_local.py prepare "paper.pdf" --output-root "runtime/run
 ```
 
 The command creates a private run directory containing `source-bundle.json`, empty `evidence.json`, empty `claims.json`, and `run.json`. It never writes to Obsidian.
+
+For a running Zotero desktop client with Local API enabled, use the read-only adapter instead:
+
+```powershell
+python scripts/zotero_local.py check
+python scripts/zotero_local.py prepare --title "Exact paper title" --output-root "runtime/runs" --mode deep
+```
+
+Use exactly one title, DOI, citekey or Item Key selector. Zero/multiple exact items or PDF attachments block the run.
 
 Continue only when preflight returns `PASS` or `PASS_WITH_WARNINGS`:
 
@@ -70,4 +79,12 @@ Continue only when preflight returns `PASS` or `PASS_WITH_WARNINGS`:
 python scripts/litanchor_local.py build "runtime/runs/<run-id>"
 ```
 
-`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, numeric values or units absent from the evidence, failed semantic status, and an existing output path. Successful output remains in the private run directory as `preview.md`; copying it to an authorized Obsidian Inbox belongs to a later phase.
+`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, numeric values or units absent from the evidence, failed semantic status, and an existing output path. It records the validated preview SHA-256.
+
+After showing the preview and receiving write authorization, export only through:
+
+```powershell
+python scripts/export_obsidian.py "runtime/runs/<run-id>" --allowed-root "<test-root>" --inbox "<test-root>/00_Inbox" --confirm-export
+```
+
+Add `--allow-warnings` only after the warning pages have been reviewed. The exporter blocks an Inbox outside the authorized root, an altered preview, missing sidecars, a collision, or a repeated export.

@@ -4,7 +4,7 @@
 
 LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它计划从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
 
-**当前状态：v0.2 本地最小闭环。** 本版本在 v0.1 Skill、模板、Schema 和评测骨架之上，增加了单篇手动 PDF 的页面级预检/提取、证据与主张账本校验，以及不覆盖文件的 Markdown 预览生成。Zotero、Obsidian 写入、OCR 和 MinerU 尚未接入。
+**当前状态：v0.3 本地集成闭环。** 本版本在 v0.2 手动 PDF 流水线上增加了 Zotero Local API 只读适配器、已验证的 Zotero 页码链接，以及受授权根目录约束的 Obsidian Inbox 零覆盖导出。仍不安装 Zotero MCP、Obsidian 插件、OCR 模型或 MinerU。
 
 ## 核心约束
 
@@ -69,9 +69,29 @@ Skill 依据生成的 `source-bundle.json` 填充该运行目录中的 `evidence
 
 产物保存在被 Git 忽略的 `runtime/`。`build` 会阻断错误页码、无法在原页找到的引文、数值/单位不一致、语义校验失败和文件覆盖。
 
+## Zotero Local API 与测试 Inbox
+
+Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精确选择器准备论文：
+
+```powershell
+.\.venv\Scripts\python skills\litanchor-paper-reading\scripts\zotero_local.py check
+.\.venv\Scripts\python skills\litanchor-paper-reading\scripts\zotero_local.py prepare --title "Exact paper title" --output-root "runtime\runs" --mode deep
+```
+
+适配器仅访问回环地址、仅发送 `GET`，并要求唯一书目匹配与唯一 PDF 附件。完成证据/主张账本并执行 `build` 后，使用显式授权参数导出：
+
+```powershell
+.\.venv\Scripts\python skills\litanchor-paper-reading\scripts\export_obsidian.py "runtime\runs\<run-id>" `
+  --allowed-root "D:\path\to\LitAnchor-Test" `
+  --inbox "D:\path\to\LitAnchor-Test\00_Inbox" `
+  --confirm-export
+```
+
+警告状态还必须显式添加 `--allow-warnings`。导出前会验证 Markdown 哈希、Inbox 路径包含关系、侧车文件和目标碰撞；现有文件不会被覆盖。
+
 ## 当前阶段边界
 
-本轮不访问真实 Zotero 库、不写入测试或正式 Obsidian Vault、不批量处理论文、不启用 OCR 或 MinerU，也不自动修改正式 Skill。下一阶段将接入只读 Zotero，再增加测试 Vault 中受限、无覆盖的 Inbox 导出。
+当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR、MinerU 或 Zotero MCP。下一阶段优先扩充独立测试与金标准，而不是增加连接器。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 
