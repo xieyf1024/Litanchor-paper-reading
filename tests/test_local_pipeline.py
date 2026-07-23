@@ -66,6 +66,13 @@ class LocalPipelineTests(unittest.TestCase):
         _text, warnings = MODULE._extract_page_text(FakePage())
         self.assertIn("suspicious_ligature_glyphs:2", warnings)
 
+    def test_note_frontmatter_keeps_only_first_author(self):
+        self.assertEqual(
+            MODULE.first_author_only(["First Author", "Second Author"]),
+            ["First Author"],
+        )
+        self.assertEqual(MODULE.first_author_only([]), [])
+
     def make_run(self, root: Path, *, quote="The model achieved 95% accuracy on the test set.", value="95", unit="%"):
         run_dir = root / "run"
         run_dir.mkdir()
@@ -127,6 +134,7 @@ class LocalPipelineTests(unittest.TestCase):
             markdown = destination.read_text(encoding="utf-8")
             self.assertEqual(result["status"], "completed")
             self.assertTrue(result["quality"]["format_valid"])
+            self.assertIn('authors: ["A. Author"]', markdown)
             self.assertIn("E-001｜PDF p.1", markdown)
             self.assertIn("[!evidence]- E-001", markdown)
             self.assertIn("litanchor:user:start", markdown)

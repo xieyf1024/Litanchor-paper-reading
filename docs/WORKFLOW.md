@@ -24,14 +24,15 @@ flowchart TD
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented local slice (v0.3)
+## Implemented local slice (v0.4)
 
-Three deterministic scripts now implement the local integration path:
+Four deterministic scripts now implement the local integration path:
 
 ```text
 Zotero Local API GET or manual PDF
 → one verified local PDF
 → physical-page preflight/extraction
+→ optional original-PDF key-figure crop plus provenance manifest
 → private SourceBundle
 → Skill-generated Evidence/Claim ledgers
 → deterministic page/quote/numeric checks
@@ -42,19 +43,20 @@ Zotero Local API GET or manual PDF
 - `scripts/zotero_local.py` restricts the base URL to loopback `/api`, sends only `GET`, requires one exact item and one PDF attachment, and then invokes the existing PDF preparation path.
 - `scripts/litanchor_local.py` performs native-text preparation, validation and preview rendering.
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
+- `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 
-The slice deliberately stops before OCR/MinerU fallback, Zotero writes, reverse Obsidian links and full semantic automation. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
+The slice deliberately stops before OCR or MinerU execution, Zotero writes, reverse Obsidian links and full semantic automation. MinerU remains an explicit-consent structure-enhancement design: its content must align back to PyMuPDF pages before use. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
 
 ## Stages and exit criteria
 
 1. **Parse request.** Resolve `skim`, `deep`, or `internalize`; set `external_knowledge_allowed=false`; default to `deep` only for an explicit close-reading request.
 2. **Resolve source.** Prefer one exact Item Key, citekey, DOI, or title match. Present ambiguous candidates instead of silently selecting the first result. Fall back to a user-provided PDF when Zotero access is unavailable.
-3. **Build SourceBundle.** Preserve original metadata, annotations, attachment key, PDF hash and acquisition method. Do not summarize during acquisition.
+3. **Build SourceBundle.** Preserve original metadata, the full author list, annotations, attachment key, PDF hash and acquisition method. Do not summarize during acquisition. Store only the first verified author in human-note frontmatter.
 4. **Preflight PDF.** Check file validity, encryption, page count, text coverage, likely scanning, extraction corruption and layout warnings. Return `PASS`, `PASS_WITH_WARNINGS`, `FALLBACK_REQUIRED`, or `BLOCKED`.
 5. **Extract by page.** Preserve PDF physical page boundaries, text blocks and warnings. Never flatten the entire paper into an unpaged string.
 6. **Profile and map structure.** Distinguish empirical, method, model and review papers; map section boundaries without inventing missing sections.
 7. **Build evidence ledger.** Extract the smallest sufficient original-language evidence units with page references, section, quote, numbers, units and epistemic markers.
-8. **Inspect key visuals.** Process only figures, tables and equations that support core methods or results. If symbols or values cannot be read reliably, register the object as partial/failed and require original-page review.
+8. **Inspect key visuals.** Process only figures, tables and equations that support core methods or results. Crop useful note figures from the original PDF, retain the image manifest and include a verified Zotero page link. If geometry, symbols or values cannot be read reliably, register the object as partial/failed and require original-page review.
 9. **Build claim ledger.** Generate Chinese claims only from evidence units; preserve scope, subject, conditions, causality and modality. Every factual claim requires at least one Evidence ID.
 10. **Compose note.** Render only validated structured data into the note template. Do not reinterpret the complete PDF at this stage.
 11. **Validate.** Run deterministic checks first, then semantic fidelity review. A blocker or error prevents formal export.

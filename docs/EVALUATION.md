@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v0.3 retains the v0.2 local PDF tests and adds tests for loopback-only Zotero URLs, exact/ambiguous item matching, Better BibTeX citekey extraction, unique PDF attachment selection, local file resolution, authorized-root containment, explicit export confirmation, warning acceptance, preview tamper detection and repeat-export blocking.
+v0.4 retains the v0.3 integration tests and adds first-author rendering, punctuation-tolerant Zotero query retries with exact final matching, PyMuPDF caption-assisted original-PDF figure crops, crop provenance manifests, overwrite refusal and AGPL distribution checks.
 
 One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
 
@@ -13,6 +13,10 @@ A five-page whole-paper `skim` forward test covers research question, gap, metho
 A separate v0.3 integration smoke test resolves that same public paper from the live Zotero Local API, confirms that its attachment hash matches the corpus inventory, validates five abstract-grounded claims, generates verified Zotero page links, and writes one note plus four sidecars only under the authorized test root. A repeated export is blocked and the exported note hash matches validation; see `evals/reports/zotero-obsidian-smoke.md`.
 
 The local PDFs are excluded from Git. Their non-redistributable inventory is documented in `evals/PDF_CORPUS.md` with titles, DOI where known, page counts, SHA-256 hashes and intended stress dimensions.
+
+All six corpus papers were independently resolved from the live Zotero `[AI]` or `[XMU]` collections and matched to the inventory hashes; see `evals/reports/zotero-six-paper-resolution.md`. Private Item/Attachment Keys remain outside the public repository.
+
+Three detailed notes in the authorized Obsidian test Inbox are treated as **AI-assisted references**, not gold labels. They help define coverage and annotation fields but cannot score the system that generated them. The promotion checklist is in `evals/gold/AI_ASSISTED_REFERENCE_GUIDE.md`. The Attention note was also checked against the original PDF and a user-selected Bilibili explainer; see `evals/reports/attention-reference-review.md`.
 
 ## Gold annotation plan
 
@@ -26,6 +30,8 @@ For each public benchmark paper, annotate:
 - parser failures and pages requiring visual review.
 
 At least two papers should receive independent double annotation before disagreements are reconciled.
+
+An existing AI-assisted note may become a gold annotation only after a human independently checks each selected claim against the original PDF, verifies physical pages and quotations, labels modality and scope, records parser failures, and resolves disagreements without using the candidate output as the sole answer key.
 
 ## Metrics and MVP gates
 
@@ -58,7 +64,7 @@ At least two papers should receive independent double annotation before disagree
 
 A candidate patch may be promoted only when it fixes a reproducible target case, introduces a regression test, preserves every hard reliability rule, does not increase permissions, shows no retained-set regression and receives maintainer approval. A single personal preference belongs in local configuration rather than the shared Skill.
 
-## v0.3 verification
+## v0.4 verification
 
 Run:
 

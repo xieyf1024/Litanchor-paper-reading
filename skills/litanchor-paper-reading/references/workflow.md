@@ -10,7 +10,7 @@ Prefer Item Key, citekey, DOI, exact title, then fuzzy title. Ask the user to ch
 
 ## 3. Build SourceBundle
 
-Keep metadata, annotations, Zotero notes, attachment key, PDF path/content, hash, page count and acquisition method. Preserve original language and avoid summarization in this stage.
+Keep metadata, full author list, annotations, Zotero notes, attachment key, PDF path/content, hash, page count and acquisition method. Preserve original language and avoid summarization in this stage. The human note frontmatter stores only the verified first author; never discard the complete SourceBundle author list.
 
 ## 4. Preflight
 
@@ -31,6 +31,8 @@ For a review paper, replace experiment-specific fields with review scope, search
 ## 7. Inspect core visuals
 
 Register figures/tables/equations repeatedly cited in the text, supporting core results, defining the method or defining a metric. Record label, page, caption, role, supported claims, parse status and review requirement. Do not analyze decorative images.
+
+For a figure that materially improves the note, run `scripts/pdf_figures.py` against the original PDF. Verify the physical page and caption, inspect the PNG, retain its JSON provenance manifest, embed it with a Vault-relative wikilink, and add a verified Zotero page link. A structure parser may locate a candidate, but the published image must be cropped from the original PDF. Ambiguous geometry blocks automatic embedding.
 
 ## 8. Build ledgers
 
@@ -80,6 +82,14 @@ python scripts/litanchor_local.py build "runtime/runs/<run-id>"
 ```
 
 `build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, numeric values or units absent from the evidence, failed semantic status, and an existing output path. It records the validated preview SHA-256.
+
+To crop an already verified key figure:
+
+```powershell
+python scripts/pdf_figures.py "paper.pdf" --page 3 --label "Figure 1" --output "runtime/figures/figure-1.png"
+```
+
+The command refuses overwrite and creates a JSON manifest beside the image.
 
 After showing the preview and receiving write authorization, export only through:
 

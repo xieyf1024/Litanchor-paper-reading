@@ -1,6 +1,6 @@
 ---
 title:
-authors: []
+authors: [] # 笔记属性只保存第一作者；完整作者列表保留在 SourceBundle
 year:
 journal:
 doi:
@@ -114,4 +114,3 @@ tags:
 ## 16. 证据索引
 
 ## 17. 校验信息
-

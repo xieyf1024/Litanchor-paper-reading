@@ -17,7 +17,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.3.0"
+SKILL_VERSION = "0.4.0"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -625,6 +625,13 @@ def yaml_scalar(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def first_author_only(authors: Any) -> list[str]:
+    """Return the first verified author for concise note frontmatter."""
+    if not isinstance(authors, list):
+        return []
+    return [authors[0]] if authors and isinstance(authors[0], str) and authors[0].strip() else []
+
+
 def _escape_table(text: Any) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
@@ -658,7 +665,7 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
     lines = [
         "---",
         f"title: {yaml_scalar(metadata.get('title'))}",
-        f"authors: {yaml_scalar(metadata.get('authors', []))}",
+        f"authors: {yaml_scalar(first_author_only(metadata.get('authors', [])))}",
         f"year: {yaml_scalar(metadata.get('year'))}",
         f"journal: {yaml_scalar(metadata.get('journal'))}",
         f"doi: {yaml_scalar(metadata.get('doi'))}",

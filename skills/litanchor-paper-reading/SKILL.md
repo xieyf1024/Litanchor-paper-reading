@@ -48,6 +48,8 @@ For an authorized Obsidian test directory, use `scripts/export_obsidian.py` only
 
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
 
+Store only the verified first author in note frontmatter while retaining all authors in SourceBundle. For a key figure, use `scripts/pdf_figures.py` against the original PDF, visually verify the result, retain its manifest, and embed it with a verified Zotero page link. MinerU may only assist structure discovery after explicit upload consent; unmatched MinerU content is never evidence.
+
 ## Keep evidence readable
 
 - Show only Evidence ID, page, and optional verified Zotero link inline for ordinary claims.

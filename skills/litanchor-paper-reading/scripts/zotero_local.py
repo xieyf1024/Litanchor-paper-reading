@@ -27,6 +27,15 @@ def _normalized_text(value: str) -> str:
     return "".join(character for character in normalized if character.isalnum())
 
 
+def _title_search_queries(value: str) -> list[str]:
+    words = re.findall(r"[^\W_]+", unicodedata.normalize("NFKC", value), re.UNICODE)
+    queries = [value]
+    for length in (8, 5, 3):
+        if len(words) >= length:
+            queries.append(" ".join(words[:length]))
+    return list(dict.fromkeys(query.strip() for query in queries if query.strip()))
+
+
 def _normalized_doi(value: str) -> str:
     value = value.strip().casefold()
     value = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", "", value)
@@ -130,14 +139,29 @@ class ZoteroLocalClient:
                 raise PipelineError("Zotero Item Key did not resolve to an item")
             return item
 
-        candidates = self._search(value, everything=selector in {"doi", "citekey"})
         if selector == "title":
             target = _normalized_text(value)
-            matches = [item for item in candidates if _normalized_text(str(item["data"].get("title", ""))) == target]
+            candidates_by_key: dict[str, dict[str, Any]] = {}
+            for query in _title_search_queries(value):
+                for item in self._search(query):
+                    key = str(item.get("key", ""))
+                    if key:
+                        candidates_by_key[key] = item
+                matches = [
+                    item
+                    for item in candidates_by_key.values()
+                    if _normalized_text(str(item["data"].get("title", ""))) == target
+                ]
+                if matches:
+                    break
+            else:
+                matches = []
         elif selector == "doi":
+            candidates = self._search(value, everything=True)
             target = _normalized_doi(value)
             matches = [item for item in candidates if _normalized_doi(str(item["data"].get("DOI", ""))) == target]
         elif selector == "citekey":
+            candidates = self._search(value, everything=True)
             matches = [item for item in candidates if (_citation_key(item["data"]) or "").casefold() == value.casefold()]
         else:
             raise PipelineError(f"Unsupported Zotero selector: {selector}")

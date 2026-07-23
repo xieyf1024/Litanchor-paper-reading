@@ -15,6 +15,7 @@ class RepositoryContractTests(unittest.TestCase):
             "LICENSE",
             ".gitignore",
             "THIRD_PARTY.md",
+            "NOTICE.md",
             "requirements.txt",
             "Paper Template.md",
             "科研文献入门.md",
@@ -27,6 +28,7 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/litanchor_local.py",
             "skills/litanchor-paper-reading/scripts/zotero_local.py",
             "skills/litanchor-paper-reading/scripts/export_obsidian.py",
+            "skills/litanchor-paper-reading/scripts/pdf_figures.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -54,11 +56,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("scripts/litanchor_local.py", text)
         self.assertIn("scripts/zotero_local.py", text)
         self.assertIn("scripts/export_obsidian.py", text)
+        self.assertIn("scripts/pdf_figures.py", text)
 
     def test_runtime_dependency_stays_lightweight(self):
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
         requirements = [line for line in requirements if line.strip() and not line.lstrip().startswith("#")]
-        self.assertEqual(requirements, ["pypdf>=6.0,<7.0"])
+        self.assertEqual(
+            requirements,
+            ["pypdf>=6.0,<7.0", "PyMuPDF>=1.26,<2.0"],
+        )
 
     def test_openai_metadata_mentions_skill(self):
         text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
@@ -90,6 +96,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("<!-- litanchor:user:end -->", text)
         self.assertIn("[!evidence]-", text)
         self.assertIn("以下属于学习启发，不是作者原文结论", text)
+        self.assertIn("第一作者", text)
+
+    def test_project_license_and_notice_match_pymupdf_distribution_choice(self):
+        license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        notice_text = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+        third_party = (ROOT / "THIRD_PARTY.md").read_text(encoding="utf-8")
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", license_text)
+        self.assertIn("PyMuPDF", notice_text)
+        self.assertIn("AGPL-3.0-only", third_party)
 
     def test_private_and_copyrighted_artifacts_are_ignored(self):
         text = (ROOT / ".gitignore").read_text(encoding="utf-8")

@@ -76,6 +76,24 @@ class ZoteroLocalTests(unittest.TestCase):
         with self.assertRaises(litanchor_local.PipelineError):
             client.resolve_item("title", "Exact Paper")
 
+    def test_title_resolution_retries_with_punctuation_free_prefix(self):
+        class PrefixClient(FixtureClient):
+            def _search(self, query, *, everything=False):
+                if query.casefold() == "increased frequency of multi year el niño southern":
+                    return [
+                        item(
+                            title="Increased frequency of multi-year el niño–southern oscillation events across the holocene"
+                        )
+                    ]
+                return []
+
+        client = PrefixClient()
+        resolved = client.resolve_item(
+            "title",
+            "Increased frequency of multi-year El Niño-Southern Oscillation events across the Holocene",
+        )
+        self.assertEqual(resolved["key"], "ABCD1234")
+
     def test_citekey_can_be_read_from_better_bibtex_extra(self):
         client = FixtureClient(candidates=[item(extra="Citation Key: Lovelace2026Exact")])
         self.assertEqual(client.resolve_item("citekey", "lovelace2026exact")["key"], "ABCD1234")

@@ -5,11 +5,9 @@
 Use this order:
 
 1. `scripts/zotero_local.py` with the local, read-only Zotero API.
-2. An already connected Zotero MCP with read-only operations when a shared MCP interface is needed.
-3. Zotero Web API read-only when explicitly configured.
-4. User-provided PDF.
+2. User-provided PDF.
 
-Do not install a connector during a reading run without approval. Do not read `zotero.sqlite` directly. Do not create, modify, tag or delete Zotero items.
+Do not install a connector during a reading run without approval. Zotero MCP is not a LitAnchor runtime dependency or supported adapter. Do not read `zotero.sqlite` directly. Do not create, modify, tag or delete Zotero items.
 
 Capture verified metadata, Item Key, attachment key, citekey, annotations and PDF identity. If the attachment key is verified, form page links as:
 
@@ -34,3 +32,12 @@ For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with
 Report every created path and confirm that no existing file was replaced.
 
 Use `scripts/export_obsidian.py` after a successful `build`. Supply the authorized test root and child Inbox separately, add `--confirm-export`, and add `--allow-warnings` only after reviewing the warnings. The exporter must verify the Markdown hash and reject repeated exports.
+
+## Key-figure assets
+
+- Identify the figure and physical PDF page before cropping.
+- Run `scripts/pdf_figures.py` against the original PDF; do not use an unverified parser-exported image as final evidence.
+- Keep the generated JSON manifest with the image. It must contain the original PDF hash, physical page, caption, crop box, renderer and image hash.
+- Embed the PNG using a Vault-relative wikilink and place a verified Zotero page link next to it.
+- If automatic caption/image geometry is ambiguous, stop for visual review or use an explicit reviewed bounding box.
+- MinerU may assist structure/label discovery only after explicit external-upload consent. Align every accepted result back to the original PDF; unmatched content is not evidence.
