@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/visual-selection.schema.json",
+  "title": "LitAnchor VisualSelection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "selection_status",
+    "selected",
+    "rejected",
+    "no_selection_reason"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "selection_status": {"enum": ["pending", "completed"]},
+    "selected": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "figure_label",
+          "physical_pdf_page",
+          "caption_original",
+          "selection_reason",
+          "discussion_location",
+          "image_path",
+          "manifest_path",
+          "embed_path"
+        ],
+        "properties": {
+          "figure_label": {"type": "string", "minLength": 1},
+          "physical_pdf_page": {"type": "integer", "minimum": 1},
+          "caption_original": {"type": "string", "minLength": 1},
+          "selection_reason": {"type": "string", "minLength": 1},
+          "discussion_location": {"type": "string", "minLength": 1},
+          "image_path": {"type": "string", "minLength": 1},
+          "manifest_path": {"type": "string", "minLength": 1},
+          "embed_path": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["figure_label", "reason"],
+        "properties": {
+          "figure_label": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "no_selection_reason": {"type": ["string", "null"]}
+  }
+}

@@ -163,6 +163,8 @@ class ObsidianExportTests(unittest.TestCase):
             "contains_variable": False,
             "confidence": 1.0,
             "needs_review": False,
+            "page_verified": True,
+            "source_match_kind": "exact",
             "issues": [],
         }]
         claims = [{
@@ -195,6 +197,16 @@ class ObsidianExportTests(unittest.TestCase):
         write_json(run_dir / "source-bundle.json", source)
         write_json(run_dir / "evidence.json", evidence)
         write_json(run_dir / "claims.json", claims)
+        write_json(
+            run_dir / "figures.json",
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "No key visual is required for this fixture.",
+            },
+        )
         write_json(run_dir / "run.json", run)
         litanchor_local.build_run(run_dir)
         return run_dir
@@ -226,7 +238,8 @@ class ObsidianExportTests(unittest.TestCase):
             markdown = note.read_text(encoding="utf-8")
             self.assertIn("zotero_item_key: \"ABCD1234\"", markdown)
             self.assertIn("zotero://open-pdf/library/items/PDFD1234?page=1", markdown)
-            self.assertEqual(len(result["sidecars"]), 4)
+            self.assertEqual(len(result["sidecars"]), 6)
+            self.assertTrue(any(path.endswith("coverage_receipt.json") for path in result["sidecars"]))
             with self.assertRaises(litanchor_local.PipelineError):
                 export_obsidian.export_run(run_dir, vault, inbox, confirmed=True)
 

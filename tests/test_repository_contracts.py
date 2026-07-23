@@ -17,6 +17,7 @@ class RepositoryContractTests(unittest.TestCase):
             "THIRD_PARTY.md",
             "NOTICE.md",
             "requirements.txt",
+            "requirements-mineru.txt",
             "Paper Template.md",
             "科研文献入门.md",
             "docs/PRODUCT.md",
@@ -29,6 +30,7 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/zotero_local.py",
             "skills/litanchor-paper-reading/scripts/export_obsidian.py",
             "skills/litanchor-paper-reading/scripts/pdf_figures.py",
+            "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -57,6 +59,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("scripts/zotero_local.py", text)
         self.assertIn("scripts/export_obsidian.py", text)
         self.assertIn("scripts/pdf_figures.py", text)
+        self.assertIn("scripts/mineru_adapter.py", text)
 
     def test_runtime_dependency_stays_lightweight(self):
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
@@ -78,7 +81,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 5)
+        self.assertEqual(len(schemas), 7)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")
@@ -89,6 +92,11 @@ class RepositoryContractTests(unittest.TestCase):
         payload = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(payload["properties"]["evidence_ids"]["minItems"], 1)
         self.assertEqual(payload["properties"]["page_refs"]["minItems"], 1)
+        evidence = json.loads(
+            (SKILL / "schemas" / "evidence-unit.schema.json").read_text(encoding="utf-8")
+        )
+        self.assertIn("page_verified", evidence["required"])
+        self.assertIn("source_match_kind", evidence["required"])
 
     def test_note_template_protects_user_content_and_limits_evidence(self):
         text = (SKILL / "assets" / "paper-note.md").read_text(encoding="utf-8")

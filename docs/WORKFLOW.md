@@ -24,15 +24,17 @@ flowchart TD
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented local slice (v0.4)
+## Implemented local slice (v0.4 completion / v0.4.1 candidate)
 
-Four deterministic scripts now implement the local integration path:
+Five deterministic scripts now implement the local integration path:
 
 ```text
 Zotero Local API GET or manual PDF
 → one verified local PDF
 → physical-page preflight/extraction
-→ optional original-PDF key-figure crop plus provenance manifest
+→ mandatory visual-selection pass for deep notes
+→ 0–3 original-PDF key-figure crops plus provenance manifests
+→ optional consent-gated MinerU Flash structure candidates
 → private SourceBundle
 → Skill-generated Evidence/Claim ledgers
 → deterministic page/quote/numeric checks
@@ -44,8 +46,9 @@ Zotero Local API GET or manual PDF
 - `scripts/litanchor_local.py` performs native-text preparation, validation and preview rendering.
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
+- `scripts/mineru_adapter.py` optionally calls the token-free MinerU Flash service after explicit upload consent, enforces 10 MiB/20-page limits, and records `exact`/`fuzzy`/`unmatched` page alignment without promoting any block to formal evidence.
 
-The slice deliberately stops before OCR or MinerU execution, Zotero writes, reverse Obsidian links and full semantic automation. MinerU remains an explicit-consent structure-enhancement design: its content must align back to PyMuPDF pages before use. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
+The slice deliberately stops before local OCR, paid MinerU precision parsing, Zotero writes, reverse Obsidian links and full semantic automation. PyMuPDF remains the physical-page, quotation and final-image authority. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
 
 ## Stages and exit criteria
 
@@ -56,10 +59,10 @@ The slice deliberately stops before OCR or MinerU execution, Zotero writes, reve
 5. **Extract by page.** Preserve PDF physical page boundaries, text blocks and warnings. Never flatten the entire paper into an unpaged string.
 6. **Profile and map structure.** Distinguish empirical, method, model and review papers; map section boundaries without inventing missing sections.
 7. **Build evidence ledger.** Extract the smallest sufficient original-language evidence units with page references, section, quote, numbers, units and epistemic markers.
-8. **Inspect key visuals.** Process only figures, tables and equations that support core methods or results. Crop useful note figures from the original PDF, retain the image manifest and include a verified Zotero page link. If geometry, symbols or values cannot be read reliably, register the object as partial/failed and require original-page review.
+8. **Run the Visual Selection Pass.** Every `deep`/`internalize` run must evaluate key visuals and select at most 1–3 objects that are indispensable to the method or main result. Crop from the original PDF, retain the manifest and verified Zotero page link, then pass edge/provenance checks. If none qualifies, record the reason. A failed or contaminated crop is rejected rather than embedded.
 9. **Build claim ledger.** Generate Chinese claims only from evidence units; preserve scope, subject, conditions, causality and modality. Every factual claim requires at least one Evidence ID.
 10. **Compose note.** Render only validated structured data into the note template. Do not reinterpret the complete PDF at this stage.
-11. **Validate.** Run deterministic checks first, then semantic fidelity review. A blocker or error prevents formal export.
+11. **Validate.** Run deterministic checks first, then semantic fidelity review. Deep mode additionally requires full page extraction, evidence from at least three pages and sections, evidence reaching the latter half, and a completed visual selection. A blocker or error prevents formal export.
 12. **Preview and export.** Show the note, warnings, failed pages and output paths. Write only to an explicitly authorized directory; never overwrite an existing note automatically.
 13. **Record feedback.** Store feedback as a FeedbackEvent. Do not edit the formal Skill during a paper-reading run.
 

@@ -28,11 +28,11 @@ Save one-based physical page, printed page if known, text blocks/coordinates whe
 
 For a review paper, replace experiment-specific fields with review scope, search/selection method, synthesis method, evidence categories, agreements, disagreements and limitations. Do not force empirical fields.
 
-## 7. Inspect core visuals
+## 7. Run the Visual Selection Pass
 
-Register figures/tables/equations repeatedly cited in the text, supporting core results, defining the method or defining a metric. Record label, page, caption, role, supported claims, parse status and review requirement. Do not analyze decorative images.
+Every `deep` or `internalize` run must evaluate figures/tables/equations repeatedly cited in the text, supporting core results, defining the method or defining a metric. Select at most 1–3 indispensable objects; never choose by figure number or to fill a quota. Record label, page, caption, role, supported claims, parse status and review requirement. Do not analyze decorative or redundant images. If none qualifies, record the reason in `figures.json`.
 
-For a figure that materially improves the note, run `scripts/pdf_figures.py` against the original PDF. Verify the physical page and caption, inspect the PNG, retain its JSON provenance manifest, embed it with a Vault-relative wikilink, and add a verified Zotero page link. A structure parser may locate a candidate, but the published image must be cropped from the original PDF. Ambiguous geometry blocks automatic embedding.
+For a selected figure, run `scripts/pdf_figures.py` against the original PDF. Verify the physical page and caption, inspect the PNG, retain its JSON provenance manifest, embed it with a Vault-relative wikilink, and add a verified Zotero page link. The crop must pass edge, source-hash, page, output-hash and human-review gates. A structure parser may locate a candidate, but the published image must be cropped from the original PDF. Ambiguous, clipped or contaminated geometry blocks automatic embedding.
 
 ## 8. Build ledgers
 
@@ -58,7 +58,7 @@ Use the bundled script for the current lightweight runtime slice:
 python scripts/litanchor_local.py prepare "paper.pdf" --output-root "runtime/runs" --mode deep
 ```
 
-The command creates a private run directory containing `source-bundle.json`, empty `evidence.json`, empty `claims.json`, and `run.json`. It never writes to Obsidian.
+The command creates a private run directory containing `source-bundle.json`, empty `evidence.json`, empty `claims.json`, `figures.json`, and `run.json`. Deep/internalize runs leave visual selection `pending`; `build` blocks until it is completed. It never writes to Obsidian.
 
 For a running Zotero desktop client with Local API enabled, use the read-only adapter instead:
 
@@ -74,14 +74,15 @@ Continue only when preflight returns `PASS` or `PASS_WITH_WARNINGS`:
 1. Read `source-bundle.json`, preserving physical page boundaries.
 2. Fill `evidence.json` with an array of objects conforming to `schemas/evidence-unit.schema.json`.
 3. Fill `claims.json` with an array of objects conforming to `schemas/claim-record.schema.json`.
-4. Perform semantic support, scope, causality, numeric, and modality review before setting each claim validation status.
-5. Build a preview:
+4. Complete `figures.json` under `schemas/visual-selection.schema.json`, with 0–3 selected objects and a reason when none qualifies.
+5. Perform semantic support, scope, causality, numeric, and modality review before setting each claim validation status.
+6. Build a preview:
 
 ```powershell
 python scripts/litanchor_local.py build "runtime/runs/<run-id>"
 ```
 
-`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, numeric values or units absent from the evidence, failed semantic status, and an existing output path. It records the validated preview SHA-256.
+`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, insufficient deep-reading coverage, incomplete visual selection, failed crop provenance, numeric values or units absent from the evidence, failed semantic status, and an existing output path. It records the validated preview SHA-256. An unknown page is never rendered as `p.1`.
 
 To crop an already verified key figure:
 

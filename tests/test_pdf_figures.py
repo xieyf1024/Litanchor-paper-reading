@@ -23,6 +23,7 @@ class FigureCropTests(unittest.TestCase):
         pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 120, 120), False)
         pixmap.clear_with(0x88CCFF)
         page.insert_image(pymupdf.Rect(70, 40, 230, 200), pixmap=pixmap)
+        page.insert_text((80, 34), "Synthetic Architecture")
         page.insert_text((60, 225), "Figure 1: Synthetic architecture.")
         page.insert_text((60, 270), "Body text must not enter the crop.")
         document.save(path)
@@ -47,7 +48,32 @@ class FigureCropTests(unittest.TestCase):
             self.assertEqual(manifest["crop_method"], "caption_plus_embedded_images")
             self.assertEqual(manifest["source_pdf_sha256"], MODULE.sha256_file(pdf))
             self.assertEqual(manifest["output_image_sha256"], MODULE.sha256_file(image))
+            self.assertLess(
+                manifest["clip_bbox"][1],
+                manifest["related_figure_text_blocks"][0]["bbox"][1],
+            )
+            self.assertEqual(manifest["crop_validation_status"], "pass")
+            self.assertGreaterEqual(manifest["crop_confidence"], 0.9)
+            self.assertFalse(manifest["needs_human_review"])
             self.assertEqual(result["figure_label"], "Figure 1")
+
+    def test_dynamic_margin_includes_title_above_embedded_image(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "source.pdf"
+            image = root / "figure-1.png"
+            self.make_pdf(pdf)
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 1",
+                output_path=image,
+                dpi=200,
+            )
+            title = result["related_figure_text_blocks"][0]
+            self.assertEqual(title["text"], "Synthetic Architecture")
+            self.assertLess(result["clip_bbox"][1], title["bbox"][1])
+            self.assertGreater(result["clip_bbox"][3], 225)
 
     def test_refuses_missing_caption_and_overwrite(self):
         with tempfile.TemporaryDirectory() as temporary:

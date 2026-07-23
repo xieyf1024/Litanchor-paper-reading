@@ -8,6 +8,7 @@
 |---|---|---|---|
 | [pypdf](https://github.com/py-pdf/pypdf) | `>=6.0,<7.0` | BSD-3-Clause | 单篇本地 PDF 的有效性检查、物理页文本提取与元数据读取 |
 | [PyMuPDF](https://github.com/pymupdf/PyMuPDF) | `>=1.26,<2.0`；开发环境核验版本 `1.28.0` | GNU AGPL v3 或 Artifex 商业许可的双重许可 | 原 PDF 页面渲染、文本/图像坐标、关键图像裁剪与来源核验 |
+| [MinerU Open SDK](https://github.com/opendatalab/MinerU-Ecosystem) | 可选依赖 `>=0.2.5,<0.3`；开发环境核验版本 `0.2.5` | Apache-2.0（官方生态仓库） | 经用户明确同意后调用无需 Token 的 Flash/Quick Parse 云端接口，辅助恢复标题、阅读顺序和图题 |
 
 开发环境中 PyMuPDF `COPYING` 文件的首行许可声明已人工核对。LitAnchor 当前以 `AGPL-3.0-only` 发布，并把 PyMuPDF 作为未修改的 Python 依赖使用。不能或不愿遵守 AGPL 的使用者应自行评估 Artifex 商业许可。
 
@@ -21,9 +22,9 @@
 | [Zotero MCP](https://github.com/54yyyu/zotero-mcp) | MIT | 搜索、元数据、全文、批注、citekey 和只读访问 | 仅作为调研对照；LitAnchor 采用 Zotero Local API，不提供此适配器 |
 | [paper-notes](https://github.com/ZinSheng/paper-notes) | MIT | evidence-first、解析失败阻断、运行产物分离、用户编辑优先 | 只借鉴工作流原则，不复制实现 |
 | [llm-for-zotero](https://github.com/yilewang/llm-for-zotero) | AGPL-3.0 | 原始文本与结构化文本双通道；结构工具定位、原 PDF 提供最终视觉证据 | 只借鉴架构并独立实现，不复制代码 |
-| [MinerU](https://github.com/opendatalab/MinerU) | 仓库与云端 SDK/服务应分别复核 | 复杂版面、OCR、公式、表格和图题的可选结构增强层 | 本版本不安装、不上传文档；未来仅在用户同意后调用免费 Agent 模式，并重新对齐原 PDF |
+| [MinerU](https://github.com/opendatalab/MinerU) | 仓库与云端 SDK/服务应分别复核 | 复杂版面、OCR、公式、表格和图题的可选结构增强层 | v0.4.1 候选版已通过 Open SDK 实测免费 Flash 模式；仅在同意后上传，并重新对齐原 PDF |
 
-MinerU 免费 Agent 接口的可用性、文件限制、限流和表格/公式能力由外部服务控制，不属于 LitAnchor 的稳定承诺。MinerU 输出不能直接成为正式证据；正式页码、引文和视觉对象必须回到原 PDF 核验。
+MinerU 免费 Agent/Flash 接口的可用性、文件限制、限流和表格/公式能力由外部服务控制，不属于 LitAnchor 的稳定承诺。当前适配器强制执行 10 MiB、20 页限制，不读取 Token，并保存请求、响应、隐私回执与对齐产物。MinerU 输出不能直接成为正式证据；正式页码、引文和视觉对象必须回到原 PDF 核验。
 
 ## Project-authored source material
 

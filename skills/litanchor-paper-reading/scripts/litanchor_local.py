@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import sys
@@ -17,7 +18,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.4.0"
+SKILL_VERSION = "0.4.1-candidate"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -32,6 +33,8 @@ EVIDENCE_REQUIRED = {
     "contains_unit",
     "confidence",
     "needs_review",
+    "page_verified",
+    "source_match_kind",
 }
 CLAIM_REQUIRED = {
     "claim_id",
@@ -306,11 +309,26 @@ def prepare_pdf(
             "source_bundle": "source-bundle.json",
             "evidence": "evidence.json",
             "claims": "claims.json",
+            "figures": "figures.json",
         },
+    }
+    figures = {
+        "schema_version": SCHEMA_VERSION,
+        "selection_status": (
+            "pending" if reading_mode in {"deep", "internalize"} else "completed"
+        ),
+        "selected": [],
+        "rejected": [],
+        "no_selection_reason": (
+            None
+            if reading_mode in {"deep", "internalize"}
+            else "Visual selection is not required for skim mode."
+        ),
     }
     atomic_write_json(run_dir / "source-bundle.json", bundle, overwrite=False)
     atomic_write_json(run_dir / "evidence.json", [], overwrite=False)
     atomic_write_json(run_dir / "claims.json", [], overwrite=False)
+    atomic_write_json(run_dir / "figures.json", figures, overwrite=False)
     atomic_write_json(run_dir / "run.json", run_record, overwrite=False)
     return run_dir, bundle
 
@@ -333,9 +351,105 @@ def trace_forms(text: str) -> set[str]:
 
 
 def quote_is_traceable(quote: str, page_text: str) -> bool:
+    return quote_match_kind(quote, page_text) != "unmatched"
+
+
+def quote_match_kind(quote: str, page_text: str) -> str:
+    if quote.strip() and quote.strip() in page_text:
+        return "exact"
     quote_forms = trace_forms(quote)
     page_forms = trace_forms(page_text)
-    return any(quote_form and quote_form in page_form for quote_form in quote_forms for page_form in page_forms)
+    if any(
+        quote_form and quote_form in page_form
+        for quote_form in quote_forms
+        for page_form in page_forms
+    ):
+        return "normalized"
+    return "unmatched"
+
+
+def build_coverage_receipt(
+    source: dict[str, Any],
+    evidence: list[Any],
+    run_record: dict[str, Any],
+) -> dict[str, Any]:
+    page_count = int(source.get("pdf", {}).get("page_count", 0) or 0)
+    expected_pages = list(range(1, page_count + 1))
+    extracted_pages = sorted(
+        {
+            page.get("page_index")
+            for page in source.get("pages", [])
+            if isinstance(page, dict) and isinstance(page.get("page_index"), int)
+        }
+    )
+    readable_pages = sorted(
+        page["page_index"]
+        for page in source.get("pages", [])
+        if isinstance(page, dict)
+        and isinstance(page.get("page_index"), int)
+        and len(re.sub(r"\s+", "", str(page.get("raw_text", "")))) >= 80
+    )
+    verified_evidence = [
+        item
+        for item in evidence
+        if isinstance(item, dict)
+        and item.get("page_verified") is True
+        and item.get("source_match_kind") in {"exact", "normalized"}
+        and isinstance(item.get("page_index"), int)
+    ]
+    evidence_pages = sorted({item["page_index"] for item in verified_evidence})
+    sections = sorted(
+        {
+            str(item.get("section", "")).strip()
+            for item in verified_evidence
+            if str(item.get("section", "")).strip()
+        },
+        key=str.casefold,
+    )
+    preflight_status = source.get("pdf", {}).get("preflight_status")
+    extraction_complete = (
+        page_count > 0
+        and extracted_pages == expected_pages
+        and preflight_status in {"PASS", "PASS_WITH_WARNINGS"}
+    )
+    reading_mode = run_record.get("reading_mode")
+    if reading_mode == "deep":
+        minimum_evidence_pages = min(3, page_count)
+        minimum_sections = 1 if page_count == 1 else min(3, page_count)
+        reaches_later_half = bool(
+            evidence_pages
+            and max(evidence_pages) >= max(1, math.ceil(page_count * 0.5))
+        )
+        analysis_complete = (
+            len(evidence_pages) >= minimum_evidence_pages
+            and len(sections) >= minimum_sections
+            and reaches_later_half
+        )
+    else:
+        minimum_evidence_pages = 1
+        minimum_sections = 1
+        reaches_later_half = bool(evidence_pages)
+        analysis_complete = bool(evidence_pages and sections)
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "paper_id": source.get("paper_id", "unknown"),
+        "run_id": run_record.get("run_id"),
+        "reading_mode": reading_mode,
+        "document_page_count": page_count,
+        "pages_extracted": extracted_pages,
+        "pages_with_readable_text": readable_pages,
+        "pages_used_as_evidence": evidence_pages,
+        "sections_evidenced": sections,
+        "minimum_evidence_pages": minimum_evidence_pages,
+        "minimum_sections": minimum_sections,
+        "reaches_later_half": reaches_later_half,
+        "extraction_status": "complete" if extraction_complete else "incomplete",
+        "analysis_status": "complete" if analysis_complete else "insufficient",
+        "coverage_status": (
+            "complete" if extraction_complete and analysis_complete else "incomplete"
+        ),
+    }
 
 
 def _issue(
@@ -361,15 +475,27 @@ def _issue(
     }
 
 
-def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[Any], list[Any]]:
+def validate_run(
+    run_dir: Path,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    list[Any],
+    list[Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     """Validate traceability invariants without making semantic claims."""
     run_dir = run_dir.resolve()
     source = load_json(run_dir / "source-bundle.json")
     evidence = load_json(run_dir / "evidence.json")
     claims = load_json(run_dir / "claims.json")
+    figures = load_json(run_dir / "figures.json")
     run_record = load_json(run_dir / "run.json")
     if not isinstance(evidence, list) or not isinstance(claims, list):
         raise PipelineError("evidence.json and claims.json must each contain a JSON array")
+    if not isinstance(figures, dict):
+        raise PipelineError("figures.json must contain a JSON object")
 
     issues: list[dict[str, Any]] = []
     issue_counter = 1
@@ -412,6 +538,117 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
     if not claims:
         add_issue("blocker", "empty_claim_ledger", "No ClaimRecords were provided.")
 
+    selected_figures = figures.get("selected")
+    rejected_figures = figures.get("rejected")
+    selection_status = figures.get("selection_status")
+    if (
+        selection_status != "completed"
+        or not isinstance(selected_figures, list)
+        or not isinstance(rejected_figures, list)
+    ):
+        add_issue(
+            "blocker",
+            "visual_selection_incomplete",
+            "Every run must complete the visual selection pass before note generation.",
+        )
+        selected_figures = []
+    elif len(selected_figures) > 3:
+        add_issue(
+            "blocker",
+            "too_many_selected_figures",
+            "A deep note may embed at most three key visual objects.",
+        )
+    elif (
+        run_record.get("reading_mode") in {"deep", "internalize"}
+        and not selected_figures
+        and not str(figures.get("no_selection_reason") or "").strip()
+    ):
+        add_issue(
+            "blocker",
+            "missing_visual_selection_reason",
+            "A deep note with no embedded figure must record why no suitable visual was selected.",
+        )
+
+    valid_selected_figures = 0
+    for index, figure in enumerate(selected_figures, start=1):
+        if not isinstance(figure, dict):
+            add_issue(
+                "blocker",
+                "invalid_selected_figure",
+                f"Selected visual {index} must be an object.",
+            )
+            continue
+        required = {
+            "figure_label",
+            "physical_pdf_page",
+            "caption_original",
+            "selection_reason",
+            "discussion_location",
+            "image_path",
+            "manifest_path",
+            "embed_path",
+        }
+        missing = sorted(required - set(figure))
+        if missing:
+            add_issue(
+                "blocker",
+                "invalid_selected_figure",
+                f"Selected visual {index} is missing: {', '.join(missing)}.",
+            )
+            continue
+        page_index = figure.get("physical_pdf_page")
+        embed_path = str(figure.get("embed_path", ""))
+        if (
+            not isinstance(page_index, int)
+            or page_index < 1
+            or page_index > page_count
+        ):
+            add_issue(
+                "blocker",
+                "invalid_figure_page",
+                f"Selected visual {index} has invalid physical page {page_index!r}.",
+            )
+            continue
+        if (
+            not embed_path
+            or Path(embed_path).is_absolute()
+            or ".." in Path(embed_path).parts
+            or Path(embed_path).suffix.casefold() not in {".png", ".jpg", ".jpeg", ".webp"}
+        ):
+            add_issue(
+                "blocker",
+                "unsafe_figure_embed_path",
+                f"Selected visual {index} has an unsafe Obsidian embed path.",
+            )
+            continue
+        try:
+            image_path = Path(str(figure["image_path"])).resolve(strict=True)
+            manifest_path = Path(str(figure["manifest_path"])).resolve(strict=True)
+        except FileNotFoundError:
+            add_issue(
+                "blocker",
+                "missing_figure_artifact",
+                f"Selected visual {index} image or crop manifest does not exist.",
+            )
+            continue
+        manifest = load_json(manifest_path)
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("crop_validation_status") != "pass"
+            or manifest.get("needs_human_review") is not False
+            or manifest.get("source_pdf_sha256") != source.get("pdf", {}).get("sha256")
+            or manifest.get("physical_pdf_page") != page_index
+            or manifest.get("output_image_sha256") != sha256_file(image_path)
+        ):
+            add_issue(
+                "blocker",
+                "figure_quality_gate_failed",
+                f"Selected visual {index} did not pass the crop quality and provenance gate.",
+                page_index=page_index,
+            )
+            continue
+        valid_selected_figures += 1
+
     evidence_by_id: dict[str, dict[str, Any]] = {}
     valid_evidence = 0
     for item in evidence:
@@ -440,6 +677,18 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
                 evidence_id=evidence_id,
             )
             continue
+        if (
+            item.get("page_verified") is not True
+            or item.get("source_match_kind") not in {"exact", "normalized"}
+        ):
+            add_issue(
+                "blocker",
+                "unverified_evidence_page",
+                f"Evidence {evidence_id} is not verified against one physical PDF page.",
+                page_index=page_index if isinstance(page_index, int) else None,
+                evidence_id=evidence_id,
+            )
+            continue
         if not isinstance(page_index, int) or page_index < 1 or page_index > page_count or page_index not in pages:
             add_issue(
                 "blocker",
@@ -458,7 +707,8 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
                 evidence_id=evidence_id,
             )
             continue
-        if not quote_is_traceable(quote, pages[page_index].get("raw_text", "")):
+        actual_match_kind = quote_match_kind(quote, pages[page_index].get("raw_text", ""))
+        if actual_match_kind == "unmatched":
             add_issue(
                 "blocker",
                 "untraceable_quote",
@@ -467,6 +717,15 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
                 evidence_id=evidence_id,
             )
             continue
+        if item.get("source_match_kind") != actual_match_kind:
+            add_issue(
+                "warning",
+                "source_match_kind_mismatch",
+                f"Evidence {evidence_id} declared {item.get('source_match_kind')!r} "
+                f"but deterministic matching found {actual_match_kind!r}.",
+                page_index=page_index,
+                evidence_id=evidence_id,
+            )
         valid_evidence += 1
         if item.get("needs_review") is True:
             add_issue(
@@ -572,6 +831,15 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
         if numeric_ok:
             valid_claims += 1
 
+    coverage_receipt = build_coverage_receipt(source, evidence, run_record)
+    if coverage_receipt["coverage_status"] != "complete":
+        add_issue(
+            "blocker",
+            "incomplete_reading_coverage",
+            "The run does not prove complete extraction and sufficient analysis coverage "
+            "for its declared reading mode.",
+        )
+
     blocking = [issue for issue in issues if issue["severity"] in BLOCKING_SEVERITIES]
     warning_count = sum(issue["severity"] == "warning" for issue in issues)
     claim_count = len(claims)
@@ -585,6 +853,7 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
             "claims": str(run_dir / "claims.json"),
             "validation": str(run_dir / "validation.json"),
             "run_record": str(run_dir / "run.json"),
+            "coverage_receipt": str(run_dir / "coverage_receipt.json"),
             "failure_report": None,
         },
         "issues": issues,
@@ -592,7 +861,7 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
             "page_count": page_count,
             "evidence_count": len(evidence),
             "claim_count": claim_count,
-            "figure_count": sum(item.get("evidence_type") == "figure" for item in evidence if isinstance(item, dict)),
+            "figure_count": valid_selected_figures,
             "table_count": sum(item.get("evidence_type") == "table" for item in evidence if isinstance(item, dict)),
             "equation_count": sum(item.get("evidence_type") == "equation" for item in evidence if isinstance(item, dict)),
             "warning_count": warning_count,
@@ -616,7 +885,7 @@ def validate_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, Any], list[An
             "format_valid": False,
         },
     }
-    return result, source, evidence, claims
+    return result, source, evidence, claims, figures, coverage_receipt
 
 
 def yaml_scalar(value: Any) -> str:
@@ -636,7 +905,14 @@ def _escape_table(text: Any) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
-def zotero_page_link(source: dict[str, Any], page_index: int) -> str | None:
+def zotero_page_link(
+    source: dict[str, Any],
+    page_index: int,
+    *,
+    page_verified: bool,
+) -> str | None:
+    if page_verified is not True:
+        return None
     source_record = source.get("source", {})
     attachment_key = source_record.get("zotero_attachment_key")
     if (
@@ -648,10 +924,23 @@ def zotero_page_link(source: dict[str, Any], page_index: int) -> str | None:
     return f"zotero://open-pdf/library/items/{attachment_key}?page={page_index}"
 
 
-def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[Any], run_record: dict[str, Any], status: str) -> str:
+def render_markdown(
+    source: dict[str, Any],
+    evidence: list[Any],
+    claims: list[Any],
+    figures: dict[str, Any],
+    run_record: dict[str, Any],
+    status: str,
+) -> str:
     metadata = source["metadata"]
     pdf = source["pdf"]
     evidence_by_id = {item["evidence_id"]: item for item in evidence}
+    verified_pages = {
+        item["page_index"]
+        for item in evidence
+        if item.get("page_verified") is True
+        and item.get("source_match_kind") in {"exact", "normalized"}
+    }
     sections = [
         ("## 1. 核心科学问题", {"question"}),
         ("## 2. 研究背景与研究空白", {"background", "gap"}),
@@ -706,7 +995,14 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
             links = [
                 f"[打开 p.{page}]({link})"
                 for page in pages
-                if (link := zotero_page_link(source, page)) is not None
+                if (
+                    link := zotero_page_link(
+                        source,
+                        page,
+                        page_verified=page in verified_pages,
+                    )
+                )
+                is not None
             ]
             marker_parts.extend(links)
             marker = f"〔{'｜'.join(marker_parts)}〕"
@@ -721,14 +1017,47 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
                     lines.append("")
         lines.append("")
 
+    lines.extend(["## 8. 关键视觉证据", ""])
+    selected_figures = figures.get("selected", [])
+    if selected_figures:
+        for figure in selected_figures:
+            page_index = figure["physical_pdf_page"]
+            source_link = zotero_page_link(
+                source,
+                page_index,
+                page_verified=True,
+            )
+            lines.extend(
+                [
+                    f"### {figure['figure_label']}",
+                    "",
+                    f"![[{figure['embed_path']}]]",
+                    "",
+                    f"- 选择理由：{figure['selection_reason']}",
+                    f"- 图题：{figure['caption_original']}",
+                    f"- 正文讨论位置：{figure['discussion_location']}",
+                    f"- PDF 物理页码：p.{page_index}",
+                ]
+            )
+            if source_link:
+                lines.append(f"- [在 Zotero 打开原页]({source_link})")
+            lines.append("")
+    else:
+        lines.extend(
+            [
+                f"- 未嵌入图片：{figures.get('no_selection_reason')}",
+                "",
+            ]
+        )
+
     lines.extend([
-        "## 8. 我的思考",
+        "## 9. 我的思考",
         "",
         "<!-- litanchor:user:start -->",
         "此区域由用户编辑；自动更新不得覆盖。",
         "<!-- litanchor:user:end -->",
         "",
-        "## 9. 证据索引",
+        "## 10. 证据索引",
         "",
         "| Evidence ID | PDF 页 | 类型 | 原文证据 |",
         "|---|---:|---|---|",
@@ -740,7 +1069,7 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
         )
     lines.extend([
         "",
-        "## 10. 校验信息",
+        "## 11. 校验信息",
         "",
         f"- EvidenceUnits：{len(evidence)}",
         f"- ClaimRecords：{len(claims)}",
@@ -754,8 +1083,10 @@ def render_markdown(source: dict[str, Any], evidence: list[Any], claims: list[An
 def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dict[str, Any]]:
     """Validate ledgers and render a non-overwriting Markdown preview."""
     run_dir = run_dir.resolve()
-    result, source, evidence, claims = validate_run(run_dir)
+    result, source, evidence, claims, figures, coverage_receipt = validate_run(run_dir)
     validation_path = run_dir / "validation.json"
+    coverage_path = run_dir / "coverage_receipt.json"
+    atomic_write_json(coverage_path, coverage_receipt)
     if result["status"] == "blocked":
         atomic_write_json(validation_path, result)
         raise PipelineError(f"Validation blocked note generation; inspect {validation_path}")
@@ -764,7 +1095,14 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
     destination = (output_path or (run_dir / "preview.md")).resolve()
     if destination.exists():
         raise PipelineError(f"Refusing to overwrite existing note: {destination}")
-    markdown = render_markdown(source, evidence, claims, run_record, result["status"])
+    markdown = render_markdown(
+        source,
+        evidence,
+        claims,
+        figures,
+        run_record,
+        result["status"],
+    )
     required_markers = ("---\n", "<!-- litanchor:user:start -->", "<!-- litanchor:user:end -->")
     if not all(marker in markdown for marker in required_markers):
         raise PipelineError("Generated Markdown failed deterministic format checks")
@@ -777,6 +1115,8 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
     run_record["completed"] = utc_now()
     run_record.setdefault("artifacts", {})["markdown_note"] = str(destination)
     run_record["artifacts"]["validation"] = str(validation_path)
+    run_record["artifacts"]["coverage_receipt"] = str(coverage_path)
+    run_record["artifacts"]["figures"] = str(run_dir / "figures.json")
     atomic_write_json(run_dir / "run.json", run_record)
     return destination, result
 

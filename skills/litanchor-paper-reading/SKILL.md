@@ -33,7 +33,7 @@ Read `references/workflow.md` completely, then:
 2. Preflight the PDF before analysis. Preserve physical page boundaries and report layout/OCR failures.
 3. Map paper type and sections without inventing absent structure.
 4. Extract original-language EvidenceUnits before writing Chinese claims.
-5. Register core figures, tables, equations, and failed visual parsing explicitly.
+5. For every `deep`/`internalize` run, complete the Visual Selection Pass: select at most 1–3 indispensable method/result visuals, or record why none qualifies.
 6. Build ClaimRecords only from evidence; separate results, interpretations, hypotheses, and speculation.
 7. Compose with `assets/paper-note.md`; do not freely summarize the full PDF at this stage.
 8. Validate schema, traceability, pages, quotations, numbers, units, modality, Markdown, filename, and collision safety.
@@ -44,11 +44,13 @@ For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriti
 
 For a running Zotero desktop client with Local API enabled, use `scripts/zotero_local.py check`, then `prepare` with exactly one title, DOI, citekey, or Item Key. Require one exact bibliographic match and one PDF attachment; ambiguity blocks the run. This adapter is loopback-only and read-only and does not require Zotero MCP.
 
+When the user explicitly authorizes external upload of one eligible PDF, `scripts/mineru_adapter.py` may run the optional token-free MinerU Flash path. Enforce the current 10 MiB/20-page limits, keep all blocks non-authoritative, and align every candidate back to one PyMuPDF physical page.
+
 For an authorized Obsidian test directory, use `scripts/export_obsidian.py` only after `build`. Pass the authorized root and its child Inbox separately, accept warnings explicitly when applicable, and require `--confirm-export`. The script verifies preview integrity, path containment, required sidecars, and zero collisions before writing.
 
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
 
-Store only the verified first author in note frontmatter while retaining all authors in SourceBundle. For a key figure, use `scripts/pdf_figures.py` against the original PDF, visually verify the result, retain its manifest, and embed it with a verified Zotero page link. MinerU may only assist structure discovery after explicit upload consent; unmatched MinerU content is never evidence.
+Store only the verified first author in note frontmatter while retaining all authors in SourceBundle. Crop selected figures from the original PDF with `scripts/pdf_figures.py`; clipped, contaminated, low-confidence, or unverified crops are rejected. Retain each manifest and use a verified Zotero page link. MinerU Flash may only assist structure discovery after explicit upload consent; unmatched MinerU content is never evidence.
 
 ## Keep evidence readable
 

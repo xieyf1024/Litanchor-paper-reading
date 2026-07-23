@@ -2,7 +2,7 @@
 
 ## Current implementation status
 
-v0.4 uses `pypdf` for native text preflight and PyMuPDF for original-page rendering and auditable figure crops. It connects to a running Zotero desktop client through the Local API and exports only to an explicitly authorized Obsidian test root. It installs no MCP server, Obsidian plugin, OCR model or background service.
+v0.4.1 candidate uses `pypdf` for native text preflight and PyMuPDF for original-page rendering and auditable figure crops. It connects to a running Zotero desktop client through the Local API and exports only to an explicitly authorized Obsidian test root. It installs no MCP server, Obsidian plugin, OCR model or background service. MinerU Open SDK is a separate optional dependency for consent-gated Flash structure enhancement.
 
 ## Zotero acquisition ladder
 
@@ -48,7 +48,7 @@ Do not generate a link from an unverified key.
 
 ## Key-figure export
 
-Use `scripts/pdf_figures.py` only after a human or evidence-ledger step identifies a key figure and verifies its one-based physical PDF page. The script searches one caption, crops embedded image rectangles immediately above it, includes the caption, renders from the original PDF, and writes a sidecar manifest. If automatic geometry is ambiguous, stop and inspect the page before supplying an explicit bounding box.
+Every deep/internalize note must complete a Visual Selection Pass. Select 1–3 figures only when they are indispensable to the method or main result; if none qualifies, record the reason. Use `scripts/pdf_figures.py` after the evidence-ledger step identifies a key figure and verifies its one-based physical PDF page. The script searches one caption, renders from the original PDF, expands suspicious borders, checks edge contact, and writes a sidecar manifest. If automatic geometry is ambiguous, stop and inspect the page before supplying an explicit bounding box. Cropped, contaminated or review-required images do not enter the note.
 
 Embed the PNG with a Vault-relative Obsidian wikilink. Keep the manifest outside the human note, and include a verified `zotero://open-pdf` link beside the image. MinerU or another structure parser may suggest a label/page, but the final image must come from the original PDF.
 
@@ -58,6 +58,6 @@ Embed the PNG with a Vault-relative Obsidian wikilink. Keep the manifest outside
 - **Obsidian→Zotero:** implemented as page-level `zotero://open-pdf` links and requires no Obsidian plugin.
 - **Zotero→Obsidian:** defer because it requires Zotero writes and stable Obsidian paths. It is not equivalent to the current traceability link.
 - **Codex→Obsidian:** keep plain Markdown and filesystem export; do not require an Obsidian plugin.
-- **PDF parsing:** keep PyMuPDF and the original PDF as the page/visual evidence authority. MinerU Agent parsing is an optional structure-enhancement route only after local limitations and explicit per-document upload consent. Its output must align back to PyMuPDF pages; unmatched content cannot become evidence. This project does not use the paid precision API.
+- **PDF parsing:** keep PyMuPDF and the original PDF as the page/visual evidence authority. `scripts/mineru_adapter.py` exposes an optional token-free MinerU Flash route only after explicit per-document upload consent and eligibility checks (10 MiB, 20 pages). Its output must align back to PyMuPDF pages; unmatched content cannot become evidence. This project does not use the paid precision API.
 
 No API keys, cookies, private Zotero database, production Vault or unpublished corpus should be committed.

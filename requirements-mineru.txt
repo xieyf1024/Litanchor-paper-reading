@@ -1,0 +1,2 @@
+# Optional, token-free MinerU Flash structure enhancement.
+mineru-open-sdk>=0.2.5,<0.3

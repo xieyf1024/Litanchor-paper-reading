@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v0.4 retains the v0.3 integration tests and adds first-author rendering, punctuation-tolerant Zotero query retries with exact final matching, PyMuPDF caption-assisted original-PDF figure crops, crop provenance manifests, overwrite refusal and AGPL distribution checks.
+v0.4.1 candidate retains the v0.4 integration tests and adds first-author rendering, verified physical-page links without a `p.1` fallback, deep-reading coverage receipts, universal visual selection, PyMuPDF crop quality/provenance gates, an optional consent-gated MinerU Flash adapter, overwrite refusal and AGPL distribution checks.
 
 One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
 
@@ -17,6 +17,8 @@ The local PDFs are excluded from Git. Their non-redistributable inventory is doc
 All six corpus papers were independently resolved from the live Zotero `[AI]` or `[XMU]` collections and matched to the inventory hashes; see `evals/reports/zotero-six-paper-resolution.md`. Private Item/Attachment Keys remain outside the public repository.
 
 Three detailed notes in the authorized Obsidian test Inbox are treated as **AI-assisted references**, not gold labels. They help define coverage and annotation fields but cannot score the system that generated them. The promotion checklist is in `evals/gold/AI_ASSISTED_REFERENCE_GUIDE.md`. The Attention note was also checked against the original PDF and a user-selected Bilibili explainer; see `evals/reports/attention-reference-review.md`.
+
+The remaining three PDFs now have blind `deep` candidates with coverage receipts and verified key visuals. See `evals/reports/v0.4.1-blind-test.md`. The current six-paper status deliberately distinguishes three silver calibration references from three blind outputs; see `evals/reports/v0.4.1-six-paper-status.md`. MinerU Flash results are reported separately in `evals/reports/mineru-flash-fusion.md`.
 
 ## Gold annotation plan
 

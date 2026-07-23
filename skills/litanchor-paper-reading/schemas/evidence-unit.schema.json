@@ -14,7 +14,9 @@
     "contains_number",
     "contains_unit",
     "confidence",
-    "needs_review"
+    "needs_review",
+    "page_verified",
+    "source_match_kind"
   ],
   "properties": {
     "evidence_id": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"},
@@ -60,7 +62,10 @@
     "contains_variable": {"type": "boolean"},
     "confidence": {"type": "number", "minimum": 0, "maximum": 1},
     "needs_review": {"type": "boolean"},
+    "page_verified": {"type": "boolean"},
+    "source_match_kind": {
+      "enum": ["exact", "normalized", "fuzzy", "unmatched"]
+    },
     "issues": {"type": "array", "items": {"type": "string"}}
   }
 }
-

@@ -74,6 +74,125 @@ def _union_rect(pymupdf: Any, rectangles: list[Any]) -> Any:
     return result
 
 
+def _horizontal_overlap(left: Any, right: Any) -> float:
+    return max(0.0, min(left.x1, right.x1) - max(left.x0, right.x0))
+
+
+def _related_figure_text_blocks(
+    page: Any,
+    image_rect: Any,
+    caption_rect: Any,
+    pymupdf: Any,
+) -> list[dict[str, Any]]:
+    """Find short figure titles immediately above the embedded artwork."""
+    matches: list[dict[str, Any]] = []
+    maximum_gap = max(36.0, page.rect.height * 0.08)
+    for block in page.get_text("blocks"):
+        rectangle = pymupdf.Rect(block[:4])
+        text = " ".join(str(block[4]).split())
+        if not text or rectangle.intersects(caption_rect):
+            continue
+        vertical_gap = image_rect.y0 - rectangle.y1
+        overlap = _horizontal_overlap(rectangle, image_rect)
+        minimum_width = max(1.0, min(rectangle.width, image_rect.width))
+        if (
+            -3.0 <= vertical_gap <= maximum_gap
+            and overlap / minimum_width >= 0.25
+            and len(text) <= 240
+        ):
+            matches.append(
+                {
+                    "bbox": [round(value, 3) for value in rectangle],
+                    "text": text,
+                    "_rect": rectangle,
+                }
+            )
+    matches.sort(key=lambda item: (item["_rect"].y0, item["_rect"].x0))
+    return matches
+
+
+def _expand_rect(pymupdf: Any, rectangle: Any, page_rect: Any, margin: float) -> Any:
+    return pymupdf.Rect(
+        max(page_rect.x0, rectangle.x0 - margin),
+        max(page_rect.y0, rectangle.y0 - margin),
+        min(page_rect.x1, rectangle.x1 + margin),
+        min(page_rect.y1, rectangle.y1 + margin),
+    )
+
+
+def _edge_ink_ratios(pixmap: Any, *, band: int = 4) -> dict[str, float]:
+    """Estimate whether rendered content touches a crop boundary."""
+    width = int(pixmap.width)
+    height = int(pixmap.height)
+    channels = int(pixmap.n)
+    if width < 1 or height < 1 or channels < 3:
+        return {"top": 1.0, "right": 1.0, "bottom": 1.0, "left": 1.0}
+    band = max(1, min(band, width, height))
+    samples = memoryview(pixmap.samples)
+
+    def is_ink(x: int, y: int) -> bool:
+        offset = (y * width + x) * channels
+        return min(samples[offset], samples[offset + 1], samples[offset + 2]) < 235
+
+    coordinates = {
+        "top": ((x, y) for y in range(band) for x in range(width)),
+        "right": ((x, y) for y in range(height) for x in range(width - band, width)),
+        "bottom": ((x, y) for y in range(height - band, height) for x in range(width)),
+        "left": ((x, y) for y in range(height) for x in range(band)),
+    }
+    ratios: dict[str, float] = {}
+    for edge, points in coordinates.items():
+        total = 0
+        ink = 0
+        for x, y in points:
+            total += 1
+            ink += is_ink(x, y)
+        ratios[edge] = round(ink / total if total else 1.0, 6)
+    return ratios
+
+
+def _render_with_quality_gate(
+    page: Any,
+    clip: Any,
+    *,
+    pymupdf: Any,
+    dpi: int,
+    expansion_step: float,
+) -> tuple[Any, Any, str, float, bool, list[dict[str, Any]]]:
+    attempts: list[dict[str, Any]] = []
+    current = pymupdf.Rect(clip)
+    threshold = 0.01
+    for attempt_number in range(1, 4):
+        pixmap = page.get_pixmap(dpi=dpi, clip=current, alpha=False)
+        edge_ratios = _edge_ink_ratios(pixmap)
+        touches = [edge for edge, ratio in edge_ratios.items() if ratio > threshold]
+        attempts.append(
+            {
+                "attempt": attempt_number,
+                "clip_bbox": [round(value, 3) for value in current],
+                "edge_ink_ratios": edge_ratios,
+                "touching_edges": touches,
+            }
+        )
+        if not touches:
+            return pixmap, current, "pass", 0.95, False, attempts
+        expanded = _expand_rect(pymupdf, current, page.rect, expansion_step)
+        if expanded == current:
+            break
+        current = expanded
+
+    full_page = page.get_pixmap(dpi=dpi, alpha=False)
+    attempts.append(
+        {
+            "attempt": "full_page_fallback",
+            "clip_bbox": [round(value, 3) for value in page.rect],
+            "edge_ink_ratios": _edge_ink_ratios(full_page),
+            "touching_edges": [],
+        }
+    )
+    return full_page, pymupdf.Rect(page.rect), "needs_human_review", 0.4, True, attempts
+
+
 def _parse_bbox(value: str | None, pymupdf: Any, page_rect: Any) -> Any | None:
     if value is None:
         return None
@@ -129,6 +248,9 @@ def crop_figure(
     bbox: str | None = None,
     margin: float = 8.0,
     dpi: int = 200,
+    selection_reason: str | None = None,
+    discussion_location: str | None = None,
+    zotero_page_link: str | None = None,
 ) -> dict[str, Any]:
     """Crop one figure and its caption from the original physical PDF page."""
     pymupdf = _load_pymupdf()
@@ -159,6 +281,8 @@ def crop_figure(
         caption_rect, caption_text = caption_matches[0]
         explicit_rect = _parse_bbox(bbox, pymupdf, page.rect)
         candidate_rects: list[Any] = []
+        related_text_blocks: list[dict[str, Any]] = []
+        dynamic_margin = max(margin, 12.0, min(page.rect.width, page.rect.height) * 0.025)
         if explicit_rect is None:
             for rectangle in _image_rectangles(page):
                 vertical_gap = caption_rect.y0 - rectangle.y1
@@ -174,19 +298,38 @@ def crop_figure(
                     "No embedded figure image was found immediately above the caption. "
                     "Inspect the rendered page and retry with an explicit --bbox."
                 )
-            clip = _union_rect(pymupdf, [*candidate_rects, caption_rect])
-            clip = pymupdf.Rect(
-                max(page.rect.x0, clip.x0 - margin),
-                max(page.rect.y0, clip.y0 - margin),
-                min(page.rect.x1, clip.x1 + margin),
-                min(page.rect.y1, clip.y1 + margin),
+            image_union = _union_rect(pymupdf, candidate_rects)
+            related_text_blocks = _related_figure_text_blocks(
+                page,
+                image_union,
+                caption_rect,
+                pymupdf,
             )
+            related_rects = [item["_rect"] for item in related_text_blocks]
+            clip = _union_rect(
+                pymupdf,
+                [*candidate_rects, *related_rects, caption_rect],
+            )
+            clip = _expand_rect(pymupdf, clip, page.rect, dynamic_margin)
             crop_method = "caption_plus_embedded_images"
         else:
             clip = explicit_rect
             crop_method = "explicit_bbox"
 
-        pixmap = page.get_pixmap(dpi=dpi, clip=clip, alpha=False)
+        (
+            pixmap,
+            clip,
+            crop_validation_status,
+            crop_confidence,
+            needs_human_review,
+            validation_attempts,
+        ) = _render_with_quality_gate(
+            page,
+            clip,
+            pymupdf=pymupdf,
+            dpi=dpi,
+            expansion_step=dynamic_margin,
+        )
         pymupdf_version = getattr(pymupdf, "pymupdf_version", None) or getattr(
             pymupdf, "__version__", "unknown"
         )
@@ -204,6 +347,18 @@ def crop_figure(
         "candidate_image_rects": [
             [round(value, 3) for value in rectangle] for rectangle in candidate_rects
         ],
+        "related_figure_text_blocks": [
+            {key: value for key, value in item.items() if key != "_rect"}
+            for item in related_text_blocks
+        ],
+        "dynamic_margin_points": round(dynamic_margin, 3),
+        "crop_validation_status": crop_validation_status,
+        "crop_confidence": crop_confidence,
+        "needs_human_review": needs_human_review,
+        "validation_attempts": validation_attempts,
+        "selection_reason": selection_reason,
+        "discussion_location": discussion_location,
+        "zotero_page_link": zotero_page_link,
         "render_dpi": dpi,
         "renderer": f"PyMuPDF {pymupdf_version}",
         "output_image": str(output_path),
@@ -226,6 +381,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bbox", help="optional explicit x0,y0,x1,y1 in PDF points")
     parser.add_argument("--margin", type=float, default=8.0)
     parser.add_argument("--dpi", type=int, default=200)
+    parser.add_argument("--selection-reason")
+    parser.add_argument("--discussion-location")
+    parser.add_argument("--zotero-page-link")
     return parser
 
 
@@ -241,6 +399,9 @@ def main(argv: list[str] | None = None) -> int:
             bbox=args.bbox,
             margin=args.margin,
             dpi=args.dpi,
+            selection_reason=args.selection_reason,
+            discussion_location=args.discussion_location,
+            zotero_page_link=args.zotero_page_link,
         )
         print(json.dumps(result, ensure_ascii=False))
         return 0

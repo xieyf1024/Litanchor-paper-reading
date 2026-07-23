@@ -4,7 +4,7 @@
 
 LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它计划从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
 
-**当前状态：v0.4 PDF 证据与关键图像阶段。** 本版本保留 Zotero Local API 只读接入和受限 Obsidian 导出，增加 PyMuPDF 原 PDF 图像裁剪、图像来源清单、首作者笔记属性、复杂标点标题回退查询，以及 AI 辅助参考标准与人工金标准的明确分层。MinerU 被设计为需要用户同意的可选结构增强层，本阶段没有上传论文，也不安装 Zotero MCP、Obsidian 插件或 OCR 模型。
+**当前状态：v0.4 completion / v0.4.1 candidate。** 本候选版保留 Zotero Local API 只读接入和受限 Obsidian 导出，增加全文覆盖凭证、可验证物理页链接、所有 `deep` 笔记的关键视觉对象筛选、Crop Quality Gate、首作者笔记属性，以及经明确同意的可选 MinerU Flash 结构增强。它不安装 Zotero MCP、Obsidian 插件或 OCR 模型，也不使用 MinerU 付费精准解析 API。
 
 ## 核心约束
 
@@ -67,7 +67,7 @@ Skill 依据生成的 `source-bundle.json` 填充该运行目录中的 `evidence
 .\.venv\Scripts\python skills\litanchor-paper-reading\scripts\litanchor_local.py build "runtime\runs\<run-id>"
 ```
 
-产物保存在被 Git 忽略的 `runtime/`。`build` 会阻断错误页码、无法在原页找到的引文、数值/单位不一致、语义校验失败和文件覆盖。
+产物保存在被 Git 忽略的 `runtime/`。`build` 会阻断错误或未验证页码、无法在原页找到的引文、全文分析覆盖不足、未完成关键视觉筛选、未通过裁剪来源门禁、数值/单位不一致、语义校验失败和文件覆盖。页码未知时不会回退成 `p.1`。
 
 从原 PDF 裁剪一张已核对的关键图：
 
@@ -76,7 +76,15 @@ Skill 依据生成的 `source-bundle.json` 填充该运行目录中的 `evidence
   --page 3 --label "Figure 1" --output "runtime\figures\figure-1.png"
 ```
 
-该命令只接受一基物理页码，默认拒绝覆盖，并为 PNG 生成包含原 PDF 哈希、页码、图题、裁剪框和输出哈希的 JSON 清单。自动定位失败时应先查看原页，再显式给出 `--bbox`；不得猜测裁剪范围。
+该命令只接受一基物理页码，默认拒绝覆盖，并为 PNG 生成包含原 PDF 哈希、页码、图题、裁剪框、边缘检查和输出哈希的 JSON 清单。自动定位失败时应先查看原页，再显式给出 `--bbox`；不得猜测裁剪范围。每篇 `deep` 笔记必须完成一次视觉筛选，默认只嵌入 1–3 张不可替代的流程图、结构图、结果图或机制示意图；没有合适对象时记录原因，不为凑数插图。
+
+可选的 MinerU Flash 结构增强安装在独立依赖文件中：
+
+```powershell
+.\.venv\Scripts\pip install -r requirements-mineru.txt
+```
+
+它只在用户对该文档明确同意外部上传后运行，调用无需 Token 的 Flash/Quick Parse 接口，并强制检查单文件不超过 10 MiB、20 页。输出只用于标题层级、阅读顺序、图题和复杂结构候选；`exact`、`fuzzy`、`unmatched` 对齐结果都不能绕过 PyMuPDF 原页核验。
 
 ## Zotero Local API 与测试 Inbox
 
@@ -100,7 +108,7 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 ## 当前阶段边界
 
-当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。PyMuPDF 提供权威页码、原文定位和原 PDF 图像；MinerU 只作为未来可选的结构增强通道，其输出必须重新对齐原 PDF，且调用云端服务前必须取得用户对该文档的明确同意。
+当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。PyMuPDF 提供权威页码、原文定位和原 PDF 图像；MinerU Flash 是已实现但默认不启用的可选结构增强通道，其输出必须重新对齐原 PDF，且调用云端服务前必须取得用户对该文档的明确同意。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 

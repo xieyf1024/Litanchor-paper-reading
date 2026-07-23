@@ -73,7 +73,15 @@ class LocalPipelineTests(unittest.TestCase):
         )
         self.assertEqual(MODULE.first_author_only([]), [])
 
-    def make_run(self, root: Path, *, quote="The model achieved 95% accuracy on the test set.", value="95", unit="%"):
+    def make_run(
+        self,
+        root: Path,
+        *,
+        quote="The model achieved 95% accuracy on the test set.",
+        value="95",
+        unit="%",
+        reading_mode="skim",
+    ):
         run_dir = root / "run"
         run_dir.mkdir()
         source = {
@@ -107,6 +115,8 @@ class LocalPipelineTests(unittest.TestCase):
             "contains_variable": False,
             "confidence": 1.0,
             "needs_review": False,
+            "page_verified": True,
+            "source_match_kind": "exact",
             "issues": [],
         }]
         claims = [{
@@ -120,10 +130,20 @@ class LocalPipelineTests(unittest.TestCase):
             "display_level": "collapsed",
             "validation": {"traceable": True, "semantic_support": "pass", "numeric_fidelity": "pass", "modality_fidelity": "pass", "final_status": "pass"},
         }]
-        run_record = {"schema_version": "0.1", "run_id": "run", "paper_id": "pdf-test", "skill_version": "0.3.0", "reading_mode": "skim", "created": "2026-01-01T00:00:00+00:00", "status": "prepared", "artifacts": {}}
+        run_record = {"schema_version": "0.1", "run_id": "run", "paper_id": "pdf-test", "skill_version": "0.4.1", "reading_mode": reading_mode, "created": "2026-01-01T00:00:00+00:00", "status": "prepared", "artifacts": {}}
         write_json(run_dir / "source-bundle.json", source)
         write_json(run_dir / "evidence.json", evidence)
         write_json(run_dir / "claims.json", claims)
+        write_json(
+            run_dir / "figures.json",
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "No key visual is required for this fixture.",
+            },
+        )
         write_json(run_dir / "run.json", run_record)
         return run_dir
 
@@ -138,6 +158,9 @@ class LocalPipelineTests(unittest.TestCase):
             self.assertIn("E-001｜PDF p.1", markdown)
             self.assertIn("[!evidence]- E-001", markdown)
             self.assertIn("litanchor:user:start", markdown)
+            coverage = json.loads((run_dir / "coverage_receipt.json").read_text(encoding="utf-8"))
+            self.assertEqual(coverage["coverage_status"], "complete")
+            self.assertEqual(coverage["pages_used_as_evidence"], [1])
             original = markdown
             with self.assertRaises(MODULE.PipelineError):
                 MODULE.build_run(run_dir)
@@ -184,6 +207,223 @@ class LocalPipelineTests(unittest.TestCase):
                 MODULE.build_run(run_dir)
             result = json.loads((run_dir / "validation.json").read_text(encoding="utf-8"))
             self.assertIn("invalid_evidence_schema", {item["issue_type"] for item in result["issues"]})
+
+    def test_blocks_unverified_evidence_page(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = self.make_run(Path(temporary))
+            evidence_path = run_dir / "evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence[0]["page_verified"] = False
+            evidence[0]["source_match_kind"] = "unmatched"
+            write_json(evidence_path, evidence)
+            with self.assertRaises(MODULE.PipelineError):
+                MODULE.build_run(run_dir)
+            result = json.loads((run_dir / "validation.json").read_text(encoding="utf-8"))
+            self.assertIn("unverified_evidence_page", {item["issue_type"] for item in result["issues"]})
+
+    def test_selected_visual_must_pass_provenance_gate_and_is_embedded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = self.make_run(Path(temporary))
+            image = run_dir / "figure-1.png"
+            image.write_bytes(b"verified-figure-image")
+            manifest = run_dir / "figure-1.json"
+            write_json(
+                manifest,
+                {
+                    "schema_version": "0.1",
+                    "figure_label": "Figure 1",
+                    "physical_pdf_page": 1,
+                    "source_pdf_sha256": "a" * 64,
+                    "crop_validation_status": "pass",
+                    "needs_human_review": False,
+                    "output_image_sha256": MODULE.sha256_file(image),
+                },
+            )
+            write_json(
+                run_dir / "figures.json",
+                {
+                    "schema_version": "0.1",
+                    "selection_status": "completed",
+                    "selected": [
+                        {
+                            "figure_label": "Figure 1",
+                            "physical_pdf_page": 1,
+                            "caption_original": "Figure 1. Verified method schematic.",
+                            "selection_reason": "It is indispensable to the method.",
+                            "discussion_location": "PDF p.1, Methods",
+                            "image_path": str(image),
+                            "manifest_path": str(manifest),
+                            "embed_path": "LitAnchor-Test/_assets/test/figure-1.png",
+                        }
+                    ],
+                    "rejected": [],
+                    "no_selection_reason": None,
+                },
+            )
+            destination, result = MODULE.build_run(run_dir)
+            markdown = destination.read_text(encoding="utf-8")
+            self.assertEqual(result["statistics"]["figure_count"], 1)
+            self.assertIn(
+                "![[LitAnchor-Test/_assets/test/figure-1.png]]",
+                markdown,
+            )
+
+    def test_deep_run_with_only_first_page_evidence_is_incomplete(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = self.make_run(Path(temporary), reading_mode="deep")
+            source_path = run_dir / "source-bundle.json"
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["pdf"]["page_count"] = 5
+            source["pages"] = [
+                {
+                    "page_index": page,
+                    "printed_page": None,
+                    "raw_text": (
+                        "The model achieved 95% accuracy on the test set."
+                        if page == 1
+                        else f"Readable source content for physical page {page} with sufficient detail."
+                    ),
+                    "extraction_method": "native_text",
+                    "confidence": 1.0,
+                    "warnings": [],
+                }
+                for page in range(1, 6)
+            ]
+            write_json(source_path, source)
+            with self.assertRaises(MODULE.PipelineError):
+                MODULE.build_run(run_dir)
+            coverage = json.loads((run_dir / "coverage_receipt.json").read_text(encoding="utf-8"))
+            self.assertEqual(coverage["extraction_status"], "complete")
+            self.assertEqual(coverage["analysis_status"], "insufficient")
+            self.assertEqual(coverage["coverage_status"], "incomplete")
+
+    def test_verified_pages_render_distinct_zotero_links(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = self.make_run(Path(temporary), reading_mode="deep")
+            source_path = run_dir / "source-bundle.json"
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["source"].update(
+                {
+                    "acquisition_method": "zotero_local_api",
+                    "zotero_item_key": "ABCD1234",
+                    "zotero_attachment_key": "PDFD1234",
+                }
+            )
+            source["pdf"]["page_count"] = 10
+            source["pages"] = [
+                {
+                    "page_index": page,
+                    "printed_page": None,
+                    "raw_text": (
+                        {
+                            2: "The paper defines the research question on physical page two.",
+                            5: "The authors describe the central method on physical page five.",
+                            10: "The final result is reported on physical page ten.",
+                        }.get(page, f"Readable source content for physical page {page} with sufficient detail.")
+                    ),
+                    "extraction_method": "native_text",
+                    "confidence": 1.0,
+                    "warnings": [],
+                }
+                for page in range(1, 11)
+            ]
+            evidence = [
+                {
+                    "evidence_id": "E-002",
+                    "evidence_type": "research_question",
+                    "page_index": 2,
+                    "printed_page": None,
+                    "section": "Introduction",
+                    "block_id": None,
+                    "bounding_box": None,
+                    "quote_original": "The paper defines the research question on physical page two.",
+                    "epistemic_status": "observed",
+                    "epistemic_markers": [],
+                    "contains_number": False,
+                    "contains_unit": False,
+                    "contains_variable": False,
+                    "confidence": 1.0,
+                    "needs_review": False,
+                    "page_verified": True,
+                    "source_match_kind": "exact",
+                    "issues": [],
+                },
+                {
+                    "evidence_id": "E-005",
+                    "evidence_type": "method_step",
+                    "page_index": 5,
+                    "printed_page": None,
+                    "section": "Methods",
+                    "block_id": None,
+                    "bounding_box": None,
+                    "quote_original": "The authors describe the central method on physical page five.",
+                    "epistemic_status": "observed",
+                    "epistemic_markers": [],
+                    "contains_number": False,
+                    "contains_unit": False,
+                    "contains_variable": False,
+                    "confidence": 1.0,
+                    "needs_review": False,
+                    "page_verified": True,
+                    "source_match_kind": "exact",
+                    "issues": [],
+                },
+                {
+                    "evidence_id": "E-010",
+                    "evidence_type": "result",
+                    "page_index": 10,
+                    "printed_page": None,
+                    "section": "Results",
+                    "block_id": None,
+                    "bounding_box": None,
+                    "quote_original": "The final result is reported on physical page ten.",
+                    "epistemic_status": "observed",
+                    "epistemic_markers": [],
+                    "contains_number": False,
+                    "contains_unit": False,
+                    "contains_variable": False,
+                    "confidence": 1.0,
+                    "needs_review": False,
+                    "page_verified": True,
+                    "source_match_kind": "exact",
+                    "issues": [],
+                },
+            ]
+            claims = [
+                {
+                    "claim_id": f"C-{page:03d}",
+                    "claim_text_zh": text,
+                    "claim_type": claim_type,
+                    "epistemic_status": "observed",
+                    "evidence_ids": [evidence_id],
+                    "page_refs": [page],
+                    "numeric_items": [],
+                    "display_level": "inline",
+                    "validation": {
+                        "traceable": True,
+                        "semantic_support": "pass",
+                        "numeric_fidelity": "pass",
+                        "modality_fidelity": "pass",
+                        "final_status": "pass",
+                    },
+                }
+                for page, evidence_id, claim_type, text in (
+                    (2, "E-002", "question", "论文提出了研究问题。"),
+                    (5, "E-005", "method", "作者说明了核心方法。"),
+                    (10, "E-010", "result", "作者报告了最终结果。"),
+                )
+            ]
+            write_json(source_path, source)
+            write_json(run_dir / "evidence.json", evidence)
+            write_json(run_dir / "claims.json", claims)
+            destination, result = MODULE.build_run(run_dir)
+            markdown = destination.read_text(encoding="utf-8")
+            self.assertEqual(result["status"], "completed")
+            for page in (2, 5, 10):
+                self.assertIn(
+                    f"zotero://open-pdf/library/items/PDFD1234?page={page}",
+                    markdown,
+                )
 
     def test_preflight_warning_is_preserved_in_note_status(self):
         with tempfile.TemporaryDirectory() as temporary:
