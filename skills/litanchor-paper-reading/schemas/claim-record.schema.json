@@ -6,12 +6,16 @@
   "additionalProperties": false,
   "required": [
     "claim_id",
+    "origin",
     "claim_text_zh",
     "claim_type",
+    "section_target",
+    "importance",
     "epistemic_status",
     "evidence_ids",
     "page_refs",
     "numeric_items",
+    "conditions_zh",
     "validation"
   ],
   "properties": {
@@ -57,6 +61,7 @@
       "items": {"type": "string", "minLength": 1}
     },
     "section_id": {"type": ["string", "null"]},
+    "section_target": {"type": "string", "minLength": 1},
     "importance": {"enum": ["core", "supporting", "context"]},
     "conditions_zh": {"type": ["string", "null"]},
     "epistemic_status": {

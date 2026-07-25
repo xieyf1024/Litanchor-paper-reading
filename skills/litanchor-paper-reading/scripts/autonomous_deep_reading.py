@@ -17,9 +17,18 @@ if str(SCRIPT_DIR) not in sys.path:
 from litanchor_local import (  # noqa: E402
     PipelineError,
     atomic_write_json,
+    atomic_write_text,
+    build_run,
     load_json,
     sha256_file,
     utc_now,
+)
+from autonomous_semantic import (  # noqa: E402
+    initialize_semantic_contracts,
+    validate_authoritative_evidence,
+    validate_claim_ledger,
+    validate_section_synthesis,
+    validate_visual_analysis,
 )
 
 
@@ -369,6 +378,136 @@ def detect_sections(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return detected
 
 
+def classify_physical_pages(
+    pages: list[dict[str, Any]],
+    sections: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Classify every physical page without treating appendices as references."""
+    reference_starts = sorted(
+        int(section["start_page"])
+        for section in sections
+        if section.get("normalized_type") == "references"
+    )
+    reference_start = reference_starts[0] if reference_starts else None
+    appendix_starts = sorted(
+        int(section["start_page"])
+        for section in sections
+        if section.get("normalized_type") == "appendix"
+        or (
+            reference_start is not None
+            and int(section.get("start_page", 0)) >= reference_start
+            and section.get("normalized_type") != "references"
+            and re.match(
+                r"^[A-Z](?:\.\d+)*\.\s+\S",
+                str(section.get("title_original") or ""),
+            )
+        )
+    )
+    visual_appendix_starts = sorted(
+        int(page["page_index"])
+        for page in pages
+        if reference_start is not None
+        and int(page["page_index"]) > reference_start
+        and re.search(
+            r"(?im)^\s*Figure\s+\d+\s*:",
+            str(page.get("raw_text", "")),
+        )
+    )
+    if visual_appendix_starts:
+        appendix_starts.append(visual_appendix_starts[0])
+        appendix_starts.sort()
+    appendix_start = appendix_starts[0] if appendix_starts else None
+    resumed_main_starts = sorted(
+        int(section["start_page"])
+        for section in sections
+        if reference_start is not None
+        and int(section.get("start_page", 0)) > reference_start
+        and section.get("normalized_type")
+        in {
+            "abstract",
+            "introduction",
+            "methods",
+            "results",
+            "discussion",
+            "limitations",
+            "conclusion",
+        }
+    )
+    resumed_main_start = resumed_main_starts[0] if resumed_main_starts else None
+    classified: list[dict[str, Any]] = []
+    for page in pages:
+        page_index = int(page["page_index"])
+        warnings = set(page.get("warnings", []))
+        raw_text = str(page.get("raw_text", ""))
+        before_references = re.split(
+            r"(?im)^\s*(?:references|bibliography)\s*$",
+            raw_text,
+            maxsplit=1,
+        )[0]
+        mixed_reference_start = (
+            reference_start == page_index
+            and _visible_characters(before_references) >= 80
+        )
+        if "empty_page_text" in warnings:
+            classification = "extraction_failed"
+            reason = "PyMuPDF extracted no readable text from this physical page."
+        elif appendix_start is not None and page_index >= appendix_start:
+            classification = "appendix"
+            reason = (
+                f"An appendix heading begins on physical page {appendix_start}; "
+                "appendix content remains part of deep-reading recall."
+            )
+        elif (
+            resumed_main_start is not None
+            and page_index >= resumed_main_start
+        ):
+            classification = "main_content"
+            reason = (
+                "A substantive main-paper section resumes after the reference list "
+                f"on physical page {resumed_main_start}."
+            )
+        elif (
+            reference_start is not None
+            and page_index >= reference_start
+            and not mixed_reference_start
+        ):
+            classification = "references_only"
+            reason = (
+                f"The references section begins on physical page {reference_start}, "
+                "and no later appendix heading applies to this page."
+            )
+        elif mixed_reference_start:
+            classification = "main_content"
+            reason = (
+                "The references heading begins on this physical page, but substantive "
+                "main-paper text precedes it and therefore still requires semantic review."
+            )
+        else:
+            classification = "main_content"
+            reason = "The page belongs to the main paper before references or appendices."
+        references_only = classification == "references_only"
+        classified.append(
+            {
+                "page_index": page_index,
+                "classification": classification,
+                "classification_reason": reason,
+                "semantic_review_required": not references_only,
+                "semantic_reviewed": references_only,
+                "review_outcome": (
+                    "excluded_reference" if references_only else "pending"
+                ),
+                "review_notes": None,
+                "evidence_ids": [],
+                "exclusion_reason": (
+                    "Reference-list page excluded from semantic claim recall."
+                    if references_only
+                    else None
+                ),
+            }
+        )
+    return {"schema_version": "0.1", "pages": classified}
+
+
 def fuse_mineru_sections(
     run_dir: Path,
     mineru_dir: Path | None = None,
@@ -465,6 +604,34 @@ def fuse_mineru_sections(
         )
         section["end_page"] = max(int(section["start_page"]), next_page)
     atomic_write_json(run_dir / "sections.json", merged)
+    pages = load_json(run_dir / "pymupdf-pages.json")
+    classification_path = run_dir / "page-classification.json"
+    previous_classification = (
+        load_json(classification_path)
+        if classification_path.is_file()
+        else {"pages": []}
+    )
+    previous_by_page = {
+        item["page_index"]: item
+        for item in previous_classification.get("pages", [])
+        if isinstance(item, dict) and isinstance(item.get("page_index"), int)
+    }
+    refreshed_classification = classify_physical_pages(pages, merged)
+    for page in refreshed_classification["pages"]:
+        previous = previous_by_page.get(page["page_index"])
+        if (
+            isinstance(previous, dict)
+            and previous.get("classification") == page.get("classification")
+            and previous.get("semantic_reviewed") is True
+        ):
+            for field in (
+                "semantic_reviewed",
+                "review_outcome",
+                "review_notes",
+                "evidence_ids",
+            ):
+                page[field] = previous.get(field)
+    atomic_write_json(classification_path, refreshed_classification)
 
     plan["status"] = "completed"
     plan["output_dir"] = str(mineru_dir)
@@ -513,10 +680,10 @@ def classify_paper_type(
         r"\b(algorithms?|methods?|architectures?|networks?|autoencoders?|learners?|learning)\b",
         title,
     ) or (
-        "experiments" in section_types
-        and (
-            bool({"methods", "model"} & section_types)
-            or re.search(r"\b(we propose|we present|our method|architecture)\b", lead_text)
+        bool({"methods", "method", "model"} & section_types)
+        and re.search(
+            r"\b(we propose|we present|our method|new (?:simple )?(?:network )?architecture)\b",
+            lead_text,
         )
     ):
         paper_type = "method-algorithm"
@@ -646,7 +813,7 @@ def build_reading_passes(
 
 
 FIGURE_CAPTION_PATTERN = re.compile(
-    r"(?im)^\s*(?:fig(?:ure)?\.?)\s*([A-Za-z0-9]+)\s*[.:]\s*(.+)$"
+    r"(?im)^\s*(?:fig(?:ure)?\.?)\s*([A-Za-z0-9]+)\s*(?:[.:]|\|)\s*(.+)$"
 )
 
 
@@ -666,12 +833,76 @@ def discover_figure_candidates(pages: list[dict[str, Any]]) -> list[dict[str, An
                     "page_index": int(page["page_index"]),
                     "caption_original": caption,
                     "text_reference_count": len(
-                        re.findall(rf"\b{re.escape(label)}\b", full_text, re.IGNORECASE)
+                        re.findall(
+                            rf"\bfig(?:ure)?\.?\s*{re.escape(match.group(1))}\b",
+                            full_text,
+                            re.IGNORECASE,
+                        )
                     ),
                     "selection_status": "candidate",
                     "origin": "auto_extracted",
                 }
     return list(candidates_by_label.values())
+
+
+def fuse_mineru_figure_candidates(
+    run_dir: Path,
+    mineru_dir: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Use aligned MinerU captions to complete the all-figure inventory."""
+    run_dir = run_dir.resolve()
+    mineru_dir = (mineru_dir or run_dir / "mineru").resolve()
+    alignment = load_json(mineru_dir / "alignment.json")
+    existing = load_json(run_dir / "figure-candidates.json")
+    by_label: dict[str, dict[str, Any]] = {
+        str(item["label"]): dict(item)
+        for item in existing
+        if isinstance(item, dict) and item.get("label")
+    }
+    for block in alignment.get("blocks", []):
+        if not isinstance(block, dict) or block.get("status") == "unmatched":
+            continue
+        text = re.sub(r"<!--\s*image\s*-->", "", str(block.get("text", "")))
+        match = re.search(
+            r"\bFigure\s+(\d+)\s*[.:]\s*(.+)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if match is None or not isinstance(block.get("pdf_page"), int):
+            continue
+        label = f"Figure {int(match.group(1))}"
+        caption = re.sub(r"\s+", " ", match.group(2).strip())
+        candidate = by_label.get(label)
+        if candidate is None or len(caption) > len(
+            str(candidate.get("caption_original", ""))
+        ):
+            by_label[label] = {
+                "visual_id": "",
+                "label": label,
+                "page_index": int(block["pdf_page"]),
+                "caption_original": caption,
+                "text_reference_count": int(
+                    candidate.get("text_reference_count", 0)
+                    if candidate is not None
+                    else 0
+                ),
+                "selection_status": "candidate",
+                "origin": "auto_extracted",
+                "mineru_alignment_status": block.get("status"),
+                "mineru_similarity": block.get("similarity"),
+                "mineru_used_as": "structure_hint",
+                "authoritative_evidence": False,
+            }
+    figures = sorted(
+        by_label.values(),
+        key=lambda item: int(re.search(r"\d+", str(item["label"])).group()),
+    )
+    for index, figure in enumerate(figures, start=1):
+        figure["visual_id"] = f"V-{index:03d}"
+        figure.setdefault("mineru_used_as", "not_used")
+        figure.setdefault("authoritative_evidence", False)
+    atomic_write_json(run_dir / "figure-candidates.json", figures)
+    return figures
 
 
 def validate_autonomous_origins(
@@ -791,6 +1022,194 @@ def validate_independent_reviews(run_dir: Path) -> None:
         )
 
 
+def promote_reviewed_claims(
+    claims: list[dict[str, Any]],
+    fidelity_review: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Promote ClaimRecords only after every claim passed fidelity review."""
+    expected = {
+        str(claim.get("claim_id"))
+        for claim in claims
+        if isinstance(claim, dict) and claim.get("claim_id")
+    }
+    checked = {
+        str(claim_id) for claim_id in fidelity_review.get("checked_claim_ids", [])
+    }
+    if fidelity_review.get("final_status") != "pass" or checked != expected:
+        raise AutonomousPipelineError(
+            "Claims cannot be promoted before a complete passing fidelity review."
+        )
+    return [
+        {
+            **claim,
+            "validation": {
+                "traceable": True,
+                "semantic_support": "pass",
+                "numeric_fidelity": "pass",
+                "modality_fidelity": "pass",
+                "final_status": "pass",
+            },
+        }
+        for claim in claims
+    ]
+
+
+def finalize_autonomous_candidate(run_dir: Path) -> dict[str, Any]:
+    """Apply all v0.5 gates and render one non-overwriting candidate note."""
+    run_dir = run_dir.resolve()
+    pages = load_json(run_dir / "pymupdf-pages.json")
+    evidence = load_json(run_dir / "evidence.json")
+    claims = load_json(run_dir / "claims.json")
+    synthesis = load_json(run_dir / "section-synthesis.json")
+    missing = load_json(run_dir / "missing-information-check.json")
+    figures = load_json(run_dir / "figures.json")
+    visual_analysis = load_json(run_dir / "visual-analysis.json")
+    if not all(isinstance(value, list) for value in (pages, evidence, claims)):
+        raise AutonomousPipelineError("Pages, Evidence, and Claims must be arrays.")
+    if not isinstance(missing, dict) or not isinstance(missing.get("checks"), list):
+        raise AutonomousPipelineError("Missing-information check is invalid.")
+
+    validate_authoritative_evidence(evidence, pages)
+    validate_claim_ledger(claims, evidence)
+    validate_section_synthesis(synthesis, claims, missing["checks"])
+    validate_visual_analysis(visual_analysis, figures, claims)
+    validate_independent_reviews(run_dir)
+
+    fidelity_review = load_json(run_dir / "fidelity-review.json")
+    promoted_claims = promote_reviewed_claims(claims, fidelity_review)
+    atomic_write_json(run_dir / "claims.json", promoted_claims)
+
+    run_record = load_json(run_dir / "run.json")
+    visual_review_pending = bool(figures.get("selected"))
+    run_record["review_status"] = (
+        "user_visual_review_pending"
+        if visual_review_pending
+        else "independently_reviewed"
+    )
+    run_record["status"] = "composing_candidate"
+    atomic_write_json(run_dir / "run.json", run_record)
+
+    candidate_path = run_dir / "candidate-note.md"
+    candidate_number = 2
+    while candidate_path.exists():
+        candidate_path = run_dir / f"candidate-note-v{candidate_number}.md"
+        candidate_number += 1
+    try:
+        rendered_path, validation = build_run(run_dir, candidate_path)
+    except PipelineError as exc:
+        raise AutonomousPipelineError(str(exc)) from exc
+
+    delivery_aliases = {
+        "section_map.json": load_json(run_dir / "sections.json"),
+        "section_synthesis.json": synthesis,
+        "visual_analysis.json": visual_analysis,
+        "fidelity_review.json": fidelity_review,
+        "recall_review.json": load_json(run_dir / "recall-review.json"),
+    }
+    for file_name, payload in delivery_aliases.items():
+        alias_path = run_dir / file_name
+        if not alias_path.exists():
+            atomic_write_json(alias_path, payload)
+    pages_jsonl = run_dir / "pages.jsonl"
+    if not pages_jsonl.exists():
+        atomic_write_text(
+            pages_jsonl,
+            "".join(
+                json.dumps(page, ensure_ascii=False) + "\n"
+                for page in pages
+            ),
+            overwrite=False,
+        )
+    final_alias = run_dir / "final_note.candidate.md"
+    if not final_alias.exists():
+        atomic_write_text(
+            final_alias,
+            rendered_path.read_text(encoding="utf-8"),
+            overwrite=False,
+        )
+
+    autonomous_run = load_json(run_dir / "autonomous-run.json")
+    autonomous_run["status"] = validation.get("status")
+    autonomous_run["completed"] = utc_now()
+    autonomous_run.setdefault("artifacts", {})["candidate_note"] = rendered_path.name
+    autonomous_run["artifacts"]["validation"] = "validation.json"
+    autonomous_run["artifacts"]["coverage_receipt"] = "coverage_receipt.json"
+    autonomous_run["artifacts"]["delivery_note"] = final_alias.name
+    autonomous_run["artifacts"]["delivery_pages"] = pages_jsonl.name
+    autonomous_run["quality"] = validation.get("quality", {})
+    atomic_write_json(run_dir / "autonomous-run.json", autonomous_run)
+    return {
+        "status": validation.get("status"),
+        "candidate_note": str(rendered_path),
+        "validation_status": validation.get("status"),
+        "quality": validation.get("quality", {}),
+    }
+
+
+def accept_visual_review(run_dir: Path) -> dict[str, Any]:
+    """Record explicit user acceptance and render a final, non-candidate note."""
+    run_dir = run_dir.resolve()
+    run_record = load_json(run_dir / "run.json")
+    validation = load_json(run_dir / "validation.json")
+    figures = load_json(run_dir / "figures.json")
+    if run_record.get("review_status") != "user_visual_review_pending":
+        raise AutonomousPipelineError(
+            "The run is not waiting for user visual review."
+        )
+    if not isinstance(figures, dict) or not figures.get("selected"):
+        raise AutonomousPipelineError(
+            "Visual review acceptance requires at least one selected visual."
+        )
+    unresolved = [
+        issue
+        for issue in validation.get("issues", [])
+        if isinstance(issue, dict)
+        and issue.get("issue_type") != "user_visual_review_pending"
+        and issue.get("severity") in {"blocker", "error"}
+    ]
+    if unresolved:
+        raise AutonomousPipelineError(
+            "Visual review cannot override unresolved validation blockers."
+        )
+
+    run_record["review_status"] = "user_visual_review_passed"
+    run_record["visual_review"] = {
+        "status": "accepted",
+        "confirmed_at": utc_now(),
+        "scope": "selected_visual_completeness_clarity_layout_and_zotero_links",
+    }
+    run_record["status"] = "visual_review_accepted"
+    atomic_write_json(run_dir / "run.json", run_record)
+
+    final_path = run_dir / "final-note.md"
+    if final_path.exists():
+        raise AutonomousPipelineError(
+            f"Refusing to overwrite existing final note: {final_path}"
+        )
+    try:
+        rendered_path, final_validation = build_run(run_dir, final_path)
+    except PipelineError as exc:
+        raise AutonomousPipelineError(str(exc)) from exc
+    if final_validation.get("status") != "completed":
+        raise AutonomousPipelineError(
+            "Accepted visual review did not produce a fully completed run."
+        )
+
+    autonomous_run = load_json(run_dir / "autonomous-run.json")
+    autonomous_run["status"] = "completed"
+    autonomous_run["visual_review"] = run_record["visual_review"]
+    autonomous_run.setdefault("artifacts", {})["final_note"] = rendered_path.name
+    autonomous_run["artifacts"]["validation"] = "validation.json"
+    autonomous_run["quality"] = final_validation.get("quality", {})
+    atomic_write_json(run_dir / "autonomous-run.json", autonomous_run)
+    return {
+        "status": "completed",
+        "final_note": str(rendered_path),
+        "review_status": "user_visual_review_passed",
+        "quality": final_validation.get("quality", {}),
+    }
+
+
 def _mineru_plan(
     pdf_path: Path,
     pages: list[dict[str, Any]],
@@ -877,14 +1296,32 @@ def build_autonomous_plan(
     source["pdf"]["authoritative_text_engine"] = "PyMuPDF"
     source["pdf"]["authoritative_page_count_verified"] = True
     source["pdf"]["pymupdf_extracted_at"] = utc_now()
+    pymupdf_warning_pages = [
+        int(page["page_index"])
+        for page in pages
+        if isinstance(page, dict) and page.get("warnings")
+    ]
+    source["pdf"]["pymupdf_warning_pages"] = pymupdf_warning_pages
+    if not pymupdf_warning_pages:
+        source["pdf"]["preflight_status"] = "PASS"
+        source["pdf"]["warnings"] = [
+            warning
+            for warning in source["pdf"].get("warnings", [])
+            if warning != "review_page_extraction_warnings"
+        ]
     atomic_write_json(run_dir / "source-bundle.json", source)
     atomic_write_json(run_dir / "pymupdf-pages.json", pages)
     atomic_write_json(run_dir / "sections.json", sections)
+    atomic_write_json(
+        run_dir / "page-classification.json",
+        classify_physical_pages(pages, sections),
+    )
     atomic_write_json(run_dir / "paper-profile.json", paper_profile)
     atomic_write_json(run_dir / "reading-passes.json", reading_passes)
     atomic_write_json(run_dir / "figure-candidates.json", figure_candidates)
     atomic_write_json(run_dir / "mineru-plan.json", mineru_plan)
     _write_review_contracts(run_dir, paper_profile)
+    semantic_artifacts = initialize_semantic_contracts(run_dir, paper_profile)
 
     autonomous_run = {
         "schema_version": "0.1",
@@ -906,12 +1343,14 @@ def build_autonomous_plan(
             "source_bundle": "source-bundle.json",
             "pymupdf_pages": "pymupdf-pages.json",
             "sections": "sections.json",
+            "page_classification": "page-classification.json",
             "paper_profile": "paper-profile.json",
             "reading_passes": "reading-passes.json",
             "figure_candidates": "figure-candidates.json",
             "mineru_plan": "mineru-plan.json",
             "evidence": "evidence.json",
             "claims": "claims.json",
+            **semantic_artifacts,
             "fidelity_review": "fidelity-review.json",
             "recall_review": "recall-review.json",
         },
@@ -967,6 +1406,10 @@ def build_parser() -> argparse.ArgumentParser:
     fuse = subparsers.add_parser("fuse-mineru")
     fuse.add_argument("--run-dir", type=Path, required=True)
     fuse.add_argument("--mineru-dir", type=Path)
+    finalize = subparsers.add_parser("finalize")
+    finalize.add_argument("--run-dir", type=Path, required=True)
+    accept_review = subparsers.add_parser("accept-visual-review")
+    accept_review.add_argument("--run-dir", type=Path, required=True)
     return parser
 
 
@@ -994,16 +1437,32 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "status":
             plan = load_json(args.run_dir.resolve() / "autonomous-run.json")
             print(json.dumps(plan, ensure_ascii=False, indent=2))
-        else:
+        elif args.command == "fuse-mineru":
             sections = fuse_mineru_sections(args.run_dir, args.mineru_dir)
+            figures = fuse_mineru_figure_candidates(args.run_dir, args.mineru_dir)
             print(
                 json.dumps(
                     {
                         "run_dir": str(args.run_dir.resolve()),
                         "status": "completed",
                         "section_count": len(sections),
+                        "figure_count": len(figures),
                         "authoritative_evidence_created": False,
                     },
+                    ensure_ascii=False,
+                )
+            )
+        elif args.command == "finalize":
+            print(
+                json.dumps(
+                    finalize_autonomous_candidate(args.run_dir),
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(
+                json.dumps(
+                    accept_visual_review(args.run_dir),
                     ensure_ascii=False,
                 )
             )

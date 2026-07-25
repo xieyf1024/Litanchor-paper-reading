@@ -263,6 +263,19 @@ class DeepReadingQualityTests(unittest.TestCase):
         self.assertNotIn("metric_recall", review_types)
         self.assertNotIn("experiment_recall", review_types)
 
+    def test_autonomous_paper_profile_is_the_effective_paper_type(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = Path(temporary)
+            source = minimal_source()
+            write_json(
+                run_dir / "paper-profile.json",
+                {"paper_type": "method-algorithm"},
+            )
+            self.assertEqual(
+                MODULE.resolve_paper_type(run_dir, source),
+                "method-algorithm",
+            )
+
     def test_internalize_requires_learning_layer_but_deep_uses_mode_placeholder(self):
         claims = minimal_claims()
         findings = MODULE.evaluate_deep_claims(
@@ -317,9 +330,42 @@ class DeepReadingQualityTests(unittest.TestCase):
             },
             "completed",
         )
+        self.assertIn('validation_status: "completed"', markdown)
         self.assertIn('review_status: "reviewed"', markdown)
         self.assertIn('generation_mode: "human_assisted_regression"', markdown)
         self.assertIn("autonomous_generation: false", markdown)
+        self.assertNotIn("**完整图题**", markdown)
+
+    def test_skim_visual_does_not_repeat_caption_already_kept_in_crop(self):
+        caption = "Figure 1. Complete original caption."
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            minimal_claims(),
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [
+                    {
+                        "figure_label": "Figure 1",
+                        "physical_pdf_page": 1,
+                        "embed_path": "figures/figure-1.png",
+                        "selection_reason": "核心方法图",
+                        "caption_original": caption,
+                        "discussion_location": "PDF p.1",
+                    }
+                ],
+                "rejected": [],
+                "no_selection_reason": None,
+            },
+            {"run_id": "run", "reading_mode": "skim"},
+            "completed",
+        )
+
+        self.assertIn("![[figures/figure-1.png]]", markdown)
+        self.assertIn("选择理由：核心方法图", markdown)
+        self.assertNotIn("图题：", markdown)
+        self.assertNotIn(caption, markdown)
 
     def test_cross_section_consistency_rejects_placeholder_for_known_metric(self):
         claims = minimal_claims()
@@ -345,6 +391,94 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
 
         self.assertEqual(findings[0]["issue_type"], "numeric_rendering_integrity")
+
+    def test_numeric_rendering_integrity_accepts_legitimate_mm_unit(self):
+        findings = MODULE.validate_numeric_rendering_integrity(
+            "The precipitation is 0.6 mm d−1 and the distance is 15 km."
+        )
+
+        self.assertEqual(findings, [])
+
+    def test_experiment_table_renderer_avoids_mechanical_punctuation(self):
+        claim = minimal_claims()[0]
+        claim["claim_type"] = "experiment"
+        claim["claim_text_zh"] = "先进行预训练。"
+        claim["detail_points_zh"] = ["随后完成微调。", "最后报告测试结果；"]
+
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [claim],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "deep"},
+            "completed",
+        )
+
+        self.assertNotIn("。；", markdown)
+        self.assertFalse(MODULE.validate_table_sentence_rendering_integrity(markdown))
+
+    def test_summary_completeness_requires_problem_method_and_result_evidence(self):
+        evidence = [
+            {**minimal_evidence()[0], "evidence_id": "E-Q", "evidence_type": "research_question"},
+            {**minimal_evidence()[0], "evidence_id": "E-M", "evidence_type": "method_step"},
+            {**minimal_evidence()[0], "evidence_id": "E-R", "evidence_type": "result"},
+        ]
+        summary = minimal_claims()[0]
+        summary["claim_type"] = "summary"
+        summary["claim_text_zh"] = (
+            "论文围绕一个明确研究问题提出核心方法与关键设计，并通过主要实验结果"
+            "说明该设计的价值、适用范围以及相对于基线的改进，从而形成问题、方法和"
+            "结果相互衔接的一句话摘要。"
+        )
+        summary["evidence_ids"] = ["E-Q", "E-M", "E-R"]
+
+        self.assertFalse(MODULE.evaluate_summary_completeness([summary], evidence))
+        summary["evidence_ids"] = ["E-Q"]
+        findings = MODULE.evaluate_summary_completeness([summary], evidence)
+        self.assertEqual(findings[0]["issue_type"], "summary_completeness")
+
+    def test_page_semantic_coverage_rejects_unreviewed_appendix(self):
+        classification = {
+            "pages": [
+                {
+                    "page_index": 1,
+                    "classification": "main_content",
+                    "semantic_review_required": True,
+                    "semantic_reviewed": True,
+                    "review_outcome": "evidence_captured",
+                    "review_notes": None,
+                    "exclusion_reason": None,
+                },
+                {
+                    "page_index": 2,
+                    "classification": "references_only",
+                    "semantic_review_required": False,
+                    "semantic_reviewed": True,
+                    "review_outcome": "excluded_reference",
+                    "review_notes": None,
+                    "exclusion_reason": "Reference list only.",
+                },
+                {
+                    "page_index": 3,
+                    "classification": "appendix",
+                    "semantic_review_required": True,
+                    "semantic_reviewed": False,
+                    "review_outcome": "pending",
+                    "review_notes": None,
+                    "exclusion_reason": None,
+                },
+            ]
+        }
+
+        findings = MODULE.validate_page_semantic_coverage(classification, 3)
+
+        self.assertEqual(findings[0]["issue_type"], "page_semantic_coverage")
 
     def test_visual_result_coverage_requires_full_inventory_and_result_choice(self):
         figures = {
@@ -467,13 +601,20 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
         claims = []
         for index, claim_type in enumerate(claim_types, start=1):
+            claim_text = (
+                "这是用于验证 Final 模板的结构化内容，"
+                "说明论文问题、方法、关键设计、主要价值、实验结果及其边界之间的"
+                "明确关系，并保留从研究问题到方法和结果的完整逻辑链及适用条件。"
+                if claim_type == "summary"
+                else (
+                    "这是用于验证 Final 模板的结构化内容，"
+                    "说明论文问题、方法、证据、结果及其边界之间的明确关系。"
+                )
+            )
             claims.append(
                 {
                     "claim_id": f"C-{index:03d}",
-                    "claim_text_zh": (
-                        "这是用于验证 Final 模板的结构化内容，"
-                        "说明论文问题、方法、证据、结果及其边界之间的明确关系。"
-                    ),
+                    "claim_text_zh": claim_text,
                     "claim_type": claim_type,
                     "title_zh": f"结构化要点 {index}",
                     "detail_points_zh": [
@@ -484,7 +625,11 @@ class DeepReadingQualityTests(unittest.TestCase):
                     "importance": "core",
                     "conditions_zh": "仅适用于测试夹具所声明的研究范围。",
                     "epistemic_status": "observed",
-                    "evidence_ids": ["E-001"],
+                    "evidence_ids": (
+                        ["E-Q", "E-M", "E-R"]
+                        if claim_type == "summary"
+                        else ["E-001"]
+                    ),
                     "page_refs": [1],
                     "numeric_items": [],
                     "display_level": "inline",
@@ -497,8 +642,26 @@ class DeepReadingQualityTests(unittest.TestCase):
             run_dir.mkdir()
             source = minimal_source()
             source["metadata"]["paper_type"] = ["method-algorithm"]
+            evidence = [
+                *minimal_evidence(),
+                {
+                    **minimal_evidence()[0],
+                    "evidence_id": "E-Q",
+                    "evidence_type": "research_question",
+                },
+                {
+                    **minimal_evidence()[0],
+                    "evidence_id": "E-M",
+                    "evidence_type": "method_step",
+                },
+                {
+                    **minimal_evidence()[0],
+                    "evidence_id": "E-R",
+                    "evidence_type": "result",
+                },
+            ]
             write_json(run_dir / "source-bundle.json", source)
-            write_json(run_dir / "evidence.json", minimal_evidence())
+            write_json(run_dir / "evidence.json", evidence)
             write_json(run_dir / "claims.json", claims)
             write_json(
                 run_dir / "figures.json",

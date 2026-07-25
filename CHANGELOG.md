@@ -14,9 +14,24 @@
 - Added token-free MinerU Flash routing for whole eligible papers and
   page-preserving subsets of long PDFs; all MinerU content remains
   non-authoritative until aligned to an original PyMuPDF physical page.
-- Current checkpoint stops at `awaiting_agent_analysis`; automated semantic
-  ledger construction, key-visual selection, Final-template composition and
-  nine-paper evaluation remain unfinished.
+- Added page-verified autonomous semantic materialization, complete
+  SectionSynthesis, independent fidelity/recall review, all-figure selection,
+  crop validation and Final-template candidate generation.
+- Added explicit page-review receipts and preserved already-reviewed pages when
+  a later MinerU fusion leaves their physical-page classification unchanged.
+- Fixed Nature-style Methods-after-References layouts, visual appendices after
+  references, `Fig. N |` captions, legitimate `mm` units and accepted-note
+  export promotion.
+- Completed the official six-paper autonomous evaluation with 182 EvidenceUnits,
+  155 ClaimRecords, 15 selected visuals, zero blockers and all deterministic
+  quality metrics at 1.0.
+- Rebuilt ResNet, LOVECLIM and climate U-Net as extended non-autonomous
+  regressions; the stricter summary gate caught and blocked a shallow LOVECLIM
+  overview until its evidence-backed summary was corrected.
+- Added cross-paper metrics, failure taxonomy, anti-leak audit, release
+  checklist and a non-promoted EvolutionCandidate.
+- Release-candidate merge/tag remains blocked until the three calibration notes
+  receive user visual review.
 
 ## v0.4.1 — 2026-07-25 — Deep Reading Pipeline Pre-release
 

@@ -50,7 +50,13 @@ review contracts; it does not by itself claim that the paper has been read.
 Only `auto_extracted` EvidenceUnits and `auto_synthesized` ClaimRecords are
 allowed in a blind run. Completion requires separate fidelity and recall
 reviews; reference notes, curated ledgers, or user answers are forbidden as
-blind-test inputs.
+blind-test inputs. Record an auditable outcome for every non-reference
+physical page during the semantic passes; extraction-failed pages cannot be
+marked reviewed. A later MinerU fusion may preserve that receipt only when the
+physical-page classification is unchanged. `finalize` may run only after
+SectionSynthesis, visual analysis and both independent reviews pass.
+User visual acceptance remains separate from deterministic completion and
+must precede formal export.
 
 For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and rich `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
 

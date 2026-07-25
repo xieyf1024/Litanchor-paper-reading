@@ -214,8 +214,9 @@ def validate_numeric_rendering_integrity(markdown: str) -> list[dict[str, str]]:
     patterns = (
         r"%\s*%",
         r"(?:°|◦)\s*C\s*(?:°|◦)\s*C",
-        r"\b(years?|months?|days?|hours?|hrs?|Ghz|GHz|Mhz|MHz|km|mm|cm|m|s)"
+        r"\b(years?|months?|days?|hours?|hrs?|Ghz|GHz|Mhz|MHz|km|mm|cm)"
         r"\s*\1\b",
+        r"\b(m|s)\s+\1\b",
     )
     matches = [
         match.group(0)
@@ -231,6 +232,159 @@ def validate_numeric_rendering_integrity(markdown: str) -> list[dict[str, str]]:
                 "Rendered numeric values contain duplicated unit suffixes: "
                 + ", ".join(sorted(set(matches)))
             ),
+        }
+    ]
+
+
+def validate_table_sentence_rendering_integrity(
+    markdown: str,
+) -> list[dict[str, str]]:
+    """Reject mechanical punctuation joins inside rendered Markdown tables."""
+    malformed = sorted(
+        {
+            match.group(0)
+            for match in re.finditer(r"(?:。|！|？|；)\s*；", markdown)
+        }
+    )
+    if not malformed:
+        return []
+    return [
+        {
+            "issue_type": "table_sentence_rendering_integrity",
+            "message": (
+                "Rendered table text contains mechanically duplicated punctuation: "
+                + ", ".join(malformed)
+            ),
+        }
+    ]
+
+
+def evaluate_summary_completeness(
+    claims: list[Any],
+    evidence: list[Any],
+) -> list[dict[str, str]]:
+    """Require a deep-note summary to cover problem, method, and result evidence."""
+    summaries = [
+        claim
+        for claim in claims
+        if isinstance(claim, dict) and _claim_type(claim) == "summary"
+    ]
+    evidence_by_id = {
+        str(item.get("evidence_id")): item
+        for item in evidence
+        if isinstance(item, dict) and item.get("evidence_id")
+    }
+    problems: list[str] = []
+    if not summaries:
+        problems.append("no summary claim exists")
+    else:
+        summary = summaries[0]
+        text = re.sub(r"\s+", "", str(summary.get("claim_text_zh") or ""))
+        evidence_ids = [
+            str(item)
+            for item in summary.get("evidence_ids", [])
+            if str(item) in evidence_by_id
+        ]
+        evidence_types = {
+            str(evidence_by_id[item].get("evidence_type") or "")
+            for item in evidence_ids
+        }
+        groups = (
+            {"research_question", "research_gap", "background", "summary"},
+            {
+                "method_step",
+                "model",
+                "data",
+                "material",
+                "preprocessing",
+                "experiment",
+            },
+            {"result", "conclusion", "contribution"},
+        )
+        if len(text) < 80:
+            problems.append(f"summary is too short ({len(text)}/80 characters)")
+        if len(set(evidence_ids)) < 3:
+            problems.append("summary uses fewer than three distinct EvidenceUnits")
+        missing_groups = [
+            label
+            for label, group in zip(("problem", "method", "result"), groups)
+            if not evidence_types & group
+        ]
+        if missing_groups:
+            problems.append(
+                "summary lacks " + ", ".join(missing_groups) + " evidence"
+            )
+    if not problems:
+        return []
+    return [
+        {
+            "issue_type": "summary_completeness",
+            "message": "Deep-note summary failed: " + "; ".join(problems) + ".",
+        }
+    ]
+
+
+def validate_page_semantic_coverage(
+    page_classification: dict[str, Any],
+    page_count: int,
+) -> list[dict[str, str]]:
+    """Require every non-reference physical page to receive semantic review."""
+    pages = page_classification.get("pages")
+    problems: list[str] = []
+    if not isinstance(pages, list):
+        problems.append("page-classification.json has no pages array")
+        pages = []
+    page_numbers = [
+        item.get("page_index")
+        for item in pages
+        if isinstance(item, dict)
+    ]
+    expected = list(range(1, page_count + 1))
+    if sorted(page_numbers) != expected or len(set(page_numbers)) != page_count:
+        problems.append("physical-page classification is incomplete or duplicated")
+    valid_classes = {
+        "main_content",
+        "references_only",
+        "appendix",
+        "supplementary_content",
+        "extraction_failed",
+    }
+    for item in pages:
+        if not isinstance(item, dict):
+            continue
+        page = item.get("page_index")
+        classification = item.get("classification")
+        if classification not in valid_classes:
+            problems.append(f"p.{page} has invalid classification")
+            continue
+        required = item.get("semantic_review_required")
+        reviewed = item.get("semantic_reviewed")
+        if classification == "references_only":
+            if required is not False or reviewed is not True:
+                problems.append(f"p.{page} reference exclusion is not explicit")
+            if not str(item.get("exclusion_reason") or "").strip():
+                problems.append(f"p.{page} reference exclusion has no reason")
+        else:
+            if required is not True or reviewed is not True:
+                problems.append(
+                    f"p.{page} {classification} content was not semantically reviewed"
+                )
+            outcome = item.get("review_outcome")
+            if outcome not in {"evidence_captured", "no_core_claims"}:
+                problems.append(f"p.{page} has no valid semantic review outcome")
+            if outcome == "evidence_captured" and not item.get("evidence_ids"):
+                problems.append(f"p.{page} captured evidence but lists no Evidence ID")
+            if (
+                outcome == "no_core_claims"
+                and not str(item.get("review_notes") or "").strip()
+            ):
+                problems.append(f"p.{page} no-core-claims decision has no rationale")
+    if not problems:
+        return []
+    return [
+        {
+            "issue_type": "page_semantic_coverage",
+            "message": "Physical-page semantic coverage failed: " + "; ".join(problems) + ".",
         }
     ]
 

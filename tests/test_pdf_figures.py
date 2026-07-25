@@ -102,6 +102,38 @@ class FigureCropTests(unittest.TestCase):
                     output_path=image,
                 )
 
+    def test_caption_detection_allows_short_axis_prefix_but_ignores_body_reference(self):
+        import pymupdf
+
+        document = pymupdf.open()
+        page = document.new_page(width=300, height=400)
+        page.insert_text((40, 60), "See Figure 8.")
+        page.insert_text(
+            (40, 220),
+            "params (M) Figure 8. Scaling comparison across model sizes.",
+        )
+        matches = MODULE._caption_blocks(page, "Figure 8", pymupdf)
+        document.close()
+
+        self.assertEqual(len(matches), 1)
+        self.assertIn("Scaling comparison", matches[0][1])
+
+    def test_caption_detection_accepts_caption_without_punctuation(self):
+        import pymupdf
+
+        document = pymupdf.open()
+        page = document.new_page(width=300, height=400)
+        page.insert_text((40, 60), "Figure 4")
+        page.insert_text(
+            (40, 220),
+            "Figure 4 Overlapping fossil-coral records across three intervals.",
+        )
+        matches = MODULE._caption_blocks(page, "Figure 4", pymupdf)
+        document.close()
+
+        self.assertEqual(len(matches), 1)
+        self.assertIn("Overlapping fossil-coral", matches[0][1])
+
 
 if __name__ == "__main__":
     unittest.main()
