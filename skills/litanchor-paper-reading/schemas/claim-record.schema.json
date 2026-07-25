@@ -18,8 +18,44 @@
     "claim_id": {"type": "string", "pattern": "^C-[A-Za-z0-9_-]+$"},
     "claim_text_zh": {"type": "string", "minLength": 1},
     "claim_type": {
-      "enum": ["question", "background", "gap", "method", "result", "interpretation", "hypothesis", "limitation", "conclusion"]
+      "enum": [
+        "summary",
+        "paper_type",
+        "question",
+        "background",
+        "prior_work",
+        "gap",
+        "hypothesis",
+        "contribution",
+        "data",
+        "material",
+        "preprocessing",
+        "method",
+        "model",
+        "equation",
+        "metric",
+        "experiment",
+        "result",
+        "figure_interpretation",
+        "interpretation",
+        "discussion",
+        "limitation",
+        "conclusion",
+        "future_work",
+        "learning_value",
+        "term",
+        "writing_expression",
+        "reference"
+      ]
     },
+    "title_zh": {"type": ["string", "null"]},
+    "detail_points_zh": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "section_id": {"type": ["string", "null"]},
+    "importance": {"enum": ["core", "supporting", "context"]},
+    "conditions_zh": {"type": ["string", "null"]},
     "epistemic_status": {
       "enum": ["observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"]
     },
@@ -64,4 +100,3 @@
     }
   }
 }
-

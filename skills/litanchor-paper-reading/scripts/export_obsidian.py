@@ -13,7 +13,14 @@ from pathlib import Path
 from litanchor_local import PipelineError, atomic_write_text, load_json
 
 
-SIDECAR_FILES = ("evidence.json", "claims.json", "validation.json", "run.json")
+SIDECAR_FILES = (
+    "evidence.json",
+    "claims.json",
+    "figures.json",
+    "coverage_receipt.json",
+    "validation.json",
+    "run.json",
+)
 WINDOWS_RESERVED = {
     "CON", "PRN", "AUX", "NUL",
     *(f"COM{number}" for number in range(1, 10)),

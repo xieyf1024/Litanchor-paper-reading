@@ -15,7 +15,9 @@ class RepositoryContractTests(unittest.TestCase):
             "LICENSE",
             ".gitignore",
             "THIRD_PARTY.md",
+            "NOTICE.md",
             "requirements.txt",
+            "requirements-mineru.txt",
             "Paper Template.md",
             "科研文献入门.md",
             "docs/PRODUCT.md",
@@ -27,6 +29,9 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/litanchor_local.py",
             "skills/litanchor-paper-reading/scripts/zotero_local.py",
             "skills/litanchor-paper-reading/scripts/export_obsidian.py",
+            "skills/litanchor-paper-reading/scripts/pdf_figures.py",
+            "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
+            "skills/litanchor-paper-reading/scripts/paper_quality_gate.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -54,11 +59,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("scripts/litanchor_local.py", text)
         self.assertIn("scripts/zotero_local.py", text)
         self.assertIn("scripts/export_obsidian.py", text)
+        self.assertIn("scripts/pdf_figures.py", text)
+        self.assertIn("scripts/mineru_adapter.py", text)
 
     def test_runtime_dependency_stays_lightweight(self):
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
         requirements = [line for line in requirements if line.strip() and not line.lstrip().startswith("#")]
-        self.assertEqual(requirements, ["pypdf>=6.0,<7.0"])
+        self.assertEqual(
+            requirements,
+            ["pypdf>=6.0,<7.0", "PyMuPDF>=1.26,<2.0"],
+        )
 
     def test_openai_metadata_mentions_skill(self):
         text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
@@ -72,7 +82,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 5)
+        self.assertEqual(len(schemas), 7)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")
@@ -83,13 +93,27 @@ class RepositoryContractTests(unittest.TestCase):
         payload = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(payload["properties"]["evidence_ids"]["minItems"], 1)
         self.assertEqual(payload["properties"]["page_refs"]["minItems"], 1)
+        evidence = json.loads(
+            (SKILL / "schemas" / "evidence-unit.schema.json").read_text(encoding="utf-8")
+        )
+        self.assertIn("page_verified", evidence["required"])
+        self.assertIn("source_match_kind", evidence["required"])
 
     def test_note_template_protects_user_content_and_limits_evidence(self):
-        text = (SKILL / "assets" / "paper-note.md").read_text(encoding="utf-8")
+        text = (SKILL / "assets" / "Paper Template - Final.md").read_text(encoding="utf-8")
         self.assertIn("<!-- litanchor:user:start -->", text)
         self.assertIn("<!-- litanchor:user:end -->", text)
-        self.assertIn("[!evidence]-", text)
         self.assertIn("以下属于学习启发，不是作者原文结论", text)
+        self.assertIn("## 4. 核心结果与证据", text)
+        self.assertIn("{{evidence_quotes}}", text)
+
+    def test_project_license_and_notice_match_pymupdf_distribution_choice(self):
+        license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        notice_text = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+        third_party = (ROOT / "THIRD_PARTY.md").read_text(encoding="utf-8")
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", license_text)
+        self.assertIn("PyMuPDF", notice_text)
+        self.assertIn("AGPL-3.0-only", third_party)
 
     def test_private_and_copyrighted_artifacts_are_ignored(self):
         text = (ROOT / ".gitignore").read_text(encoding="utf-8")

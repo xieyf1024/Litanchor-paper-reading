@@ -4,7 +4,9 @@
 
 LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它计划从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
 
-**当前状态：v0.3 本地集成闭环。** 本版本在 v0.2 手动 PDF 流水线上增加了 Zotero Local API 只读适配器、已验证的 Zotero 页码链接，以及受授权根目录约束的 Obsidian Inbox 零覆盖导出。仍不安装 Zotero MCP、Obsidian 插件、OCR 模型或 MinerU。
+**当前状态：v0.4.1 Deep Reading Pipeline Pre-release。** Zotero、PDF 页码、证据追踪、关键图裁剪和受限 Obsidian 导出已经形成可靠基础。v0.4.1 已接入 `Paper Template - Final`、扩展 ClaimRecord，并增加深读完整性阻断；ResNet、LOVECLIM 和气候 U-Net 示例已通过真实论文正向验证，并明确标记为人工辅助回归产物。旧三篇简略输出仅保留为失败回归样例。尚未完成的是可重复的自动专项提取/编排路径，因此 `prepare` 后仍需由 Skill 按多遍流程建立证据与主张账本。
+
+本轮根因与正向验证数据分别见 [deep-output failure diagnosis](evals/reports/deep-output-failure-diagnosis.md)、[v0.4.1 forward validation](evals/reports/v0.4.1-deep-repair-forward-validation.md) 和 [v0.4.1 final validation](docs/v0.4.1-final-validation.md)。人工辅助示例见 [examples/v0.4.1](examples/v0.4.1/)。
 
 ## 核心约束
 
@@ -22,8 +24,9 @@ LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Ski
 ├── skills/litanchor-paper-reading/  # 可安装 Skill
 ├── docs/                            # 产品、流程、数据与集成规格
 ├── evals/                           # 本地 PDF 评测清单与标注规范
+├── examples/v0.4.1/                 # 明确标记为非自主生成的回归示例
 ├── tests/                           # 契约与本地流水线回归测试
-├── requirements.txt                # 当前唯一运行依赖：pypdf
+├── requirements.txt                # 当前 PDF 依赖：pypdf + PyMuPDF
 ├── Paper Template.md                # 项目作者的原始模板
 └── 科研文献入门.md                   # 项目作者的原始阅读方法
 ```
@@ -61,13 +64,30 @@ python -m venv .venv
 .\.venv\Scripts\python skills\litanchor-paper-reading\scripts\litanchor_local.py prepare "Test-PDF\paper.pdf" --output-root "runtime\runs" --mode deep
 ```
 
-Skill 依据生成的 `source-bundle.json` 填充该运行目录中的 `evidence.json` 和 `claims.json`。随后生成预览：
+Skill 必须按背景/问题/贡献、数据/方法、结果/图表、讨论/限制等专项遍次读取 `source-bundle.json`，再填充 `evidence.json` 和富结构 `claims.json`。ClaimRecord 是中间知识对象，不是最终的一句式摘要。随后生成预览：
 
 ```powershell
 .\.venv\Scripts\python skills\litanchor-paper-reading\scripts\litanchor_local.py build "runtime\runs\<run-id>"
 ```
 
-产物保存在被 Git 忽略的 `runtime/`。`build` 会阻断错误页码、无法在原页找到的引文、数值/单位不一致、语义校验失败和文件覆盖。
+产物保存在被 Git 忽略的 `runtime/`。所有 `deep`/`internalize` 输出必须使用 `assets/Paper Template - Final.md`。`build` 会阻断错误或未验证页码、无法在原页找到的引文、必需内容组缺失、内容召回或章节深度不足、未完成关键视觉筛选、未通过裁剪来源门禁、数值/单位不一致、Final 模板缺节、语义校验失败和文件覆盖。页码未知时不会回退成 `p.1`。
+
+从原 PDF 裁剪一张已核对的关键图：
+
+```powershell
+.\.venv\Scripts\python skills\litanchor-paper-reading\scripts\pdf_figures.py "paper.pdf" `
+  --page 3 --label "Figure 1" --output "runtime\figures\figure-1.png"
+```
+
+该命令只接受一基物理页码，默认拒绝覆盖，并为 PNG 生成包含原 PDF 哈希、页码、图题、裁剪框、边缘检查和输出哈希的 JSON 清单。自动定位失败时应先查看原页，再显式给出 `--bbox`；不得猜测裁剪范围。每篇 `deep` 笔记必须完成一次视觉筛选，默认只嵌入 1–3 张不可替代的流程图、结构图、结果图或机制示意图；没有合适对象时记录原因，不为凑数插图。
+
+可选的 MinerU Flash 结构增强安装在独立依赖文件中：
+
+```powershell
+.\.venv\Scripts\pip install -r requirements-mineru.txt
+```
+
+它只在用户对该文档明确同意外部上传后运行，调用无需 Token 的 Flash/Quick Parse 接口，并强制检查单文件不超过 10 MiB、20 页。输出只用于标题层级、阅读顺序、图题和复杂结构候选；`exact`、`fuzzy`、`unmatched` 对齐结果都不能绕过 PyMuPDF 原页核验。
 
 ## Zotero Local API 与测试 Inbox
 
@@ -91,10 +111,10 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 ## 当前阶段边界
 
-当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR、MinerU 或 Zotero MCP。下一阶段优先扩充独立测试与金标准，而不是增加连接器。
+当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。原生文本由 pypdf 逐页提取，PyMuPDF 负责原 PDF 视觉证据；MinerU Flash 仍是独立、默认关闭的可选结构增强通道，尚未自动进入最终证据和笔记生成流程。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 
 ## License
 
-[MIT](LICENSE)。参考项目、许可证和借鉴边界见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+[GNU Affero General Public License v3.0 only](LICENSE)。选择 AGPL-3.0-only 是为了在开源分发中与 PyMuPDF 的 AGPL 许可路径保持清晰兼容。若未来改为闭源或不愿遵守 AGPL，应重新评估并向 Artifex 获取适当许可。第三方依赖、许可证和借鉴边界见 [THIRD_PARTY.md](THIRD_PARTY.md)，显著告知见 [NOTICE.md](NOTICE.md)。

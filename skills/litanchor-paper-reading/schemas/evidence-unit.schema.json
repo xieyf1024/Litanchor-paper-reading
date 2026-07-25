@@ -14,22 +14,30 @@
     "contains_number",
     "contains_unit",
     "confidence",
-    "needs_review"
+    "needs_review",
+    "page_verified",
+    "source_match_kind"
   ],
   "properties": {
     "evidence_id": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"},
     "evidence_type": {
       "enum": [
+        "summary",
+        "paper_type",
         "research_question",
         "background",
+        "prior_work",
         "research_gap",
         "hypothesis",
+        "contribution",
         "data",
         "material",
+        "preprocessing",
         "model",
         "method_step",
         "parameter",
         "metric",
+        "experiment",
         "result",
         "figure",
         "table",
@@ -37,7 +45,11 @@
         "discussion",
         "limitation",
         "uncertainty",
-        "conclusion"
+        "conclusion",
+        "future_work",
+        "term",
+        "writing_expression",
+        "reference"
       ]
     },
     "page_index": {"type": "integer", "minimum": 1},
@@ -60,7 +72,10 @@
     "contains_variable": {"type": "boolean"},
     "confidence": {"type": "number", "minimum": 0, "maximum": 1},
     "needs_review": {"type": "boolean"},
+    "page_verified": {"type": "boolean"},
+    "source_match_kind": {
+      "enum": ["exact", "normalized", "fuzzy", "unmatched"]
+    },
     "issues": {"type": "array", "items": {"type": "string"}}
   }
 }
-

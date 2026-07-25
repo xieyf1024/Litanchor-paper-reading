@@ -8,7 +8,7 @@ description: Creates evidence-grounded Chinese close-reading notes from a single
 ## Enforce hard boundaries
 
 - Treat the user-provided paper as the only factual source for the formal note.
-- Write `原文未说明` for absent information, `不适用` for inapplicable fields, and `解析失败` for unreadable content. Never interchange them.
+- Write `原文未说明` for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection, and `解析失败` for unreadable content. Never interchange them.
 - Bind every factual claim to at least one verified Evidence ID and physical PDF page.
 - Preserve numbers, units, variables, ranges, subjects, conditions, causality, scope, and author modality.
 - Never upgrade discussion, interpretation, hypotheses, or speculation into observed fact.
@@ -32,21 +32,27 @@ Read `references/workflow.md` completely, then:
 1. Register source identity, acquisition method, file hash, requested mode, and `external_knowledge_allowed=false`.
 2. Preflight the PDF before analysis. Preserve physical page boundaries and report layout/OCR failures.
 3. Map paper type and sections without inventing absent structure.
-4. Extract original-language EvidenceUnits before writing Chinese claims.
-5. Register core figures, tables, equations, and failed visual parsing explicitly.
-6. Build ClaimRecords only from evidence; separate results, interpretations, hypotheses, and speculation.
-7. Compose with `assets/paper-note.md`; do not freely summarize the full PDF at this stage.
-8. Validate schema, traceability, pages, quotations, numbers, units, modality, Markdown, filename, and collision safety.
-9. Show a preview, warnings, failed pages, and intended paths before any write.
-10. Export only after explicit authorization and only to the authorized directory.
+4. For `deep`/`internalize`, run separate passes for background/question/contribution; data/method/model/equation/metric/experiment; results/visuals; and discussion/limits/conclusions. Finish with an omission review against the paper structure.
+5. Extract original-language EvidenceUnits before writing Chinese claims.
+6. Build rich ClaimRecords only from evidence. Use `title_zh`, `detail_points_zh`, `conditions_zh`, `importance`, and the expanded claim types; never use one short claim as a substitute for an entire required section.
+7. For every `deep`/`internalize` run, complete the Visual Selection Pass: select at most 1–3 indispensable method/result visuals, or record why none qualifies.
+8. Compose every formal `deep`/`internalize` note with `assets/Paper Template - Final.md`. Keep `skim` structurally separate.
+9. Run `scripts/paper_quality_gate.py` through the bundled builder. Block missing required content groups, sparse recall, shallow core claims, missing Final-template headings, or unresolved template slots. In `internalize`, additionally require learning value, five writing expressions, terms, and traceable references; keep those fields optional in `deep`.
+10. Validate schema, traceability, pages, quotations, numbers, units, modality, Markdown, filename, and collision safety.
+11. Show a preview, warnings, failed pages, and intended paths before any write.
+12. Export only after explicit authorization and only to the authorized directory.
 
-For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
+For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and rich `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
 
 For a running Zotero desktop client with Local API enabled, use `scripts/zotero_local.py check`, then `prepare` with exactly one title, DOI, citekey, or Item Key. Require one exact bibliographic match and one PDF attachment; ambiguity blocks the run. This adapter is loopback-only and read-only and does not require Zotero MCP.
+
+When the user explicitly authorizes external upload of one eligible PDF, `scripts/mineru_adapter.py` may run the optional token-free MinerU Flash path. Enforce the current 10 MiB/20-page limits, keep all blocks non-authoritative, and align every candidate back to one PyMuPDF physical page.
 
 For an authorized Obsidian test directory, use `scripts/export_obsidian.py` only after `build`. Pass the authorized root and its child Inbox separately, accept warnings explicitly when applicable, and require `--confirm-export`. The script verifies preview integrity, path containment, required sidecars, and zero collisions before writing.
 
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
+
+Store only the verified first author in note frontmatter while retaining all authors in SourceBundle. Crop selected figures from the original PDF with `scripts/pdf_figures.py`; clipped, contaminated, low-confidence, or unverified crops are rejected. Retain each manifest and use a verified Zotero page link. MinerU Flash may only assist structure discovery after explicit upload consent; unmatched MinerU content is never evidence.
 
 ## Keep evidence readable
 

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/visual-selection.schema.json",
+  "title": "LitAnchor VisualSelection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "selection_status",
+    "inventory_complete",
+    "candidate_count",
+    "candidates_evaluated",
+    "selected",
+    "rejected",
+    "no_selection_reason",
+    "no_result_visual_reason"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "selection_status": {"enum": ["pending", "completed"]},
+    "inventory_complete": {"type": "boolean"},
+    "candidate_count": {"type": "integer", "minimum": 0},
+    "candidates_evaluated": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "figure_label",
+          "physical_pdf_page",
+          "visual_role",
+          "decision",
+          "reason"
+        ],
+        "properties": {
+          "figure_label": {"type": "string", "minLength": 1},
+          "physical_pdf_page": {"type": "integer", "minimum": 1},
+          "visual_role": {"enum": ["method", "result", "both", "context"]},
+          "decision": {"enum": ["selected", "rejected"]},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "selected": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "figure_label",
+          "physical_pdf_page",
+          "visual_role",
+          "supported_claim_ids",
+          "caption_original",
+          "selection_reason",
+          "discussion_location",
+          "image_path",
+          "manifest_path",
+          "embed_path"
+        ],
+        "properties": {
+          "figure_label": {"type": "string", "minLength": 1},
+          "physical_pdf_page": {"type": "integer", "minimum": 1},
+          "visual_role": {"enum": ["method", "result", "both", "context"]},
+          "supported_claim_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "caption_original": {"type": "string", "minLength": 1},
+          "selection_reason": {"type": "string", "minLength": 1},
+          "discussion_location": {"type": "string", "minLength": 1},
+          "image_path": {"type": "string", "minLength": 1},
+          "manifest_path": {"type": "string", "minLength": 1},
+          "embed_path": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["figure_label", "reason"],
+        "properties": {
+          "figure_label": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "no_selection_reason": {"type": ["string", "null"]},
+    "no_result_visual_reason": {"type": ["string", "null"]}
+  }
+}

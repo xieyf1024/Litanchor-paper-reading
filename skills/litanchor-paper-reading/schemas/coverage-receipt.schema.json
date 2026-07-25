@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/coverage-receipt.schema.json",
+  "title": "LitAnchor CoverageReceipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "paper_id",
+    "run_id",
+    "reading_mode",
+    "document_page_count",
+    "pages_extracted",
+    "pages_with_readable_text",
+    "pages_used_as_evidence",
+    "sections_evidenced",
+    "minimum_evidence_pages",
+    "minimum_sections",
+    "reaches_later_half",
+    "extraction_status",
+    "analysis_status",
+    "coverage_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "paper_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "reading_mode": {"enum": ["skim", "deep", "internalize"]},
+    "document_page_count": {"type": "integer", "minimum": 1},
+    "pages_extracted": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "pages_with_readable_text": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "pages_used_as_evidence": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "sections_evidenced": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "minimum_evidence_pages": {"type": "integer", "minimum": 1},
+    "minimum_sections": {"type": "integer", "minimum": 1},
+    "reaches_later_half": {"type": "boolean"},
+    "extraction_status": {"enum": ["complete", "incomplete"]},
+    "analysis_status": {"enum": ["complete", "insufficient"]},
+    "coverage_status": {"enum": ["complete", "incomplete"]}
+  }
+}

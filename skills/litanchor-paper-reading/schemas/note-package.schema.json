@@ -19,6 +19,7 @@
         "claims": {"type": ["string", "null"]},
         "validation": {"type": ["string", "null"]},
         "run_record": {"type": ["string", "null"]},
+        "coverage_receipt": {"type": ["string", "null"]},
         "failure_report": {"type": ["string", "null"]}
       }
     },
@@ -65,6 +66,9 @@
         "page_reference_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
         "numeric_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
         "modality_fidelity": {"type": "number", "minimum": 0, "maximum": 1},
+        "template_completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "content_recall_pass": {"type": "boolean"},
+        "section_depth_pass": {"type": "boolean"},
         "format_valid": {"type": "boolean"},
         "markdown_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
