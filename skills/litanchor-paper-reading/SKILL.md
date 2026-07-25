@@ -42,6 +42,16 @@ Read `references/workflow.md` completely, then:
 11. Show a preview, warnings, failed pages, and intended paths before any write.
 12. Export only after explicit authorization and only to the authorized directory.
 
+For a v0.5 autonomous candidate, use `scripts/autonomous_deep_reading.py start`
+after Zotero/PDF preparation and read
+`references/autonomous-deep-reading.md` completely. The command creates
+PyMuPDF-authoritative page/section/pass work packets and empty independent
+review contracts; it does not by itself claim that the paper has been read.
+Only `auto_extracted` EvidenceUnits and `auto_synthesized` ClaimRecords are
+allowed in a blind run. Completion requires separate fidelity and recall
+reviews; reference notes, curated ledgers, or user answers are forbidden as
+blind-test inputs.
+
 For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and rich `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
 
 For a running Zotero desktop client with Local API enabled, use `scripts/zotero_local.py check`, then `prepare` with exactly one title, DOI, citekey, or Item Key. Require one exact bibliographic match and one PDF attachment; ambiguity blocks the run. This adapter is loopback-only and read-only and does not require Zotero MCP.

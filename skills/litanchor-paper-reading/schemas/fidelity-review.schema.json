@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/fidelity-review.schema.json",
+  "title": "LitAnchor FidelityReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reviewer_role",
+    "independent_from_composer",
+    "checked_claim_ids",
+    "findings",
+    "final_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "reviewer_role": {"const": "fidelity-reviewer"},
+    "independent_from_composer": {"const": true},
+    "checked_claim_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^C-[A-Za-z0-9_-]+$"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "issue_type", "message"],
+        "properties": {
+          "severity": {"enum": ["blocker", "error", "warning", "info"]},
+          "issue_type": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1},
+          "claim_id": {"type": ["string", "null"]},
+          "evidence_id": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "final_status": {"enum": ["pending", "pass", "warning", "fail"]}
+  }
+}

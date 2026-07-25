@@ -31,6 +31,11 @@ Save one-based physical page, printed page if known, text blocks/coordinates whe
 
 For a review paper, replace experiment-specific fields with review scope, search/selection method, synthesis method, evidence categories, agreements, disagreements and limitations. Do not force empirical fields.
 
+For an autonomous candidate, `scripts/autonomous_deep_reading.py start`
+materializes these passes as auditable work packets. PyMuPDF physical pages
+are authoritative. The initial status is `awaiting_agent_analysis`; creating
+the packets is not equivalent to completing the semantic reading.
+
 ## 7. Run the Visual Selection Pass
 
 Every `deep` or `internalize` run must evaluate figures/tables/equations repeatedly cited in the text, supporting core results, defining the method or defining a metric. Select at most 1–3 indispensable objects; never choose by figure number or to fill a quota. Record label, page, caption, role, supported claims, parse status and review requirement. Do not analyze decorative or redundant images. If none qualifies, record the reason in `figures.json`.

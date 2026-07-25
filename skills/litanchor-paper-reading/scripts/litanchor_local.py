@@ -98,6 +98,7 @@ CLAIM_TYPES = {
     "reference",
 }
 EPISTEMIC_STATUSES = {"observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"}
+AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
 
 
 class PipelineError(RuntimeError):
@@ -707,6 +708,7 @@ def validate_run(
 
     evidence_by_id: dict[str, dict[str, Any]] = {}
     valid_evidence = 0
+    autonomous_generation = bool(run_record.get("autonomous_generation", False))
     for item in evidence:
         if not isinstance(item, dict):
             add_issue("blocker", "invalid_evidence", "EvidenceUnit must be an object.")
@@ -725,6 +727,16 @@ def validate_run(
             add_issue("blocker", "duplicate_evidence_id", f"Duplicate Evidence ID: {evidence_id}", evidence_id=evidence_id)
             continue
         evidence_by_id[evidence_id] = item
+        if (
+            autonomous_generation
+            and item.get("origin") not in AUTONOMOUS_ORIGINS
+        ):
+            add_issue(
+                "blocker",
+                "invalid_autonomous_origin",
+                f"Evidence {evidence_id} has a disallowed or missing autonomous origin.",
+                evidence_id=evidence_id,
+            )
         if item.get("evidence_type") not in EVIDENCE_TYPES or item.get("epistemic_status") not in EPISTEMIC_STATUSES:
             add_issue(
                 "blocker",
@@ -827,6 +839,16 @@ def validate_run(
             add_issue("blocker", "duplicate_claim_id", f"Duplicate Claim ID: {claim_id}", claim_id=claim_id)
             continue
         seen_claim_ids.add(claim_id)
+        if (
+            autonomous_generation
+            and claim.get("origin") not in AUTONOMOUS_ORIGINS
+        ):
+            add_issue(
+                "blocker",
+                "invalid_autonomous_origin",
+                f"Claim {claim_id} has a disallowed or missing autonomous origin.",
+                claim_id=claim_id,
+            )
         if (
             not isinstance(claim.get("claim_text_zh"), str)
             or not claim["claim_text_zh"].strip()

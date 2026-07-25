@@ -11,6 +11,8 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 | ClaimRecord | `claim-record.schema.json` | An evidence-grounded intermediate knowledge object for Final-template composition |
 | NotePackage | `note-package.schema.json` | Export status, artifact paths, issues and quality statistics |
 | FeedbackEvent | `feedback-event.schema.json` | User correction or run failure for controlled evolution |
+| FidelityReview | `fidelity-review.schema.json` | Independent claim-to-evidence fidelity review for an autonomous candidate |
+| RecallReview | `recall-review.schema.json` | Independent paper-type content-recall review |
 
 ## Invariants
 
@@ -22,6 +24,8 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 6. A `completed` NotePackage may be exported only when blocker count is zero and format validation passed.
 7. Runtime artifacts and user feedback are private by default and must not be committed to the public repository.
 8. A `deep` ClaimRecord may include `title_zh`, `detail_points_zh`, `conditions_zh`, `section_id` and `importance`; one terse string is not sufficient for a core method/result/discussion object.
+9. Autonomous blind runs require `origin=auto_extracted` on EvidenceUnits and `origin=auto_synthesized` on ClaimRecords; curated/user/missing origins block completion.
+10. Autonomous completion requires independent FidelityReview and RecallReview artifacts with no unresolved blocker/error.
 9. `deep` and `internalize` must cover the required content groups before NotePackage can be completed. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection and `解析失败` for unreadable content.
 
 ## Evidence and claim example

@@ -53,8 +53,15 @@ Zotero Local API GET or manual PDF
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 - `scripts/mineru_adapter.py` optionally calls the token-free MinerU Flash service after explicit upload consent, enforces 10 MiB/20-page limits, and records `exact`/`fuzzy`/`unmatched` page alignment without promoting any block to formal evidence.
 - `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the canonical Final-template heading/slot contract.
+- `scripts/autonomous_deep_reading.py` is the v0.5 development entry point. It creates a PyMuPDF-authoritative page baseline, classifies the paper, materializes six reading-pass work packets, fuses aligned MinerU headings, enforces blind-run origins and creates separate fidelity/recall review contracts.
 
 The slice deliberately stops before local OCR, paid MinerU precision parsing, Zotero writes, reverse Obsidian links and full semantic automation. pypdf preserves the page-indexed native text used for quote matching; PyMuPDF renders and crops final visual evidence from the original PDF. Evidence selection, content recall and modality/scope review remain model responsibilities; deterministic gates can reject obvious under-reading but cannot prove scientific completeness without gold comparison.
+
+On the v0.5 development branch, PyMuPDF also becomes the authoritative
+full-text physical-page baseline for autonomous candidates. The correct state
+after work-packet and MinerU fusion is `awaiting_agent_analysis`; no Final note
+may be composed while the ledgers are empty or either independent review is
+pending.
 
 ## Stages and exit criteria
 

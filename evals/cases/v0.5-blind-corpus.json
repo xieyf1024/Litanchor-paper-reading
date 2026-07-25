@@ -1,0 +1,54 @@
+{
+  "schema_version": "0.1",
+  "suite_id": "v0.5-blind-corpus",
+  "frozen_at": "2026-07-25T04:40:22Z",
+  "blind_policy": {
+    "allowed_inputs": [
+      "zotero_metadata",
+      "original_pdf",
+      "paper_template_final"
+    ],
+    "reference_notes_allowed": false,
+    "prefilled_evidence_allowed": false,
+    "prefilled_claims_allowed": false,
+    "allowed_origins": [
+      "auto_extracted",
+      "auto_synthesized"
+    ]
+  },
+  "papers": [
+    {
+      "case_id": "cesm-framework-2013",
+      "title": "The community earth system model: A framework for collaborative research",
+      "doi": "10.1175/BAMS-D-12-00121.1",
+      "zotero_item_key": "E3AVXW84",
+      "zotero_attachment_key": "A7F6NIXY",
+      "pdf_sha256": "31b3dc21986c9130ee1f41e2d35893f582a1c3dbc72b2287d4cce89ed9de4f63",
+      "page_count": 22,
+      "pages_with_native_text": 22,
+      "mineru_whole_file_eligible": false
+    },
+    {
+      "case_id": "enso-last-millennium-2003",
+      "title": "El niño/southern oscillation and tropical pacific climate during the last millennium",
+      "doi": "10.1038/nature01779",
+      "zotero_item_key": "GP27Y5FK",
+      "zotero_attachment_key": "6HTV863U",
+      "pdf_sha256": "5ba5b7c171b8d674a8cee61a47c445809ae74d3f33c48f0921ae819aeadaea70",
+      "page_count": 6,
+      "pages_with_native_text": 6,
+      "mineru_whole_file_eligible": true
+    },
+    {
+      "case_id": "masked-autoencoders-2021",
+      "title": "Masked autoencoders are scalable vision learners",
+      "doi": "10.48550/arXiv.2111.06377",
+      "zotero_item_key": "XL726N8C",
+      "zotero_attachment_key": "X8PWBMT5",
+      "pdf_sha256": "1b490443925c72a2b7c770f90dd797e248729ae34a57e1abfe9ed36751c4cc5b",
+      "page_count": 14,
+      "pages_with_native_text": 14,
+      "mineru_whole_file_eligible": true
+    }
+  ]
+}

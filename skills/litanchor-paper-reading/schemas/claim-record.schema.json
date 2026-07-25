@@ -16,6 +16,9 @@
   ],
   "properties": {
     "claim_id": {"type": "string", "pattern": "^C-[A-Za-z0-9_-]+$"},
+    "origin": {
+      "enum": ["auto_extracted", "auto_synthesized", "curated", "user"]
+    },
     "claim_text_zh": {"type": "string", "minLength": 1},
     "claim_type": {
       "enum": [

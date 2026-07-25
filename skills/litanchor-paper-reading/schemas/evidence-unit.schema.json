@@ -20,6 +20,9 @@
   ],
   "properties": {
     "evidence_id": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"},
+    "origin": {
+      "enum": ["auto_extracted", "auto_synthesized", "curated", "user"]
+    },
     "evidence_type": {
       "enum": [
         "summary",

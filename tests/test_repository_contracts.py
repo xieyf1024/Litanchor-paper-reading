@@ -82,7 +82,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 7)
+        self.assertEqual(len(schemas), 9)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")

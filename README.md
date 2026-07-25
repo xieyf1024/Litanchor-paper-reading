@@ -6,6 +6,8 @@ LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Ski
 
 **当前状态：v0.4.1 Deep Reading Pipeline Pre-release。** Zotero、PDF 页码、证据追踪、关键图裁剪和受限 Obsidian 导出已经形成可靠基础。v0.4.1 已接入 `Paper Template - Final`、扩展 ClaimRecord，并增加深读完整性阻断；ResNet、LOVECLIM 和气候 U-Net 示例已通过真实论文正向验证，并明确标记为人工辅助回归产物。旧三篇简略输出仅保留为失败回归样例。尚未完成的是可重复的自动专项提取/编排路径，因此 `prepare` 后仍需由 Skill 按多遍流程建立证据与主张账本。
 
+`codex/v0.5-autonomous-deep-reading` 正在开发自动全文精读 MVP。当前开发检查点已经能冻结盲测输入、用 PyMuPDF 建立权威页级工作包、按论文类型生成六遍阅读任务、调用并对齐 MinerU Flash 结构结果，以及建立相互独立的忠实度/召回审查契约；状态仍停在 `awaiting_agent_analysis`，尚未生成自动 Evidence/Claim Ledger 或正式笔记。
+
 本轮根因与正向验证数据分别见 [deep-output failure diagnosis](evals/reports/deep-output-failure-diagnosis.md)、[v0.4.1 forward validation](evals/reports/v0.4.1-deep-repair-forward-validation.md) 和 [v0.4.1 final validation](docs/v0.4.1-final-validation.md)。人工辅助示例见 [examples/v0.4.1](examples/v0.4.1/)。
 
 ## 核心约束
@@ -111,7 +113,7 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 ## 当前阶段边界
 
-当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。原生文本由 pypdf 逐页提取，PyMuPDF 负责原 PDF 视觉证据；MinerU Flash 仍是独立、默认关闭的可选结构增强通道，尚未自动进入最终证据和笔记生成流程。
+当前发布版只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。v0.5 开发分支开始以 PyMuPDF 作为权威全文页级基线，并把 MinerU Flash 接入为非权威结构增强层；自动 Evidence/Claim Ledger、关键图视觉理解与 Final 笔记仍未完成。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 
