@@ -20,11 +20,14 @@ Check PDF validity, encryption, page count, extractable-text coverage, likely sc
 
 Save one-based physical page, printed page if known, text blocks/coordinates where available, extraction method, confidence and warnings. Never concatenate an unpaged full-text blob.
 
-## 6. Read in three passes
+## 6. Read in specialised passes
 
-- Pass 1: title, abstract, headings, conclusion and the end of the introduction; map paper type, question, method and structure.
-- Pass 2: extract section-scoped evidence for background, gap, hypotheses, data, materials, method steps, parameters, metrics, results, discussion, limitations and conclusions.
-- Pass 3: reconstruct the argument as question -> importance -> prior gap -> method -> criteria -> results -> interpretation -> limits.
+- Pass 1 — structure: title, abstract, headings, conclusion and the end of the introduction; map paper type, question, method and argument.
+- Pass 2 — background/question/contribution: extract necessary background, directly relevant prior work, research gap, question, scope and author-stated contributions.
+- Pass 3 — data/method: extract data/materials, preprocessing, method steps, models, equations, metrics, experiments, baselines, ablations and reproducibility details.
+- Pass 4 — results/visuals: extract independently verifiable results, numbers, conditions, figures, tables and equations that carry the core argument.
+- Pass 5 — discussion/limits: separate observation from interpretation, hypotheses, limitations, conclusions and future work.
+- Pass 6 — omission review: compare the ledger against the detected paper structure and `Paper Template - Final`; do not declare `deep` complete while a required content group is missing or represented by one unexplained sentence.
 
 For a review paper, replace experiment-specific fields with review scope, search/selection method, synthesis method, evidence categories, agreements, disagreements and limitations. Do not force empirical fields.
 
@@ -36,15 +39,15 @@ For a selected figure, run `scripts/pdf_figures.py` against the original PDF. Ve
 
 ## 8. Build ledgers
 
-Create EvidenceUnits first. Then create Chinese ClaimRecords from those units. Preserve author modality and distinguish results from interpretations, hypotheses and speculation.
+Create EvidenceUnits first. Then create Chinese ClaimRecords from those units. Preserve author modality and distinguish results from interpretations, hypotheses and speculation. For `deep`/`internalize`, use the expanded knowledge types and fill `title_zh`, `detail_points_zh`, `conditions_zh`, `section_id` and `importance` where relevant. ClaimRecords are intermediate knowledge objects, not the final note.
 
 ## 9. Compose
 
-Render the relevant sections of `../assets/paper-note.md` from validated ledgers. Use `原文未说明`, `不适用` and `解析失败` precisely. Keep user-edit markers unchanged.
+Render every formal `deep`/`internalize` note from `../assets/Paper Template - Final.md`. The renderer loads the asset and fills its named slots; it must not substitute a hard-coded summary outline. `skim` remains a separate compact output. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection and `解析失败` for unreadable content. Keep user-edit markers unchanged.
 
 ## 10. Validate and export
 
-Run deterministic schema/page/quote/numeric/format checks before semantic support/modality/causality/scope review. If any blocker/error remains, produce the failure report. Otherwise show a preview and write only after authorization using the safe rules in `integrations.md`.
+Run deterministic schema/page/quote/numeric checks and the deep-reading gate before semantic support/modality/causality/scope review. The deep-reading gate checks required content groups, claim/detail density, Final-template headings and unresolved slots. It is a recall guard, not proof of scientific correctness; gold comparison remains necessary. If any blocker/error remains, produce the failure report. Otherwise show a preview and write only after authorization using the safe rules in `integrations.md`.
 
 ## 11. Record feedback
 
@@ -72,17 +75,18 @@ Use exactly one title, DOI, citekey or Item Key selector. Zero/multiple exact it
 Continue only when preflight returns `PASS` or `PASS_WITH_WARNINGS`:
 
 1. Read `source-bundle.json`, preserving physical page boundaries.
-2. Fill `evidence.json` with an array of objects conforming to `schemas/evidence-unit.schema.json`.
-3. Fill `claims.json` with an array of objects conforming to `schemas/claim-record.schema.json`.
-4. Complete `figures.json` under `schemas/visual-selection.schema.json`, with 0–3 selected objects and a reason when none qualifies.
-5. Perform semantic support, scope, causality, numeric, and modality review before setting each claim validation status.
-6. Build a preview:
+2. Complete the specialised reading passes before composing output.
+3. Fill `evidence.json` with an array of objects conforming to `schemas/evidence-unit.schema.json`.
+4. Fill `claims.json` with an array of rich objects conforming to `schemas/claim-record.schema.json`; do not cap each type at one item or use top-k retrieval as a substitute for section reading.
+5. Complete `figures.json` under `schemas/visual-selection.schema.json`, with 0–3 selected objects and a reason when none qualifies.
+6. Perform semantic support, scope, causality, numeric, modality and omission review before setting each claim validation status.
+7. Build a preview:
 
 ```powershell
 python scripts/litanchor_local.py build "runtime/runs/<run-id>"
 ```
 
-`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, insufficient deep-reading coverage, incomplete visual selection, failed crop provenance, numeric values or units absent from the evidence, failed semantic status, and an existing output path. It records the validated preview SHA-256. An unknown page is never rendered as `p.1`.
+`build` rejects missing fields, invalid IDs/pages, quotations not found on the cited physical page, missing Final-template content groups, sparse or shallow `deep` ledgers, incomplete visual selection, failed crop provenance, numeric values or units absent from the evidence, failed semantic status, unresolved template slots and an existing output path. It records the validated preview SHA-256. An unknown page is never rendered as `p.1`.
 
 To crop an already verified key figure:
 

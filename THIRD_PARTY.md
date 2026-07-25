@@ -26,9 +26,11 @@
 
 MinerU 免费 Agent/Flash 接口的可用性、文件限制、限流和表格/公式能力由外部服务控制，不属于 LitAnchor 的稳定承诺。当前适配器强制执行 10 MiB、20 页限制，不读取 Token，并保存请求、响应、隐私回执与对齐产物。MinerU 输出不能直接成为正式证据；正式页码、引文和视觉对象必须回到原 PDF 核验。
 
+`examples/v0.4.1/assets/` 中的论文插图裁剪件仅用于展示与评测，仍受源论文的版权和许可条款约束，不属于本项目 AGPL 许可范围。具体来源见该目录的 `README.md`。
+
 ## Project-authored source material
 
 - `Paper Template.md`：项目作者提供的原始文献精读模板。
 - `科研文献入门.md`：项目作者提供的原始阅读方法笔记。
 
-可安装 Skill 中的 `assets/paper-note.md` 与 `references/reading-method.md` 是对以上材料的精简整理，并遵循本仓库 AGPL-3.0-only 许可。
+可安装 Skill 中的 `assets/Paper Template - Final.md` 与 `references/reading-method.md` 是对以上材料及项目作者最终模板的整理，并遵循本仓库 AGPL-3.0-only 许可。

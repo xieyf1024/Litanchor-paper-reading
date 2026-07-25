@@ -11,22 +11,24 @@ flowchart TD
     D -->|FALLBACK_REQUIRED| Y[Ask for approved fallback]
     D -->|PASS or warning| E[Page-level extraction]
     E --> F[Paper profile and structure]
-    F --> G[Evidence ledger]
-    G --> H[Figure table equation records]
-    H --> I[Claim ledger]
-    I --> J[Compose note]
-    J --> K[Deterministic validation]
-    K -->|fail| X
-    K --> L[Semantic fidelity review]
+    F --> G[Specialised reading passes]
+    G --> H[Evidence ledger]
+    H --> I[Figure table equation records]
+    I --> J[Rich Claim ledger]
+    J --> K[Deep completeness gate]
+    K --> Q[Final-template composition]
+    Q --> R[Deterministic validation]
+    R -->|fail| X
+    R --> L[Semantic fidelity review]
     L -->|fail| X
     L --> M[Preview]
     M -->|authorized| N[Safe Obsidian export]
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented local slice (v0.4 completion / v0.4.1 candidate)
+## Implemented local slice (v0.4.1 Deep Reading Pipeline repair)
 
-Five deterministic scripts now implement the local integration path:
+Six deterministic scripts now implement the local integration path:
 
 ```text
 Zotero Local API GET or manual PDF
@@ -36,8 +38,11 @@ Zotero Local API GET or manual PDF
 → 0–3 original-PDF key-figure crops plus provenance manifests
 → optional consent-gated MinerU Flash structure candidates
 → private SourceBundle
-→ Skill-generated Evidence/Claim ledgers
-→ deterministic page/quote/numeric checks
+→ specialised reading passes
+→ Skill-generated Evidence/rich Claim ledgers
+→ required-content, recall and section-depth gate
+→ Paper Template - Final composition
+→ deterministic page/quote/numeric/template checks
 → non-overwriting Markdown preview
 → hash-verified, path-contained, non-overwriting test Inbox export
 ```
@@ -47,8 +52,9 @@ Zotero Local API GET or manual PDF
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 - `scripts/mineru_adapter.py` optionally calls the token-free MinerU Flash service after explicit upload consent, enforces 10 MiB/20-page limits, and records `exact`/`fuzzy`/`unmatched` page alignment without promoting any block to formal evidence.
+- `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the canonical Final-template heading/slot contract.
 
-The slice deliberately stops before local OCR, paid MinerU precision parsing, Zotero writes, reverse Obsidian links and full semantic automation. PyMuPDF remains the physical-page, quotation and final-image authority. Evidence selection and modality/scope review remain model responsibilities; the scripts verify their declared artifacts and never invent paper content.
+The slice deliberately stops before local OCR, paid MinerU precision parsing, Zotero writes, reverse Obsidian links and full semantic automation. pypdf preserves the page-indexed native text used for quote matching; PyMuPDF renders and crops final visual evidence from the original PDF. Evidence selection, content recall and modality/scope review remain model responsibilities; deterministic gates can reject obvious under-reading but cannot prove scientific completeness without gold comparison.
 
 ## Stages and exit criteria
 
@@ -58,13 +64,15 @@ The slice deliberately stops before local OCR, paid MinerU precision parsing, Zo
 4. **Preflight PDF.** Check file validity, encryption, page count, text coverage, likely scanning, extraction corruption and layout warnings. Return `PASS`, `PASS_WITH_WARNINGS`, `FALLBACK_REQUIRED`, or `BLOCKED`.
 5. **Extract by page.** Preserve PDF physical page boundaries, text blocks and warnings. Never flatten the entire paper into an unpaged string.
 6. **Profile and map structure.** Distinguish empirical, method, model and review papers; map section boundaries without inventing missing sections.
-7. **Build evidence ledger.** Extract the smallest sufficient original-language evidence units with page references, section, quote, numbers, units and epistemic markers.
-8. **Run the Visual Selection Pass.** Every `deep`/`internalize` run must evaluate key visuals and select at most 1–3 objects that are indispensable to the method or main result. Crop from the original PDF, retain the manifest and verified Zotero page link, then pass edge/provenance checks. If none qualifies, record the reason. A failed or contaminated crop is rejected rather than embedded.
-9. **Build claim ledger.** Generate Chinese claims only from evidence units; preserve scope, subject, conditions, causality and modality. Every factual claim requires at least one Evidence ID.
-10. **Compose note.** Render only validated structured data into the note template. Do not reinterpret the complete PDF at this stage.
-11. **Validate.** Run deterministic checks first, then semantic fidelity review. Deep mode additionally requires full page extraction, evidence from at least three pages and sections, evidence reaching the latter half, and a completed visual selection. A blocker or error prevents formal export.
-12. **Preview and export.** Show the note, warnings, failed pages and output paths. Write only to an explicitly authorized directory; never overwrite an existing note automatically.
-13. **Record feedback.** Store feedback as a FeedbackEvent. Do not edit the formal Skill during a paper-reading run.
+7. **Run specialised reading passes.** Separately cover background/question/contribution; data/method/model/equation/metric/experiment; results/visuals; discussion/limits/conclusions; then compare the ledger with the detected paper structure.
+8. **Build evidence ledger.** Extract the smallest sufficient original-language evidence units with page references, section, quote, numbers, units and epistemic markers.
+9. **Run the Visual Selection Pass.** Every `deep`/`internalize` run must evaluate key visuals and select at most 1–3 objects that are indispensable to the method or main result. Crop from the original PDF, retain the manifest and verified Zotero page link, then pass edge/provenance checks. If none qualifies, record the reason. A failed or contaminated crop is rejected rather than embedded.
+10. **Build rich claim ledger.** Generate intermediate knowledge objects only from evidence units; add explanatory detail, conditions, importance and Final-template section identity. Preserve scope, subject, causality and modality.
+11. **Apply deep quality gate.** Require all core content groups, adequate claim/detail density and explanatory depth. Page dispersion alone is insufficient.
+12. **Compose note.** Load `assets/Paper Template - Final.md` for `deep`/`internalize`; keep `skim` separate. Render only validated structured data.
+13. **Validate.** Run deterministic checks, Final-template checks and semantic fidelity review. A blocker or error prevents formal export.
+14. **Preview and export.** Show the note, warnings, failed pages and output paths. Write only to an explicitly authorized directory; never overwrite an existing note automatically.
+15. **Record feedback.** Store feedback as a FeedbackEvent. Do not edit the formal Skill during a paper-reading run.
 
 ## Prompt-layer contracts
 
@@ -92,6 +100,8 @@ Retries are object-scoped and limited to two attempts. After two failures, mark 
 
 - `原文未说明` means the information is absent from the paper.
 - `不适用` means the field does not apply to this paper type.
+- `本模式未生成` means the optional learning layer was not generated in `deep`; `internalize` must generate it.
+- `待用户补充` means the field depends on the user's own research context.
 - `解析失败` means the information may exist but could not be read reliably.
 
 These states must never be substituted for one another.

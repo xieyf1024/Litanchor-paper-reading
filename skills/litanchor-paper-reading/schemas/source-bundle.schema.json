@@ -32,7 +32,9 @@
         "year": {"type": ["integer", "null"], "minimum": 1000, "maximum": 3000},
         "journal": {"type": ["string", "null"]},
         "doi": {"type": ["string", "null"]},
-        "citekey": {"type": ["string", "null"]}
+        "citekey": {"type": ["string", "null"]},
+        "paper_type": {"type": "array", "items": {"type": "string"}},
+        "keywords": {"type": "array", "items": {"type": "string"}}
       }
     },
     "annotations": {"type": "array", "items": {"type": "object"}},
@@ -68,4 +70,3 @@
     }
   }
 }
-

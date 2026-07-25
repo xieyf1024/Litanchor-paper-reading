@@ -28,6 +28,20 @@ class LocalPipelineTests(unittest.TestCase):
         page = "ice-covered con-\ntinents use model-\ngenerated ice volume"
         self.assertTrue(MODULE.quote_is_traceable(quote, page))
 
+    def test_quote_trace_tolerates_unicode_hyphens_and_pdf_punctuation_spacing(self):
+        quote = (
+            "The neural network‐based method follows Lehtinen et al. (2018)."
+        )
+        page = (
+            "The neural network‐\nbased method follows Lehtinen et al. ( 2018 )."
+        )
+        self.assertTrue(MODULE.quote_is_traceable(quote, page))
+
+    def test_trace_token_matches_unicode_numeric_range(self):
+        self.assertTrue(
+            MODULE.trace_token_present("1901–2020", "within the 1901-2020 period")
+        )
+
     def test_page_extraction_prefers_less_corrupted_plain_text(self):
         class FakePage:
             def extract_text(self, extraction_mode=None):
@@ -299,7 +313,9 @@ class LocalPipelineTests(unittest.TestCase):
 
     def test_verified_pages_render_distinct_zotero_links(self):
         with tempfile.TemporaryDirectory() as temporary:
-            run_dir = self.make_run(Path(temporary), reading_mode="deep")
+            # Page-link rendering is independent of deep-reading completeness.
+            # Keep this fixture in skim mode so the deep quality gate is not bypassed.
+            run_dir = self.make_run(Path(temporary), reading_mode="skim")
             source_path = run_dir / "source-bundle.json"
             source = json.loads(source_path.read_text(encoding="utf-8"))
             source["source"].update(

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-v0.4.1 candidate retains the v0.4 integration tests and adds first-author rendering, verified physical-page links without a `p.1` fallback, deep-reading coverage receipts, universal visual selection, PyMuPDF crop quality/provenance gates, an optional consent-gated MinerU Flash adapter, overwrite refusal and AGPL distribution checks.
+v0.4.1 is being repaired at the Deep Reading Pipeline layer. The earlier candidate proved integration, page traceability, crop provenance and safe export, but its three blind `deep` notes failed the product-quality contract: they used a simplified renderer, omitted Final-template modules and contained too few explanatory claims.
 
 One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
 
@@ -18,7 +18,14 @@ All six corpus papers were independently resolved from the live Zotero `[AI]` or
 
 Three detailed notes in the authorized Obsidian test Inbox are treated as **AI-assisted references**, not gold labels. They help define coverage and annotation fields but cannot score the system that generated them. The promotion checklist is in `evals/gold/AI_ASSISTED_REFERENCE_GUIDE.md`. The Attention note was also checked against the original PDF and a user-selected Bilibili explainer; see `evals/reports/attention-reference-review.md`.
 
-The remaining three PDFs now have blind `deep` candidates with coverage receipts and verified key visuals. See `evals/reports/v0.4.1-blind-test.md`. The current six-paper status deliberately distinguishes three silver calibration references from three blind outputs; see `evals/reports/v0.4.1-six-paper-status.md`. MinerU Flash results are reported separately in `evals/reports/mineru-flash-fusion.md`.
+The earlier ResNet, LOVECLIM and U-Net candidates remain useful only as failed regression artifacts. Passing deterministic evidence/page/visual gates did not establish deep-reading quality. See `evals/reports/deep-output-failure-diagnosis.md`. They must be regenerated from fresh ledgers after the repaired pipeline passes its tests.
+
+The repair adds four deterministic regression surfaces:
+
+- sparse one-claim `deep` ledgers are blocked;
+- required background/question/contribution/method/result/discussion/limit/conclusion groups are enforced;
+- rich claims must contain explanatory details, conditions or numeric context;
+- rendered `deep`/`internalize` notes must contain the complete canonical Final-template heading set with no unresolved slots.
 
 ## Gold annotation plan
 
@@ -49,6 +56,9 @@ An existing AI-assisted note may become a gold annotation only after a human ind
 | Method-step recall | recovered gold steps / gold steps | >=90% |
 | Core-result recall | recovered gold results / gold results | >=95% |
 | Important-visual coverage | registered key visuals / gold key visuals | >=90% |
+| Final-template completeness | required Final headings present / required headings | 100% |
+| Required deep content groups | groups meeting per-paper contract / required groups | 100% |
+| Core section depth | core claims with explanation/conditions/numeric context / core claims | 100% |
 | Blocker detection | correctly reported blocker cases / gold blockers | 100% |
 | YAML/Markdown validity | valid formal exports / all formal exports | 100% |
 

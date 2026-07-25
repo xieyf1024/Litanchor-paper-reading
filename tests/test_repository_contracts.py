@@ -31,6 +31,7 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/export_obsidian.py",
             "skills/litanchor-paper-reading/scripts/pdf_figures.py",
             "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
+            "skills/litanchor-paper-reading/scripts/paper_quality_gate.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -99,12 +100,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("source_match_kind", evidence["required"])
 
     def test_note_template_protects_user_content_and_limits_evidence(self):
-        text = (SKILL / "assets" / "paper-note.md").read_text(encoding="utf-8")
+        text = (SKILL / "assets" / "Paper Template - Final.md").read_text(encoding="utf-8")
         self.assertIn("<!-- litanchor:user:start -->", text)
         self.assertIn("<!-- litanchor:user:end -->", text)
-        self.assertIn("[!evidence]-", text)
         self.assertIn("以下属于学习启发，不是作者原文结论", text)
-        self.assertIn("第一作者", text)
+        self.assertIn("## 4. 核心结果与证据", text)
+        self.assertIn("{{evidence_quotes}}", text)
 
     def test_project_license_and_notice_match_pymupdf_distribution_choice(self):
         license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
