@@ -6,7 +6,7 @@ LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Ski
 
 **当前发布版：v0.4.1 Deep Reading Pipeline Pre-release；当前开发候选：v0.5.0-rc1。** Zotero、PDF 物理页、证据追踪、关键图裁剪和受限 Obsidian 导出已经形成可靠基础。v0.4.1 接入 `Paper Template - Final`、扩展 ClaimRecord，并增加深读完整性阻断；ResNet、LOVECLIM 和气候 U-Net 示例继续作为明确标记的人工辅助回归产物。
 
-`codex/v0.5-autonomous-deep-reading` 已跑通单篇自主深读候选闭环：冻结无参考答案输入，用 PyMuPDF 建立权威页级工作包，按论文类型执行六遍全文阅读，融合非权威 MinerU Flash 结构提示，先生成 Evidence/Claim Ledger，再生成 SectionSynthesis、关键视觉分析、独立忠实度/召回审查和 Final 模板笔记。官方六篇评测共覆盖 81 个物理页、182 条 EvidenceUnit、155 条 ClaimRecord 与 15 张关键图，所有确定性质量指标均为 1.0、无 Blocker。三篇盲测已通过用户视觉验收；三篇校准笔记仍等待用户视觉确认，因此尚未合并、打标签或发布 v0.5 Pre-release。
+`codex/v0.5-autonomous-deep-reading` 已跑通单篇自主深读候选闭环：冻结无参考答案输入，用 PyMuPDF 建立权威页级工作包，按论文类型执行六遍全文阅读，融合非权威 MinerU Flash 结构提示，先生成 Evidence/Claim Ledger，再生成 SectionSynthesis、关键视觉分析、独立忠实度/召回审查和 Final 模板笔记。官方六篇评测共覆盖 81 个物理页、182 条 EvidenceUnit、155 条 ClaimRecord 与 15 张关键图，所有确定性质量指标均为 1.0、无 Blocker；六篇笔记的关键图、排版与 Zotero 链接均已通过用户验收。当前候选等待最终 Git 差异审查与 Pre-release 发布。
 
 本轮数据与发布边界见 [v0.5 final validation candidate](docs/v0.5-final-validation.md)、[cross-paper metrics](evals/cross-paper-metrics.json)、[failure taxonomy](evals/failure-taxonomy.md) 和 [release checklist](docs/release-checklist.md)。人工辅助示例仍见 [examples/v0.4.1](examples/v0.4.1/)。
 
@@ -115,7 +115,7 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 ## 当前阶段边界
 
-当前候选只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用付费 MinerU API、完整本地 MinerU、Zotero MCP 或无人审核发布。PyMuPDF 始终是权威全文页级基线；MinerU Flash 仅是经同意调用或同哈希缓存复用的非权威结构增强层。三篇校准笔记完成视觉验收前，v0.5 仍是候选而非发布版。
+当前候选只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用付费 MinerU API、完整本地 MinerU、Zotero MCP 或无人审核发布。PyMuPDF 始终是权威全文页级基线；MinerU Flash 仅是经同意调用或同哈希缓存复用的非权威结构增强层。v0.5 在最终 Git 差异审查、PR 合并与 Pre-release 发布完成前仍是候选。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 

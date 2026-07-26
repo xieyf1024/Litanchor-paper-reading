@@ -1,6 +1,6 @@
 # v0.5 anti-leak and privacy audit
 
-Date: 2026-07-25
+Date: 2026-07-26
 Branch: `codex/v0.5-autonomous-deep-reading`
 
 ## Scope

@@ -33,7 +33,21 @@
         "journal": {"type": ["string", "null"]},
         "doi": {"type": ["string", "null"]},
         "citekey": {"type": ["string", "null"]},
-        "paper_type": {"type": "array", "items": {"type": "string"}},
+        "paper_type": {
+          "oneOf": [
+            {
+              "enum": [
+                "method-algorithm",
+                "model-description",
+                "empirical-research",
+                "review"
+              ]
+            },
+            {"type": "array", "items": {"type": "string"}}
+          ]
+        },
+        "paper_type_label_zh": {"type": ["string", "null"]},
+        "metadata_warnings": {"type": "array", "items": {"type": "string"}},
         "keywords": {"type": "array", "items": {"type": "string"}}
       }
     },

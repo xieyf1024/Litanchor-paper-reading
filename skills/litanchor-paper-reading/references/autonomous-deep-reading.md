@@ -1,8 +1,8 @@
-# Autonomous deep-reading candidate
+# Autonomous deep reading
 
-This path is experimental in v0.5. It converts a prepared single-paper run
-into an auditable work package. It does not treat deterministic extraction as
-semantic close reading.
+Convert one prepared paper into an auditable full-reading work package.
+Deterministic extraction prepares evidence candidates; it is not semantic
+close reading by itself.
 
 ## Blind-input boundary
 
@@ -23,6 +23,17 @@ Every ClaimRecord synthesized only from EvidenceUnits must declare:
 ```
 
 `curated`, `user`, or missing origins block an autonomous blind run.
+
+## Regression evidence is not Skill content
+
+Use evaluation papers to discover reproducible failure classes, not to teach
+the Skill their answers. Paper-specific corrections, quotes, numbers, pages and
+figure selections stay inside ignored runtime artifacts. Promote a change only
+when it can be expressed as a paper-independent invariant, schema constraint,
+algorithm, workflow rule or deterministic quality gate. Validate the candidate
+on the triggering case and at least one unrelated paper. A fix that succeeds
+only because it recognizes a title, DOI, author, expected number or page is a
+leak and must be rejected.
 
 ## Start
 

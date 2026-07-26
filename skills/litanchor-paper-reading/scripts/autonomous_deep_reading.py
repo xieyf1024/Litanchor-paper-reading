@@ -30,9 +30,10 @@ from autonomous_semantic import (  # noqa: E402
     validate_section_synthesis,
     validate_visual_analysis,
 )
+from paper_quality_gate import PAPER_TYPE_LABELS_ZH  # noqa: E402
 
 
-AUTONOMOUS_VERSION = "0.5.0-dev"
+AUTONOMOUS_VERSION = "0.5.0-rc1"
 ALLOWED_AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
 PAPER_TYPE_REQUIRED_CONTENT: dict[str, list[str]] = {
     "method-algorithm": [
@@ -190,7 +191,7 @@ def extract_pymupdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
         import pymupdf
     except ImportError as exc:
         raise AutonomousPipelineError(
-            "PyMuPDF is required for the v0.5 authoritative page baseline."
+            "PyMuPDF is required for the authoritative page baseline."
         ) from exc
 
     pages: list[dict[str, Any]] = []
@@ -700,6 +701,7 @@ def classify_paper_type(
     return {
         "schema_version": "0.1",
         "paper_type": paper_type,
+        "paper_type_label_zh": PAPER_TYPE_LABELS_ZH[paper_type],
         "confidence": confidence,
         "signals": signals,
         "origin": "auto_synthesized",
@@ -813,8 +815,25 @@ def build_reading_passes(
 
 
 FIGURE_CAPTION_PATTERN = re.compile(
-    r"(?im)^\s*(?:fig(?:ure)?\.?)\s*([A-Za-z0-9]+)\s*(?:[.:]|\|)\s*(.+)$"
+    r"(?im)^\s*(?:fig(?:ure)?\.?)\s*([A-Za-z]*\d+[A-Za-z0-9]*)\s*(?:[.:]|\|)\s*(.+)$"
 )
+
+
+def _figure_label_sort_key(label: str) -> tuple[int, int, str, str]:
+    match = re.fullmatch(
+        r"Figure\s+([A-Za-z]*)(\d+)([A-Za-z0-9]*)",
+        label.strip(),
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return (2, 0, "", label.casefold())
+    prefix, number, suffix = match.groups()
+    return (
+        1 if prefix else 0,
+        int(number),
+        prefix.casefold(),
+        suffix.casefold(),
+    )
 
 
 def discover_figure_candidates(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -857,7 +876,9 @@ def fuse_mineru_figure_candidates(
     by_label: dict[str, dict[str, Any]] = {
         str(item["label"]): dict(item)
         for item in existing
-        if isinstance(item, dict) and item.get("label")
+        if isinstance(item, dict)
+        and item.get("label")
+        and _figure_label_sort_key(str(item["label"]))[0] < 2
     }
     for block in alignment.get("blocks", []):
         if not isinstance(block, dict) or block.get("status") == "unmatched":
@@ -895,7 +916,7 @@ def fuse_mineru_figure_candidates(
             }
     figures = sorted(
         by_label.values(),
-        key=lambda item: int(re.search(r"\d+", str(item["label"])).group()),
+        key=lambda item: _figure_label_sort_key(str(item["label"])),
     )
     for index, figure in enumerate(figures, start=1):
         figure["visual_id"] = f"V-{index:03d}"
@@ -1055,7 +1076,7 @@ def promote_reviewed_claims(
 
 
 def finalize_autonomous_candidate(run_dir: Path) -> dict[str, Any]:
-    """Apply all v0.5 gates and render one non-overwriting candidate note."""
+    """Apply all autonomous deep-reading gates and render one non-overwriting candidate note."""
     run_dir = run_dir.resolve()
     pages = load_json(run_dir / "pymupdf-pages.json")
     evidence = load_json(run_dir / "evidence.json")
@@ -1293,6 +1314,10 @@ def build_autonomous_plan(
     )
 
     source["pages"] = pages
+    source["metadata"]["paper_type"] = paper_profile["paper_type"]
+    source["metadata"]["paper_type_label_zh"] = paper_profile[
+        "paper_type_label_zh"
+    ]
     source["pdf"]["authoritative_text_engine"] = "PyMuPDF"
     source["pdf"]["authoritative_page_count_verified"] = True
     source["pdf"]["pymupdf_extracted_at"] = utc_now()
@@ -1386,7 +1411,7 @@ def _start_from_zotero(args: argparse.Namespace) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Stage one Zotero/PDF paper for v0.5 autonomous deep reading"
+        description="Stage one Zotero/PDF paper for autonomous deep reading"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     start = subparsers.add_parser("start")

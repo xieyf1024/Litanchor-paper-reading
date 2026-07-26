@@ -98,6 +98,28 @@
     "authoritative_source": {
       "const": "pymupdf_page"
     },
+    "symbol_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "method", "corrections"],
+      "properties": {
+        "status": {"const": "corrected_from_original_page"},
+        "method": {"const": "pymupdf_page_render"},
+        "corrections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["extracted", "verified"],
+            "properties": {
+              "extracted": {"type": "string", "minLength": 1},
+              "verified": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
     "issues": {"type": "array", "items": {"type": "string"}}
   }
 }

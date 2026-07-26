@@ -49,6 +49,8 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(fields["name"], "litanchor-paper-reading")
         self.assertIn("Use when", fields["description"])
         self.assertLessEqual(len(fields["description"]), 1024)
+        self.assertNotRegex(text, r"\bv\d+\.\d+\b")
+        self.assertNotIn("experimental", text.lower())
 
     def test_skill_references_and_assets_exist(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")

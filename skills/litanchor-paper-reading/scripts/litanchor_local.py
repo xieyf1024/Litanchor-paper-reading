@@ -23,19 +23,25 @@ from paper_quality_gate import (  # noqa: E402
     FINAL_TEMPLATE_ID,
     FINAL_TEMPLATE_NAME,
     FINAL_TEMPLATE_VERSION,
+    PAPER_TYPE_LABELS_ZH,
+    canonical_paper_type,
     evidence_quote_completeness,
     evaluate_deep_claims,
     evaluate_summary_completeness,
     evaluate_visual_result_coverage,
     validate_cross_section_consistency,
+    validate_duplicated_section_content,
     validate_final_markdown,
+    validate_generic_claim_headings,
+    validate_metadata_consistency,
     validate_numeric_rendering_integrity,
     validate_page_semantic_coverage,
+    validate_range_symbol_integrity,
     validate_table_sentence_rendering_integrity,
 )
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.4.1-deep-reading-candidate"
+SKILL_VERSION = "0.5.0-rc1"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -662,6 +668,17 @@ def validate_run(
             "pdf_preflight_warning",
             "PDF passed preflight with extraction warnings; inspect the listed physical pages.",
         )
+    for finding in validate_metadata_consistency(
+        source,
+        resolve_paper_type(run_dir, source),
+        require_paper_type=run_record.get("reading_mode")
+        in {"deep", "internalize"},
+    ):
+        add_issue(
+            finding.get("severity", "blocker"),
+            finding["issue_type"],
+            finding["message"],
+        )
     if (
         autonomous_generation
         and run_record.get("review_status") == "user_visual_review_pending"
@@ -908,6 +925,13 @@ def validate_run(
                 evidence_id=evidence_id,
             )
 
+    for finding in validate_range_symbol_integrity(evidence):
+        add_issue(
+            "blocker",
+            finding["issue_type"],
+            finding["message"],
+        )
+
     valid_claims = 0
     valid_page_claims = 0
     numeric_checks = 0
@@ -993,7 +1017,9 @@ def validate_run(
             )
             continue
         valid_page_claims += 1
-        supporting_text = " ".join(str(item.get("quote_original", "")) for item in supporting)
+        supporting_text = " ".join(
+            evidence_quote_for_display(item) for item in supporting
+        )
         numeric_ok = True
         numeric_items = claim.get("numeric_items", [])
         if not isinstance(numeric_items, list):
@@ -1035,6 +1061,14 @@ def validate_run(
             add_issue("warning", "claim_validation_warning", f"Claim {claim_id} has a semantic validation warning.", claim_id=claim_id)
         if numeric_ok:
             valid_claims += 1
+
+    if run_record.get("reading_mode") in {"deep", "internalize"}:
+        for finding in validate_generic_claim_headings(claims):
+            add_issue(
+                "blocker",
+                finding["issue_type"],
+                finding["message"],
+            )
 
     deep_quality_findings: list[dict[str, str]] = []
     if run_record.get("reading_mode") in {"deep", "internalize"}:
@@ -1094,6 +1128,21 @@ def validate_run(
     blocking = [issue for issue in issues if issue["severity"] in BLOCKING_SEVERITIES]
     warning_count = sum(issue["severity"] == "warning" for issue in issues)
     claim_count = len(claims)
+    range_symbol_integrity = not any(
+        issue["issue_type"] == "range_symbol_integrity"
+        and issue["severity"] in BLOCKING_SEVERITIES
+        for issue in issues
+    )
+    generic_heading_integrity = not any(
+        issue["issue_type"] == "generic_heading_detection"
+        and issue["severity"] in BLOCKING_SEVERITIES
+        for issue in issues
+    )
+    metadata_consistency = not any(
+        issue["issue_type"] == "metadata_consistency"
+        and issue["severity"] in BLOCKING_SEVERITIES
+        for issue in issues
+    )
     result: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "paper_id": source.get("paper_id", "unknown"),
@@ -1121,7 +1170,11 @@ def validate_run(
         "quality": {
             "evidence_coverage": valid_claims / claim_count if claim_count else 0.0,
             "page_reference_accuracy": valid_page_claims / claim_count if claim_count else 0.0,
-            "numeric_fidelity": numeric_passes / numeric_checks if numeric_checks else 1.0,
+            "numeric_fidelity": (
+                numeric_passes / numeric_checks
+                if numeric_checks and range_symbol_integrity
+                else 1.0 if range_symbol_integrity else 0.0
+            ),
             "modality_fidelity": (
                 sum(
                     isinstance(claim, dict)
@@ -1148,6 +1201,10 @@ def validate_run(
                 }
                 for item in issues
             ),
+            "range_symbol_integrity": range_symbol_integrity,
+            "generic_heading_integrity": generic_heading_integrity,
+            "metadata_consistency": metadata_consistency,
+            "duplicated_section_content": False,
             "format_valid": False,
         },
     }
@@ -1158,6 +1215,56 @@ def yaml_scalar(value: Any) -> str:
     if value is None:
         return "null"
     return json.dumps(value, ensure_ascii=False)
+
+
+def metadata_presentation(
+    source: dict[str, Any],
+) -> tuple[str | None, str | None, list[str]]:
+    """Return stable type fields and explicit missing-metadata warnings."""
+    metadata = source.get("metadata", {})
+    machine_type = canonical_paper_type(metadata.get("paper_type"))
+    label_zh = str(metadata.get("paper_type_label_zh") or "").strip() or (
+        PAPER_TYPE_LABELS_ZH.get(machine_type) if machine_type else None
+    )
+    warnings = [
+        str(item).strip()
+        for item in metadata.get("metadata_warnings", [])
+        if str(item).strip()
+    ] if isinstance(metadata.get("metadata_warnings"), list) else []
+    provider = (
+        "Zotero"
+        if source.get("source", {}).get("acquisition_method") == "zotero_local_api"
+        else "来源元数据"
+    )
+    for field in ("year", "journal", "doi"):
+        value = metadata.get(field)
+        if value is None or value == "":
+            warnings.append(f"{field} 未由 {provider} 提供")
+    return machine_type, label_zh, list(dict.fromkeys(warnings))
+
+
+def evidence_quote_for_display(item: dict[str, Any]) -> str:
+    """Apply only original-page-verified glyph corrections for display."""
+    quote = str(item.get("quote_original") or "")
+    receipt = item.get("symbol_verification")
+    if not isinstance(receipt, dict):
+        return quote
+    if (
+        receipt.get("status") != "corrected_from_original_page"
+        or receipt.get("method") != "pymupdf_page_render"
+    ):
+        return quote
+    corrections = receipt.get("corrections")
+    if not isinstance(corrections, list):
+        return quote
+    for correction in corrections:
+        if not isinstance(correction, dict):
+            continue
+        extracted = str(correction.get("extracted") or "")
+        verified = str(correction.get("verified") or "")
+        if extracted and verified:
+            quote = quote.replace(extracted, verified)
+    return quote
 
 
 def first_author_only(authors: Any) -> list[str]:
@@ -1200,6 +1307,9 @@ def render_skim_markdown(
 ) -> str:
     metadata = source["metadata"]
     pdf = source["pdf"]
+    paper_type, paper_type_label_zh, metadata_warnings = metadata_presentation(
+        source
+    )
     evidence_by_id = {item["evidence_id"]: item for item in evidence}
     verified_pages = {
         item["page_index"]
@@ -1224,6 +1334,9 @@ def render_skim_markdown(
         f"year: {yaml_scalar(metadata.get('year'))}",
         f"journal: {yaml_scalar(metadata.get('journal'))}",
         f"doi: {yaml_scalar(metadata.get('doi'))}",
+        f"paper_type: {yaml_scalar(paper_type)}",
+        f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
+        f"metadata_warning: {yaml_scalar(metadata_warnings)}",
         f"citekey: {yaml_scalar(metadata.get('citekey'))}",
         f"zotero_item_key: {yaml_scalar(source['source'].get('zotero_item_key'))}",
         f"zotero_attachment_key: {yaml_scalar(source['source'].get('zotero_attachment_key'))}",
@@ -1278,7 +1391,7 @@ def render_skim_markdown(
                     item = evidence_by_id[evidence_id]
                     lines.append("")
                     lines.append(f"> [!evidence]- {evidence_id}｜PDF p.{item['page_index']}")
-                    quote_lines = str(item["quote_original"]).splitlines() or [""]
+                    quote_lines = evidence_quote_for_display(item).splitlines() or [""]
                     lines.extend(f"> {quote_line}" for quote_line in quote_lines)
                     lines.append("")
         lines.append("")
@@ -1330,7 +1443,8 @@ def render_skim_markdown(
     for item in evidence:
         lines.append(
             f"| {_escape_table(item['evidence_id'])} | {item['page_index']} | "
-            f"{_escape_table(item['evidence_type'])} | {_escape_table(item['quote_original'])} |"
+            f"{_escape_table(item['evidence_type'])} | "
+            f"{_escape_table(evidence_quote_for_display(item))} |"
         )
     lines.extend([
         "",
@@ -1766,7 +1880,7 @@ def _render_evidence_quotes(
         location = f"PDF p.{item['page_index']} / {item.get('section') or 'Section 未说明'}"
         lines.append(
             f"| {_escape_table(evidence_id)} | "
-            f"{_escape_table(item['quote_original'])} | "
+            f"{_escape_table(evidence_quote_for_display(item))} | "
             f"{_escape_table(location)} | "
             f"{_escape_table(', '.join(support_map[evidence_id]))} |"
         )
@@ -1791,6 +1905,9 @@ def render_deep_markdown(
 
     metadata = source["metadata"]
     pdf = source["pdf"]
+    machine_paper_type, paper_type_label_zh, metadata_warnings = (
+        metadata_presentation(source)
+    )
     reading_mode = str(run_record.get("reading_mode") or "deep")
     autonomous_generation = bool(run_record.get("autonomous_generation", False))
     review_status = run_record.get("review_status") or (
@@ -1812,10 +1929,9 @@ def render_deep_markdown(
         and item.get("source_match_kind") in {"exact", "normalized"}
     }
     paper_type_claims = _claims_by_type(claims, {"paper_type"})
-    paper_types = [str(item["claim_text_zh"]) for item in paper_type_claims]
-    metadata_paper_type = metadata.get("paper_type")
-    if not paper_types and isinstance(metadata_paper_type, list):
-        paper_types = [str(item) for item in metadata_paper_type]
+    paper_type_labels = [str(item["claim_text_zh"]) for item in paper_type_claims]
+    if not paper_type_labels and paper_type_label_zh:
+        paper_type_labels = [paper_type_label_zh]
     keywords = metadata.get("keywords") if isinstance(metadata.get("keywords"), list) else []
     frontmatter = "\n".join(
         [
@@ -1825,7 +1941,9 @@ def render_deep_markdown(
             f"year: {yaml_scalar(metadata.get('year'))}",
             f"journal: {yaml_scalar(metadata.get('journal'))}",
             f"doi: {yaml_scalar(metadata.get('doi'))}",
-            f"paper_type: {yaml_scalar(paper_types)}",
+            f"paper_type: {yaml_scalar(machine_paper_type)}",
+            f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
+            f"metadata_warning: {yaml_scalar(metadata_warnings)}",
             f"keywords: {yaml_scalar(keywords)}",
             f"zotero_key: {yaml_scalar(metadata.get('citekey') or source['source'].get('zotero_item_key'))}",
             f"source_pdf: {yaml_scalar(source['source'].get('query'))}",
@@ -1848,7 +1966,7 @@ def render_deep_markdown(
     )
     overview_rows = "\n".join(
         [
-            f"| 论文类型 | {_escape_table('；'.join(paper_types) if paper_types else '原文未说明')} |",
+            f"| 论文类型 | {_escape_table('；'.join(paper_type_labels) if paper_type_labels else '原文未说明')} |",
             f"| 研究对象 / 数据 / 模型 | {_overview_value(claims, {'data', 'material', 'model'}, source, verified_pages)} |",
             f"| 核心问题 | {_overview_value(claims, {'question'}, source, verified_pages)} |",
             f"| 方法路线 | {_overview_value(claims, {'method', 'model'}, source, verified_pages)} |",
@@ -2073,6 +2191,7 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
         format_findings.extend(
             validate_table_sentence_rendering_integrity(markdown)
         )
+        format_findings.extend(validate_duplicated_section_content(markdown))
     if format_findings:
         for index, finding in enumerate(format_findings, start=1):
             result["issues"].append(
@@ -2092,6 +2211,7 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
         )
     atomic_write_text(destination, markdown, overwrite=False)
     result["files"]["markdown_note"] = str(destination)
+    result["quality"]["duplicated_section_content"] = True
     result["quality"]["format_valid"] = True
     result["quality"]["markdown_sha256"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     atomic_write_json(validation_path, result)

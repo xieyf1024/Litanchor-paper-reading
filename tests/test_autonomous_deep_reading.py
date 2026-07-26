@@ -708,6 +708,13 @@ class AutonomousDeepReadingTests(unittest.TestCase):
                             "page_index": 3,
                             "caption_original": "Short caption.",
                             "origin": "auto_extracted",
+                        },
+                        {
+                            "visual_id": "V-002",
+                            "label": "Figure legend",
+                            "page_index": 3,
+                            "caption_original": "This is not a numbered figure.",
+                            "origin": "auto_extracted",
                         }
                     ]
                 ),

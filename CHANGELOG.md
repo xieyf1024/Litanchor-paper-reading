@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.5 Autonomous Deep Reading
+## Unreleased — v0.5.0-rc1 Autonomous Deep Reading
 
 - Froze a three-paper blind corpus using only Zotero metadata, original PDFs
   and the canonical Final template.
@@ -30,8 +30,13 @@
   overview until its evidence-backed summary was corrected.
 - Added cross-paper metrics, failure taxonomy, anti-leak audit, release
   checklist and a non-promoted EvolutionCandidate.
-- Release-candidate merge/tag remains blocked until the three calibration notes
-  receive user visual review.
+- Added paper-independent checks for range-symbol corruption, metadata/type
+  consistency, generic claim headings and duplicated section content.
+- Compacted `SKILL.md` to the permanent workflow contract; detailed rules,
+  deterministic behavior and templates remain in `references/`, `scripts/`
+  and `assets/`.
+- All six official notes passed user review for key visuals, layout and Zotero
+  links. The release candidate is ready for final diff review and PR approval.
 
 ## v0.4.1 — 2026-07-25 — Deep Reading Pipeline Pre-release
 

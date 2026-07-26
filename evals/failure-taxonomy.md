@@ -22,7 +22,6 @@ Candidate: `0.5.0-rc1`
 
 ## Unresolved release risks
 
-- The three calibration notes have passed automated crop/provenance checks but still need user visual review.
 - The three v0.4.1 extended regressions are intentionally human-assisted; they are not evidence of autonomous blind performance.
 - The current evaluation measures deterministic traceability and structured recall gates, not agreement with a fully human-verified gold corpus.
 - Cached MinerU reuse is recorded, but automatic same-hash cache discovery remains a proposed follow-up rather than an implicit behavior.

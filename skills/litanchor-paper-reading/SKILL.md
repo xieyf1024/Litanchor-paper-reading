@@ -1,89 +1,64 @@
 ---
 name: litanchor-paper-reading
-description: Creates evidence-grounded Chinese close-reading notes from a single academic paper and prepares safe Zotero-to-Obsidian artifacts. Use when the user asks to skim, close-read, internalize, explain, validate, or export one paper from Zotero, a PDF, or an existing LitAnchor note, especially when page-level evidence, methods, figures, equations, limitations, or Obsidian Markdown are required.
+description: Creates evidence-grounded Chinese close-reading notes from one academic paper and prepares safe Zotero-to-Obsidian artifacts. Use when the user asks to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, especially when page-level evidence, methods, figures, equations, limitations, or Obsidian Markdown are required.
 ---
 
 # LitAnchor Paper Reading
 
-## Enforce hard boundaries
+## Enforce the permanent contract
 
-- Treat the user-provided paper as the only factual source for the formal note.
-- Write `原文未说明` for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection, and `解析失败` for unreadable content. Never interchange them.
-- Bind every factual claim to at least one verified Evidence ID and physical PDF page.
-- Preserve numbers, units, variables, ranges, subjects, conditions, causality, scope, and author modality.
-- Never upgrade discussion, interpretation, hypotheses, or speculation into observed fact.
-- Block formal export when extraction or validation has a blocker/error.
+- Treat the supplied paper as the only factual source for the formal note.
+- Bind every factual claim to verified original-language evidence and a one-based physical PDF page.
+- Preserve numbers, units, variables, ranges, subjects, conditions, causality, scope, attribution, and author modality.
+- Keep observations, author interpretations, hypotheses, speculation, limitations, and external learning separate.
+- Distinguish `原文未说明`, `不适用`, `本模式未生成`, `待用户补充`, and `解析失败`.
+- Block formal export on extraction, evidence, content, format, permission, or collision errors.
 - Keep Zotero read-only and never overwrite an existing Obsidian note.
+- Use evaluation papers only to discover general failure classes; never encode their answers or paper-specific corrections in the Skill.
 
-Read `references/reliability-rules.md` completely before processing a paper.
+Read `references/reliability-rules.md` and `references/workflow.md` completely for every paper.
 
-## Select the path
+## Load only the resources needed
 
-1. Resolve one reading mode: `skim`, `deep` (default for explicit close-reading), or `internalize`.
-2. Resolve exactly one source: verified Zotero item, local PDF, or an existing LitAnchor artifact set.
-3. If Zotero or Obsidian is involved, read `references/integrations.md` completely.
-4. If adapting the note to the user's study method or using `internalize`, read `references/reading-method.md` completely.
-5. If recording feedback or improving the Skill, read `references/controlled-evolution.md` completely. Do not modify the formal Skill during a reading run.
+- Zotero acquisition, Obsidian export, or visual assets: read `references/integrations.md`.
+- `internalize` mode or adaptation to the user's study method: read `references/reading-method.md`.
+- Autonomous full-paper execution: read `references/autonomous-deep-reading.md`.
+- Feedback-driven Skill changes: read `references/controlled-evolution.md`.
+
+Keep detailed rules in `references/`, deterministic behavior in `scripts/`, output templates and reusable material in `assets/`, and machine contracts in `schemas/`.
 
 ## Execute the evidence-first workflow
 
-Read `references/workflow.md` completely, then:
+1. Resolve one mode (`skim`, `deep`, or `internalize`) and exactly one paper.
+2. Record source identity, metadata, file hash, physical page count, write intent, and `external_knowledge_allowed=false`.
+3. Preflight and extract the complete PDF by physical page. Stop on unreadable required pages.
+4. Map paper type and structure, then read all relevant pages in separate structure, method, result/visual, discussion/limit, and omission-review passes.
+5. Build EvidenceUnits before ClaimRecords. Never use retrieval snippets or one short claim as a substitute for reading a required section.
+6. For `deep` and `internalize`, evaluate the complete visual inventory and select zero to three indispensable method or result visuals. Record a reason when none qualifies.
+7. Compose from `assets/Paper Template - Final.md`; use a separate compact structure for `skim`.
+8. Run deterministic schema, page, quotation, numeric, symbol, content-recall, visual, Markdown, filename, and collision checks, followed by independent fidelity and recall review where required.
+9. Show the preview, warnings, failed pages, and intended paths. Write only after explicit authorization.
 
-1. Register source identity, acquisition method, file hash, requested mode, and `external_knowledge_allowed=false`.
-2. Preflight the PDF before analysis. Preserve physical page boundaries and report layout/OCR failures.
-3. Map paper type and sections without inventing absent structure.
-4. For `deep`/`internalize`, run separate passes for background/question/contribution; data/method/model/equation/metric/experiment; results/visuals; and discussion/limits/conclusions. Finish with an omission review against the paper structure.
-5. Extract original-language EvidenceUnits before writing Chinese claims.
-6. Build rich ClaimRecords only from evidence. Use `title_zh`, `detail_points_zh`, `conditions_zh`, `importance`, and the expanded claim types; never use one short claim as a substitute for an entire required section.
-7. For every `deep`/`internalize` run, complete the Visual Selection Pass: select at most 1–3 indispensable method/result visuals, or record why none qualifies.
-8. Compose every formal `deep`/`internalize` note with `assets/Paper Template - Final.md`. Keep `skim` structurally separate.
-9. Run `scripts/paper_quality_gate.py` through the bundled builder. Block missing required content groups, sparse recall, shallow core claims, missing Final-template headings, or unresolved template slots. In `internalize`, additionally require learning value, five writing expressions, terms, and traceable references; keep those fields optional in `deep`.
-10. Validate schema, traceability, pages, quotations, numbers, units, modality, Markdown, filename, and collision safety.
-11. Show a preview, warnings, failed pages, and intended paths before any write.
-12. Export only after explicit authorization and only to the authorized directory.
+Use the bundled scripts rather than reimplementing their behavior:
 
-For a v0.5 autonomous candidate, use `scripts/autonomous_deep_reading.py start`
-after Zotero/PDF preparation and read
-`references/autonomous-deep-reading.md` completely. The command creates
-PyMuPDF-authoritative page/section/pass work packets and empty independent
-review contracts; it does not by itself claim that the paper has been read.
-Only `auto_extracted` EvidenceUnits and `auto_synthesized` ClaimRecords are
-allowed in a blind run. Completion requires separate fidelity and recall
-reviews; reference notes, curated ledgers, or user answers are forbidden as
-blind-test inputs. Record an auditable outcome for every non-reference
-physical page during the semantic passes; extraction-failed pages cannot be
-marked reviewed. A later MinerU fusion may preserve that receipt only when the
-physical-page classification is unchanged. `finalize` may run only after
-SectionSynthesis, visual analysis and both independent reviews pass.
-User visual acceptance remains separate from deterministic completion and
-must precede formal export.
+- `scripts/zotero_local.py`: exact, loopback-only Zotero acquisition.
+- `scripts/litanchor_local.py`: manual PDF preparation, validation, and rendering.
+- `scripts/autonomous_deep_reading.py` and `scripts/autonomous_semantic.py`: autonomous full-paper work packets, ledger materialization, independent review, and finalization.
+- `scripts/mineru_adapter.py`: consent-gated, non-authoritative MinerU structure enhancement.
+- `scripts/pdf_figures.py`: original-PDF figure rendering and crop provenance.
+- `scripts/export_obsidian.py`: contained, hash-checked, no-overwrite export.
+- `scripts/paper_quality_gate.py`: deterministic publication blockers.
 
-For a manual text-based PDF, use `scripts/litanchor_local.py` instead of rewriting extraction or validation code. Run `prepare` first, create `evidence.json` and rich `claims.json` only from the resulting `source-bundle.json`, then run `build`. Read the local-pipeline section in `references/workflow.md` before invoking it. A `FALLBACK_REQUIRED` or `BLOCKED` preflight status stops this native-text path.
-
-For a running Zotero desktop client with Local API enabled, use `scripts/zotero_local.py check`, then `prepare` with exactly one title, DOI, citekey, or Item Key. Require one exact bibliographic match and one PDF attachment; ambiguity blocks the run. This adapter is loopback-only and read-only and does not require Zotero MCP.
-
-When the user explicitly authorizes external upload of one eligible PDF, `scripts/mineru_adapter.py` may run the optional token-free MinerU Flash path. Enforce the current 10 MiB/20-page limits, keep all blocks non-authoritative, and align every candidate back to one PyMuPDF physical page.
-
-For an authorized Obsidian test directory, use `scripts/export_obsidian.py` only after `build`. Pass the authorized root and its child Inbox separately, accept warnings explicitly when applicable, and require `--confirm-export`. The script verifies preview integrity, path containment, required sidecars, and zero collisions before writing.
-
-Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen them to make invalid output pass.
-
-Store only the verified first author in note frontmatter while retaining all authors in SourceBundle. Crop selected figures from the original PDF with `scripts/pdf_figures.py`; clipped, contaminated, low-confidence, or unverified crops are rejected. Retain each manifest and use a verified Zotero page link. MinerU Flash may only assist structure discovery after explicit upload consent; unmatched MinerU content is never evidence.
-
-## Keep evidence readable
-
-- Show only Evidence ID, page, and optional verified Zotero link inline for ordinary claims.
-- Add a collapsed evidence callout only for core conclusions, key numbers, definitions, limitations, or wording at risk of misinterpretation.
-- Keep long or repeated evidence in the sidecar, not the main note.
+Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen contracts to make invalid output pass.
 
 ## Return a complete handoff
 
-Return:
+Report:
 
-- processing and validation status;
-- the Markdown note or a clear reason it was blocked;
-- evidence/claim/validation artifact paths when created;
-- warnings and exact pages requiring human review;
-- whether anything was written, where, and whether an existing file was preserved.
+- processing, coverage, review, and validation status;
+- the note path or the exact blocking reason;
+- evidence, claim, visual, validation, and run artifact paths;
+- warnings and physical pages needing human review;
+- every write target and confirmation that no existing file was replaced.
 
-Use `assets/validation-report.md` for successful/warning reports and `assets/failure-report.md` for blocked runs.
+Use `assets/validation-report.md` for successful or warning outcomes and `assets/failure-report.md` for blocked runs.

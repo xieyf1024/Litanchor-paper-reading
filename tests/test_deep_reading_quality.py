@@ -399,6 +399,156 @@ class DeepReadingQualityTests(unittest.TestCase):
 
         self.assertEqual(findings, [])
 
+    def test_range_symbol_integrity_requires_original_page_verification(self):
+        evidence = [
+            {
+                **minimal_evidence()[0],
+                "quote_original": (
+                    "The interval spans 12±18 years under the selected forcing."
+                ),
+            }
+        ]
+
+        findings = MODULE.validate_range_symbol_integrity(evidence)
+
+        self.assertEqual(findings[0]["issue_type"], "range_symbol_integrity")
+        evidence[0]["symbol_verification"] = {
+            "status": "corrected_from_original_page",
+            "method": "pymupdf_page_render",
+            "corrections": [
+                {
+                    "extracted": "12±18",
+                    "verified": "12–18",
+                }
+            ],
+        }
+        self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_range_symbol_integrity_accepts_plausible_uncertainty(self):
+        evidence = [
+            {
+                **minimal_evidence()[0],
+                "quote_original": "The measured value was 12 ± 2 kg (mean ± s.d.).",
+            }
+        ]
+
+        self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_range_symbol_integrity_requires_verification_for_word_pairs(self):
+        evidence = [
+            {
+                **minimal_evidence()[0],
+                "quote_original": (
+                    "The model uses a latitude±longitude grid and compares "
+                    "land±ocean configurations."
+                ),
+            }
+        ]
+
+        findings = MODULE.validate_range_symbol_integrity(evidence)
+
+        self.assertEqual(findings[0]["issue_type"], "range_symbol_integrity")
+        evidence[0]["symbol_verification"] = {
+            "status": "corrected_from_original_page",
+            "method": "pymupdf_page_render",
+            "corrections": [
+                {
+                    "extracted": "latitude±longitude",
+                    "verified": "latitude–longitude",
+                },
+                {
+                    "extracted": "land±ocean",
+                    "verified": "land–ocean",
+                },
+            ],
+        }
+        self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_range_symbol_integrity_does_not_flag_short_math_variables(self):
+        evidence = [
+            {
+                **minimal_evidence()[0],
+                "quote_original": "The interval is expressed as x ± y.",
+            }
+        ]
+
+        self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_generic_heading_detection_rejects_empty_labels(self):
+        claim = minimal_claims()[0]
+        claim["claim_type"] = "result"
+        claim["title_zh"] = "核心结果 1"
+
+        findings = MODULE.validate_generic_claim_headings([claim])
+
+        self.assertEqual(findings[0]["issue_type"], "generic_heading_detection")
+        claim["title_zh"] = "低温强迫触发状态跃迁"
+        self.assertEqual(MODULE.validate_generic_claim_headings([claim]), [])
+
+    def test_metadata_consistency_separates_machine_type_and_missing_metadata(self):
+        source = minimal_source()
+        source["metadata"]["journal"] = None
+
+        findings = MODULE.validate_metadata_consistency(
+            source,
+            "method-algorithm",
+        )
+
+        self.assertEqual(findings[0]["issue_type"], "metadata_consistency")
+        self.assertEqual(findings[0]["severity"], "info")
+        missing_type = MODULE.validate_metadata_consistency(source, None)
+        self.assertEqual(missing_type[0]["severity"], "blocker")
+
+    def test_frontmatter_uses_machine_paper_type_and_separate_chinese_label(self):
+        source = minimal_source()
+        source["metadata"]["paper_type"] = "empirical-research"
+        source["metadata"]["paper_type_label_zh"] = "实证研究论文"
+        source["metadata"]["metadata_warnings"] = ["journal 未由 Zotero 提供"]
+
+        markdown = MODULE.render_markdown(
+            source,
+            minimal_evidence(),
+            minimal_claims(),
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "skim"},
+            "completed",
+        )
+
+        self.assertIn('paper_type: "empirical-research"', markdown)
+        self.assertIn('paper_type_label_zh: "实证研究论文"', markdown)
+        self.assertIn("metadata_warning:", markdown)
+        self.assertIn("journal 未由 Zotero 提供", markdown)
+
+    def test_duplicate_section_content_rejects_verbatim_reuse(self):
+        sentence = (
+            "该方法先构建统一模型，再通过独立实验评估核心结果并说明适用条件。"
+        )
+        markdown = (
+            f"## 1. 论文速览\n\n{sentence}\n\n"
+            f"### 3.2 方法与研究设计\n\n{sentence}\n"
+        )
+
+        findings = MODULE.validate_duplicated_section_content(markdown)
+
+        self.assertEqual(findings[0]["issue_type"], "duplicated_section_content")
+
+    def test_duplicate_section_content_ignores_repeated_source_markers(self):
+        markdown = (
+            "## 2. 背景\n\n*本节证据：* 〔E-001, E-002, E-003｜PDF p.1, p.2〕\n\n"
+            "## 3. 方法\n\n*本节证据：* 〔E-004, E-005, E-006｜PDF p.3, p.4〕\n"
+        )
+
+        self.assertEqual(
+            MODULE.validate_duplicated_section_content(markdown),
+            [],
+        )
+
     def test_experiment_table_renderer_avoids_mechanical_punctuation(self):
         claim = minimal_claims()[0]
         claim["claim_type"] = "experiment"
@@ -601,6 +751,11 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
         claims = []
         for index, claim_type in enumerate(claim_types, start=1):
+            fixture_role = (
+                "主要结果" if claim_type == "result" and index == 11
+                else "补充结果" if claim_type == "result"
+                else claim_type
+            )
             claim_text = (
                 "这是用于验证 Final 模板的结构化内容，"
                 "说明论文问题、方法、关键设计、主要价值、实验结果及其边界之间的"
@@ -608,7 +763,8 @@ class DeepReadingQualityTests(unittest.TestCase):
                 if claim_type == "summary"
                 else (
                     "这是用于验证 Final 模板的结构化内容，"
-                    "说明论文问题、方法、证据、结果及其边界之间的明确关系。"
+                    f"说明 {fixture_role} 与论文问题、方法、证据、"
+                    "结果及其边界之间的明确关系。"
                 )
             )
             claims.append(
@@ -616,7 +772,7 @@ class DeepReadingQualityTests(unittest.TestCase):
                     "claim_id": f"C-{index:03d}",
                     "claim_text_zh": claim_text,
                     "claim_type": claim_type,
-                    "title_zh": f"结构化要点 {index}",
+                    "title_zh": f"{fixture_role}的证据定位与作用",
                     "detail_points_zh": [
                         "补充解释这一要点为何重要、如何由研究设计得到，并说明它与相邻环节的关系。",
                         "保留适用范围、作者语气和证据边界，避免把局部发现扩写为普遍结论。",

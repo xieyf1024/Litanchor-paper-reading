@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate v0.5 autonomous semantic artifacts before note composition."""
+"""Validate autonomous semantic artifacts before note composition."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from paper_quality_gate import evidence_quote_completeness
 
 
 class SemanticContractError(RuntimeError):
-    """Raised when an autonomous semantic artifact violates the v0.5 contract."""
+    """Raised when an autonomous semantic artifact violates the deep-reading contract."""
 
 
 EVIDENCE_REQUIRED_FIELDS = {
@@ -514,8 +514,7 @@ def materialize_semantic_ledgers(
             )
             if re.search(rf"\b{marker}\w*\b", quote, flags=re.IGNORECASE)
         ]
-        evidence.append(
-            {
+        evidence_item = {
                 "evidence_id": seed["evidence_id"],
                 "origin": "auto_extracted",
                 "evidence_type": seed["evidence_type"],
@@ -548,7 +547,10 @@ def materialize_semantic_ledgers(
                 "authoritative_source": "pymupdf_page",
                 "issues": [],
             }
-        )
+        symbol_verification = seed.get("symbol_verification")
+        if isinstance(symbol_verification, dict):
+            evidence_item["symbol_verification"] = symbol_verification
+        evidence.append(evidence_item)
     validate_authoritative_evidence(evidence, pages)
     evidence_by_id = {item["evidence_id"]: item for item in evidence}
     claims: list[dict[str, Any]] = []
@@ -593,7 +595,7 @@ def materialize_semantic_ledgers(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Resolve and validate v0.5 autonomous semantic artifacts"
+        description="Resolve and validate autonomous semantic artifacts"
     )
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--draft", type=Path, required=True)

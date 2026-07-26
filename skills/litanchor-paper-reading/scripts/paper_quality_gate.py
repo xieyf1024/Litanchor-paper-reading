@@ -76,6 +76,13 @@ PAPER_TYPE_ALIASES = {
     "review paper": "review",
 }
 
+PAPER_TYPE_LABELS_ZH = {
+    "method-algorithm": "方法或算法论文",
+    "model-description": "模型说明论文",
+    "empirical-research": "实证研究论文",
+    "review": "综述论文",
+}
+
 PAPER_TYPE_REQUIRED_GROUPS = {
     "method-algorithm": {
         "method_or_model": ({"method", "model"}, 2),
@@ -231,6 +238,242 @@ def validate_numeric_rendering_integrity(markdown: str) -> list[dict[str, str]]:
             "message": (
                 "Rendered numeric values contain duplicated unit suffixes: "
                 + ", ".join(sorted(set(matches)))
+            ),
+        }
+    ]
+
+
+SUSPICIOUS_RANGE_PATTERN = re.compile(
+    r"(?<![\d.])(?P<lower>\d+(?:[.,]\d+)?)\s*±\s*"
+    r"(?P<upper>\d+(?:[.,]\d+)?)(?![\d.])"
+)
+SUSPICIOUS_WORD_RANGE_PATTERN = re.compile(
+    r"\b[A-Za-z]{3,}±[A-Za-z]{3,}\b"
+)
+UNCERTAINTY_MARKERS = re.compile(
+    r"\b(?:mean|average|standard deviation|s\.?d\.?|standard error|"
+    r"s\.?e\.?m\.?|uncertainty|confidence interval|CI)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _verified_symbol_corrections(item: dict[str, Any]) -> dict[str, str]:
+    receipt = item.get("symbol_verification")
+    if not isinstance(receipt, dict):
+        return {}
+    if receipt.get("status") != "corrected_from_original_page":
+        return {}
+    if receipt.get("method") != "pymupdf_page_render":
+        return {}
+    corrections = receipt.get("corrections")
+    if not isinstance(corrections, list):
+        return {}
+    return {
+        str(correction.get("extracted")): str(correction.get("verified"))
+        for correction in corrections
+        if isinstance(correction, dict)
+        and str(correction.get("extracted") or "").strip()
+        and str(correction.get("verified") or "").strip()
+    }
+
+
+def validate_range_symbol_integrity(
+    evidence: list[Any],
+) -> list[dict[str, str]]:
+    """Block likely dashes decoded as ± until the original page is checked."""
+    suspicious: list[str] = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            continue
+        quote = str(item.get("quote_original") or "")
+        corrections = _verified_symbol_corrections(item)
+        for match in SUSPICIOUS_RANGE_PATTERN.finditer(quote):
+            token = match.group(0)
+            lower = float(match.group("lower").replace(",", "."))
+            upper = float(match.group("upper").replace(",", "."))
+            nearby = quote[max(0, match.start() - 50) : match.end() + 50]
+            plausible_uncertainty = (
+                upper < lower
+                and bool(UNCERTAINTY_MARKERS.search(nearby))
+                and bool(re.search(r"\s±\s", token))
+            )
+            verified = token in corrections and "±" not in corrections[token]
+            if not plausible_uncertainty and not verified:
+                suspicious.append(
+                    f"{item.get('evidence_id', '<unknown>')}:{token}"
+                )
+        for match in SUSPICIOUS_WORD_RANGE_PATTERN.finditer(quote):
+            token = match.group(0)
+            verified = token in corrections and "±" not in corrections[token]
+            if not verified:
+                suspicious.append(
+                    f"{item.get('evidence_id', '<unknown>')}:{token}"
+                )
+    if not suspicious:
+        return []
+    return [
+        {
+            "issue_type": "range_symbol_integrity",
+            "message": (
+                "Evidence contains ± pairs that may be mis-decoded dashes; "
+                "verify the original rendered PDF page and record a "
+                "symbol_verification receipt: "
+                + ", ".join(suspicious)
+            ),
+        }
+    ]
+
+
+GENERIC_HEADING_PATTERN = re.compile(
+    r"^(?:"
+    r"关键模型|核心结果|关键结果|结构化要点|实验|指标|公式|模型|方法|结果|"
+    r"名称原文未说明|原文未说明|不适用"
+    r")(?:\s*\d+)?$"
+)
+INFORMATIVE_HEADING_TYPES = {
+    "model",
+    "metric",
+    "equation",
+    "experiment",
+    "result",
+}
+
+
+def validate_generic_claim_headings(
+    claims: list[Any],
+) -> list[dict[str, str]]:
+    """Require informative headings for records rendered as named deep sections."""
+    invalid: list[str] = []
+    for claim in claims:
+        if not isinstance(claim, dict) or _claim_type(claim) not in INFORMATIVE_HEADING_TYPES:
+            continue
+        title = re.sub(r"\s+", " ", str(claim.get("title_zh") or "").strip())
+        if not title or GENERIC_HEADING_PATTERN.fullmatch(title):
+            invalid.append(
+                f"{claim.get('claim_id', '<unknown>')}:{title or '<missing>'}"
+            )
+    if not invalid:
+        return []
+    return [
+        {
+            "issue_type": "generic_heading_detection",
+            "message": (
+                "Named deep-reading records require evidence-grounded informative "
+                "headings rather than numbered placeholders: "
+                + ", ".join(invalid)
+            ),
+        }
+    ]
+
+
+def validate_metadata_consistency(
+    source: dict[str, Any],
+    paper_type: Any,
+    *,
+    require_paper_type: bool = True,
+) -> list[dict[str, str]]:
+    """Validate machine metadata without silently replacing Zotero values."""
+    metadata = source.get("metadata")
+    if not isinstance(metadata, dict):
+        return [
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": "SourceBundle metadata is missing or invalid.",
+            }
+        ]
+    findings: list[dict[str, str]] = []
+    if canonical_paper_type(paper_type) is None:
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker" if require_paper_type else "info",
+                "message": (
+                    "paper_type is missing or is not a supported machine enum"
+                    + ("." if require_paper_type else "; skim output remains provisional.")
+                ),
+            }
+        )
+    title = str(metadata.get("title") or "").strip()
+    if not title:
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": "Title is missing from source metadata.",
+            }
+        )
+    year = metadata.get("year")
+    if year is not None and (
+        not isinstance(year, int) or not 1000 <= year <= 2200
+    ):
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": f"Year has an invalid value: {year!r}.",
+            }
+        )
+    doi = metadata.get("doi")
+    if doi is not None and str(doi).strip() and not re.fullmatch(
+        r"10\.\d{4,9}/\S+",
+        str(doi).strip(),
+        flags=re.IGNORECASE,
+    ):
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": f"DOI has an invalid format: {doi!r}.",
+            }
+        )
+    for field in ("year", "journal", "doi"):
+        value = metadata.get(field)
+        if value is None or value == "":
+            findings.append(
+                {
+                    "issue_type": "metadata_consistency",
+                    "severity": "info",
+                    "message": (
+                        f"{field} was not supplied by the source metadata; "
+                        "LitAnchor did not infer a replacement."
+                    ),
+                }
+            )
+    return findings
+
+
+def validate_duplicated_section_content(
+    markdown: str,
+) -> list[dict[str, str]]:
+    """Reject verbatim substantive paragraphs repeated across rendered sections."""
+    visible = markdown.split("## 8. 术语、原文证据与滚雪球阅读", 1)[0]
+    paragraphs = [
+        re.sub(r"\s+", "", paragraph)
+        for paragraph in re.split(r"\n\s*\n", visible)
+        if not paragraph.lstrip().startswith(("#", "|", "!", "<!--"))
+    ]
+    substantive: list[str] = []
+    for paragraph in paragraphs:
+        content = re.sub(r"〔[^〕]+〕", "", paragraph)
+        marker_text = re.sub(r"[*_`#：:、，。；;|\-\s]", "", content)
+        if marker_text in {"本节证据", "证据"}:
+            continue
+        if len(content) >= 30:
+            substantive.append(content)
+    duplicates = sorted(
+        {paragraph for paragraph in substantive if substantive.count(paragraph) > 1}
+    )
+    if not duplicates:
+        return []
+    previews = [text[:60] + ("…" if len(text) > 60 else "") for text in duplicates]
+    return [
+        {
+            "issue_type": "duplicated_section_content",
+            "message": (
+                "Rendered deep note repeats substantive content verbatim across "
+                "sections; overview and formal analysis must differ in depth: "
+                + " | ".join(previews)
             ),
         }
     ]

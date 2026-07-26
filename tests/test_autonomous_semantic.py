@@ -15,6 +15,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from autonomous_semantic import (  # noqa: E402
     SemanticContractError,
+    materialize_semantic_ledgers,
     validate_authoritative_evidence,
     validate_section_synthesis,
     validate_visual_analysis,
@@ -53,6 +54,78 @@ def valid_evidence() -> dict:
 
 
 class AutonomousSemanticTests(unittest.TestCase):
+    def test_materialization_preserves_original_page_symbol_receipt(self):
+        quote = "The interval spans 12±18 years under the selected forcing."
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = Path(temporary)
+            (run_dir / "pymupdf-pages.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "page_index": 1,
+                            "printed_page": None,
+                            "raw_text": quote,
+                            "text_blocks": [
+                                {
+                                    "block_id": "P001-B001",
+                                    "block_type": "text",
+                                    "bbox": [10.0, 10.0, 500.0, 40.0],
+                                    "text": quote,
+                                }
+                            ],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "semantic-generation.json").write_text(
+                json.dumps({"status": "pending"}),
+                encoding="utf-8",
+            )
+            draft = {
+                "evidence": [
+                    {
+                        "evidence_id": "E-RANGE",
+                        "evidence_type": "result",
+                        "page_index": 1,
+                        "section": "Results",
+                        "quote_original": quote,
+                        "epistemic_status": "observed",
+                        "symbol_verification": {
+                            "status": "corrected_from_original_page",
+                            "method": "pymupdf_page_render",
+                            "corrections": [
+                                {"extracted": "12±18", "verified": "12–18"}
+                            ],
+                        },
+                    }
+                ],
+                "claims": [
+                    {
+                        "claim_id": "C-RANGE",
+                        "claim_text_zh": "原页核验后，该范围为十二至十八年。",
+                        "claim_type": "result",
+                        "section_target": "4",
+                        "importance": "core",
+                        "epistemic_status": "observed",
+                        "evidence_ids": ["E-RANGE"],
+                        "numeric_items": [],
+                    }
+                ],
+            }
+            draft_path = run_dir / "semantic-draft.json"
+            draft_path.write_text(json.dumps(draft), encoding="utf-8")
+
+            evidence, _claims = materialize_semantic_ledgers(
+                run_dir,
+                draft_path,
+            )
+
+        self.assertEqual(
+            evidence[0]["symbol_verification"]["corrections"][0]["verified"],
+            "12–18",
+        )
+
     def test_visual_analysis_must_cover_every_selected_figure(self):
         claims = [{"claim_id": "C-001"}]
         figures = {"selected": [{"figure_label": "Figure 1"}]}
