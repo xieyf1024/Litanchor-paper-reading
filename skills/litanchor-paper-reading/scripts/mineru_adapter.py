@@ -231,6 +231,7 @@ def run_flash(
     timeout: int = 300,
     original_pdf_sha256: str | None = None,
     original_pages: list[int] | None = None,
+    consent_mode: str = "ask_each_time",
 ) -> dict[str, Any]:
     if not consent_external_upload:
         raise MinerUAdapterError("MinerU Flash requires explicit external-upload consent")
@@ -286,6 +287,7 @@ def run_flash(
         "page_count": page_count,
         "options": options,
         "token_supplied": False,
+        "consent_mode": consent_mode,
         "original_pdf_sha256": original_pdf_sha256 or digest,
         "original_physical_pages": original_pages or list(range(1, page_count + 1)),
     }
@@ -306,6 +308,7 @@ def run_flash(
         "service": "MinerU Flash",
         "service_host": "mineru.net",
         "consent_external_upload": True,
+        "consent_mode": consent_mode,
         "token_used": False,
         "uploaded_at": started_at,
         "source_pdf_sha256": digest,

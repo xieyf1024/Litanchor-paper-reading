@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.5.0-rc1 Autonomous Deep Reading
+## v0.5.0-rc1 — 2026-07-26 — Autonomous Deep Reading Pre-release
 
 - Froze a three-paper blind corpus using only Zotero metadata, original PDFs
   and the canonical Final template.
@@ -14,6 +14,9 @@
 - Added token-free MinerU Flash routing for whole eligible papers and
   page-preserving subsets of long PDFs; all MinerU content remains
   non-authoritative until aligned to an original PyMuPDF physical page.
+- Added three persistent local MinerU consent modes
+  (`always_for_eligible_files`, `ask_each_time`, `never`) and automatic
+  structure fusion for eligible files; the selected mode is never committed.
 - Added page-verified autonomous semantic materialization, complete
   SectionSynthesis, independent fidelity/recall review, all-figure selection,
   crop validation and Final-template candidate generation.
@@ -32,11 +35,17 @@
   checklist and a non-promoted EvolutionCandidate.
 - Added paper-independent checks for range-symbol corruption, metadata/type
   consistency, generic claim headings and duplicated section content.
+- Added primary plus secondary paper profiles, a distinct `parameter` claim
+  type, original-page scientific-symbol receipts, multi-evidence combined
+  claims and idempotent acceptance of reviewed warning-state notes.
 - Compacted `SKILL.md` to the permanent workflow contract; detailed rules,
   deterministic behavior and templates remain in `references/`, `scripts/`
   and `assets/`.
 - All six official notes passed user review for key visuals, layout and Zotero
-  links. The release candidate is ready for final diff review and PR approval.
+  links. Three additional unseen cross-domain papers also passed structured
+  regeneration and user review without adding paper-specific rules.
+- Full repository regression: 116 tests passed; Skill validation, compilation,
+  privacy and anti-leak audits passed.
 
 ## v0.4.1 — 2026-07-25 — Deep Reading Pipeline Pre-release
 

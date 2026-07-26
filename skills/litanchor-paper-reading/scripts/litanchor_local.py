@@ -92,6 +92,7 @@ CLAIM_TYPES = {
     "model",
     "equation",
     "metric",
+    "parameter",
     "experiment",
     "result",
     "figure_interpretation",
@@ -107,6 +108,10 @@ CLAIM_TYPES = {
 }
 EPISTEMIC_STATUSES = {"observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"}
 AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
+SECONDARY_PAPER_TYPE_LABELS_ZH = {
+    "benchmark": "基准评测",
+    "method": "方法",
+}
 
 
 class PipelineError(RuntimeError):
@@ -401,6 +406,7 @@ def trace_forms(text: str) -> set[str]:
     normalized = re.sub(r"(?<=\w)\u00ad\s*(?=\w)", "", normalized)
     normalized = normalized.replace("\u00ad", "")
     normalized = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2212]", "-", normalized)
+    normalized = re.sub(r"\s*-\s*", "-", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
     normalized = re.sub(r"\s+([,.;:?!%)\]])", r"\1", normalized)
     normalized = re.sub(r"([(\[])\s+", r"\1", normalized)
@@ -1310,6 +1316,12 @@ def render_skim_markdown(
     paper_type, paper_type_label_zh, metadata_warnings = metadata_presentation(
         source
     )
+    primary_paper_type = metadata.get("primary_paper_type") or paper_type
+    secondary_paper_types = [
+        value
+        for value in metadata.get("secondary_paper_types", [])
+        if value in SECONDARY_PAPER_TYPE_LABELS_ZH
+    ]
     evidence_by_id = {item["evidence_id"]: item for item in evidence}
     verified_pages = {
         item["page_index"]
@@ -1335,6 +1347,8 @@ def render_skim_markdown(
         f"journal: {yaml_scalar(metadata.get('journal'))}",
         f"doi: {yaml_scalar(metadata.get('doi'))}",
         f"paper_type: {yaml_scalar(paper_type)}",
+        f"primary_paper_type: {yaml_scalar(primary_paper_type)}",
+        f"secondary_paper_types: {yaml_scalar(secondary_paper_types)}",
         f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
         f"metadata_warning: {yaml_scalar(metadata_warnings)}",
         f"citekey: {yaml_scalar(metadata.get('citekey'))}",
@@ -1735,12 +1749,16 @@ def _render_equations_metrics(
     source: dict[str, Any],
     verified_pages: set[int],
 ) -> str:
-    records = _claims_by_type(claims, {"equation", "metric"})
+    records = _claims_by_type(claims, {"equation", "metric", "parameter"})
     if not records:
         return "**不适用**"
     lines: list[str] = []
     for index, claim in enumerate(records, start=1):
-        prefix = "Eq." if claim.get("claim_type") == "equation" else "Metric"
+        prefix = {
+            "equation": "Eq.",
+            "metric": "Metric",
+            "parameter": "Parameter",
+        }[str(claim.get("claim_type"))]
         lines.extend(
             [
                 f"#### {prefix} {index}：{claim.get('title_zh') or '名称原文未说明'}",
@@ -1908,6 +1926,14 @@ def render_deep_markdown(
     machine_paper_type, paper_type_label_zh, metadata_warnings = (
         metadata_presentation(source)
     )
+    primary_paper_type = (
+        metadata.get("primary_paper_type") or machine_paper_type
+    )
+    secondary_paper_types = [
+        value
+        for value in metadata.get("secondary_paper_types", [])
+        if value in SECONDARY_PAPER_TYPE_LABELS_ZH
+    ]
     reading_mode = str(run_record.get("reading_mode") or "deep")
     autonomous_generation = bool(run_record.get("autonomous_generation", False))
     review_status = run_record.get("review_status") or (
@@ -1932,6 +1958,14 @@ def render_deep_markdown(
     paper_type_labels = [str(item["claim_text_zh"]) for item in paper_type_claims]
     if not paper_type_labels and paper_type_label_zh:
         paper_type_labels = [paper_type_label_zh]
+    if secondary_paper_types:
+        paper_type_labels.append(
+            "次级类型："
+            + "、".join(
+                SECONDARY_PAPER_TYPE_LABELS_ZH[value]
+                for value in secondary_paper_types
+            )
+        )
     keywords = metadata.get("keywords") if isinstance(metadata.get("keywords"), list) else []
     frontmatter = "\n".join(
         [
@@ -1942,6 +1976,8 @@ def render_deep_markdown(
             f"journal: {yaml_scalar(metadata.get('journal'))}",
             f"doi: {yaml_scalar(metadata.get('doi'))}",
             f"paper_type: {yaml_scalar(machine_paper_type)}",
+            f"primary_paper_type: {yaml_scalar(primary_paper_type)}",
+            f"secondary_paper_types: {yaml_scalar(secondary_paper_types)}",
             f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
             f"metadata_warning: {yaml_scalar(metadata_warnings)}",
             f"keywords: {yaml_scalar(keywords)}",

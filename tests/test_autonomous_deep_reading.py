@@ -24,7 +24,11 @@ from autonomous_deep_reading import (  # noqa: E402
     classify_paper_type,
     detect_sections,
     discover_figure_candidates,
+    effective_mineru_upload_consent,
+    execute_planned_mineru,
+    load_mineru_consent_mode,
     promote_reviewed_claims,
+    set_mineru_consent_mode,
     fuse_mineru_figure_candidates,
     fuse_mineru_sections,
     validate_independent_reviews,
@@ -42,6 +46,40 @@ def make_pdf(path: Path, page_texts: list[str]) -> None:
 
 
 class AutonomousDeepReadingTests(unittest.TestCase):
+    def test_visual_review_acceptance_recovers_completed_warning_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = Path(temporary)
+            (run_dir / "run.json").write_text(
+                json.dumps(
+                    {
+                        "review_status": "user_visual_review_passed",
+                        "visual_review": {"status": "accepted"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "validation.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_with_warnings",
+                        "issues": [{"severity": "warning"}],
+                        "quality": {"format_valid": True},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "figures.json").write_text("{}", encoding="utf-8")
+            (run_dir / "autonomous-run.json").write_text(
+                json.dumps({"artifacts": {}}),
+                encoding="utf-8",
+            )
+            (run_dir / "final-note.md").write_text("# Final\n", encoding="utf-8")
+
+            result = accept_visual_review(run_dir)
+
+            self.assertEqual(result["status"], "completed_with_warnings")
+            self.assertEqual(result["review_status"], "user_visual_review_passed")
+
     def test_visual_review_acceptance_requires_pending_review(self):
         with tempfile.TemporaryDirectory() as temporary:
             run_dir = Path(temporary)
@@ -134,8 +172,54 @@ class AutonomousDeepReadingTests(unittest.TestCase):
                 )
                 result = classify_paper_type(metadata, sections, pages)
                 self.assertEqual(result["paper_type"], expected)
+                self.assertEqual(result["primary_paper_type"], expected)
                 self.assertGreater(result["confidence"], 0)
                 self.assertTrue(result["signals"])
+
+    def test_empirical_benchmark_can_have_secondary_method_profiles(self):
+        result = classify_paper_type(
+            {"title": "Evaluating agents on real-world research tasks"},
+            [
+                {"normalized_type": "methods", "title_original": "Environment"},
+                {"normalized_type": "results", "title_original": "Results"},
+            ],
+            [
+                {
+                    "raw_text": (
+                        "We introduce a benchmark and evaluation environment for "
+                        "real-world research tasks. We evaluate multiple agents."
+                    )
+                }
+            ],
+        )
+
+        self.assertEqual(result["primary_paper_type"], "empirical-research")
+        self.assertEqual(result["secondary_paper_types"], ["benchmark", "method"])
+
+    def test_mineru_consent_modes_are_persistent_and_explicit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = Path(temporary) / "config.json"
+            self.assertEqual(load_mineru_consent_mode(config_path), "ask_each_time")
+            set_mineru_consent_mode("always_for_eligible_files", config_path)
+            self.assertEqual(
+                load_mineru_consent_mode(config_path),
+                "always_for_eligible_files",
+            )
+            self.assertTrue(
+                effective_mineru_upload_consent(
+                    "always_for_eligible_files",
+                    per_run_consent=False,
+                )
+            )
+            self.assertFalse(
+                effective_mineru_upload_consent("never", per_run_consent=True)
+            )
+            self.assertTrue(
+                effective_mineru_upload_consent(
+                    "ask_each_time",
+                    per_run_consent=True,
+                )
+            )
 
     def test_section_mapping_and_reading_passes_cover_every_page(self):
         pages = [
@@ -413,6 +497,107 @@ class AutonomousDeepReadingTests(unittest.TestCase):
             (run_dir / "claims.json").write_text("[]", encoding="utf-8")
             with self.assertRaises(AutonomousPipelineError):
                 build_autonomous_plan(run_dir, allow_mineru_upload=False)
+
+    def test_eligible_persistent_consent_executes_and_fuses_mineru(self):
+        class FakeClient:
+            def flash_extract(self, source, **options):
+                del source, options
+                return type(
+                    "Result",
+                    (),
+                    {
+                        "task_id": "task-123",
+                        "state": "done",
+                        "filename": "paper.pdf",
+                        "err_code": "",
+                        "error": None,
+                        "markdown": (
+                            "# Introduction\n\n"
+                            "This paper presents a test method with sufficient "
+                            "detail for exact page alignment."
+                        ),
+                    },
+                )()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            pdf_path = root / "paper.pdf"
+            make_pdf(
+                pdf_path,
+                [
+                    (
+                        "Title\nAbstract\nIntroduction\nThis paper presents a test "
+                        "method with sufficient detail for exact page alignment."
+                    )
+                ],
+            )
+            digest = __import__("hashlib").sha256(pdf_path.read_bytes()).hexdigest()
+            source = {
+                "schema_version": "0.1",
+                "paper_id": "pdf-test",
+                "source": {"external_knowledge_allowed": False},
+                "metadata": {
+                    "title": "A test method",
+                    "authors": ["First Author"],
+                },
+                "pdf": {
+                    "path": str(pdf_path),
+                    "sha256": digest,
+                    "page_count": 1,
+                    "preflight_status": "PASS",
+                    "warnings": [],
+                },
+                "pages": [],
+            }
+            for name, payload in (
+                ("source-bundle.json", source),
+                ("evidence.json", []),
+                ("claims.json", []),
+                (
+                    "figures.json",
+                    {
+                        "selection_status": "pending",
+                        "selected": [],
+                        "rejected": [],
+                    },
+                ),
+                (
+                    "run.json",
+                    {
+                        "run_id": "run",
+                        "status": "prepared",
+                        "reading_mode": "deep",
+                    },
+                ),
+            ):
+                (run_dir / name).write_text(
+                    json.dumps(payload),
+                    encoding="utf-8",
+                )
+
+            build_autonomous_plan(
+                run_dir,
+                allow_mineru_upload=True,
+                mineru_consent_mode="always_for_eligible_files",
+            )
+            result = execute_planned_mineru(
+                run_dir,
+                client_factory=FakeClient,
+            )
+
+            self.assertEqual(result["status"], "completed")
+            privacy = json.loads(
+                (run_dir / "mineru" / "privacy_receipt.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                privacy["consent_mode"],
+                "always_for_eligible_files",
+            )
+            self.assertFalse(result["authoritative_evidence_created"])
 
     def test_independent_reviews_must_cover_claims_and_required_content(self):
         with tempfile.TemporaryDirectory() as temporary:

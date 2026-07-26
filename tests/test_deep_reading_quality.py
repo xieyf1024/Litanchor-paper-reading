@@ -372,7 +372,7 @@ class DeepReadingQualityTests(unittest.TestCase):
         claims[0]["claim_type"] = "metric"
         markdown = (
             "## 1. 论文速览\n\n| 评价指标 | RMSE |\n\n"
-            "### 3.4 核心公式与评价指标\n\n**原文未说明**\n\n"
+            "### 3.4 核心公式、评价指标与关键参数\n\n**原文未说明**\n\n"
             "### 3.5 实验、比较与复现要点\n\n内容\n"
         )
 
@@ -433,6 +433,9 @@ class DeepReadingQualityTests(unittest.TestCase):
         ]
 
         self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_trace_token_normalizes_spaces_around_range_dash(self):
+        self.assertTrue(MODULE.trace_token_present("30−60", "30 − 60 m³"))
 
     def test_range_symbol_integrity_requires_verification_for_word_pairs(self):
         evidence = [
@@ -502,6 +505,8 @@ class DeepReadingQualityTests(unittest.TestCase):
     def test_frontmatter_uses_machine_paper_type_and_separate_chinese_label(self):
         source = minimal_source()
         source["metadata"]["paper_type"] = "empirical-research"
+        source["metadata"]["primary_paper_type"] = "empirical-research"
+        source["metadata"]["secondary_paper_types"] = ["benchmark", "method"]
         source["metadata"]["paper_type_label_zh"] = "实证研究论文"
         source["metadata"]["metadata_warnings"] = ["journal 未由 Zotero 提供"]
 
@@ -521,9 +526,40 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
 
         self.assertIn('paper_type: "empirical-research"', markdown)
+        self.assertIn('primary_paper_type: "empirical-research"', markdown)
+        self.assertIn('secondary_paper_types: ["benchmark", "method"]', markdown)
         self.assertIn('paper_type_label_zh: "实证研究论文"', markdown)
         self.assertIn("metadata_warning:", markdown)
         self.assertIn("journal 未由 Zotero 提供", markdown)
+
+    def test_parameter_claim_renders_as_parameter_not_metric(self):
+        source = minimal_source()
+        source["metadata"]["paper_type"] = "method-algorithm"
+        source["metadata"]["primary_paper_type"] = "method-algorithm"
+        source["metadata"]["secondary_paper_types"] = []
+        claims = minimal_claims()
+        claims[0]["claim_type"] = "parameter"
+        claims[0]["title_zh"] = "条件参数 μ"
+        claims[0]["claim_text_zh"] = "μ 控制条件信息的注入强度。"
+
+        markdown = MODULE.render_markdown(
+            source,
+            minimal_evidence(),
+            claims,
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "deep"},
+            "completed",
+        )
+
+        self.assertIn("### 3.4 核心公式、评价指标与关键参数", markdown)
+        self.assertIn("#### Parameter 1：条件参数 μ", markdown)
+        self.assertNotIn("#### Metric 1：条件参数 μ", markdown)
 
     def test_duplicate_section_content_rejects_verbatim_reuse(self):
         sentence = (
@@ -881,6 +917,7 @@ class DeepReadingQualityTests(unittest.TestCase):
                 "model",
                 "equation",
                 "metric",
+                "parameter",
                 "experiment",
                 "discussion",
                 "future_work",
@@ -902,6 +939,7 @@ class DeepReadingQualityTests(unittest.TestCase):
         for heading in (
             "## 1. 论文速览",
             "### 2.3 贡献与创新",
+            "### 3.4 核心公式、评价指标与关键参数",
             "### 3.5 实验、比较与复现要点",
             "## 4. 核心结果与证据",
             "## 5. 重要图表",

@@ -59,7 +59,7 @@ LitAnchor Final template 1.0
 
 {{models}}
 
-### 3.4 核心公式与评价指标
+### 3.4 核心公式、评价指标与关键参数
 
 {{equations_metrics}}
 

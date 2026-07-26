@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +37,11 @@ from paper_quality_gate import PAPER_TYPE_LABELS_ZH  # noqa: E402
 
 AUTONOMOUS_VERSION = "0.5.0-rc1"
 ALLOWED_AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
+MINERU_CONSENT_MODES = {
+    "always_for_eligible_files",
+    "ask_each_time",
+    "never",
+}
 PAPER_TYPE_REQUIRED_CONTENT: dict[str, list[str]] = {
     "method-algorithm": [
         "question",
@@ -75,6 +82,76 @@ PAPER_TYPE_REQUIRED_CONTENT: dict[str, list[str]] = {
 
 class AutonomousPipelineError(PipelineError):
     """Raised when an autonomous run would violate blind or evidence policy."""
+
+
+def default_litanchor_config_path() -> Path:
+    configured = os.environ.get("LITANCHOR_CONFIG_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return Path(local_app_data) / "LitAnchor" / "config.json"
+    return Path.home() / ".litanchor" / "config.json"
+
+
+def load_mineru_consent_mode(config_path: Path | None = None) -> str:
+    path = (config_path or default_litanchor_config_path()).resolve()
+    if not path.is_file():
+        return "ask_each_time"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise AutonomousPipelineError(
+            f"Cannot read LitAnchor local configuration: {path}"
+        ) from exc
+    mode = payload.get("mineru", {}).get("consent_mode")
+    if mode not in MINERU_CONSENT_MODES:
+        raise AutonomousPipelineError(
+            f"Invalid MinerU consent mode in local configuration: {mode!r}"
+        )
+    return str(mode)
+
+
+def set_mineru_consent_mode(
+    mode: str,
+    config_path: Path | None = None,
+) -> Path:
+    if mode not in MINERU_CONSENT_MODES:
+        raise AutonomousPipelineError(f"Unsupported MinerU consent mode: {mode}")
+    path = (config_path or default_litanchor_config_path()).resolve()
+    payload: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            raise AutonomousPipelineError(
+                f"Cannot update invalid LitAnchor local configuration: {path}"
+            ) from exc
+    payload.setdefault("schema_version", "0.1")
+    payload.setdefault("mineru", {})["consent_mode"] = mode
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    temporary.replace(path)
+    return path
+
+
+def effective_mineru_upload_consent(
+    mode: str,
+    *,
+    per_run_consent: bool,
+) -> bool:
+    if mode == "always_for_eligible_files":
+        return True
+    if mode == "never":
+        return False
+    if mode == "ask_each_time":
+        return per_run_consent
+    raise AutonomousPipelineError(f"Unsupported MinerU consent mode: {mode}")
 
 
 SECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
@@ -698,9 +775,30 @@ def classify_paper_type(
         paper_type = "empirical-research"
         confidence = 0.45
         signals.append("default_research_profile")
+
+    secondary_types: list[str] = []
+    profile_text = f"{title} {lead_text}"
+    if re.search(
+        r"\b(benchmark|evaluation environment|evaluation framework|task environment)\b",
+        profile_text,
+    ):
+        secondary_types.append("benchmark")
+        signals.append("benchmark_secondary_profile")
+    if (
+        paper_type != "method-algorithm"
+        and re.search(r"\b(we introduce|we propose|we present)\b", lead_text)
+        and re.search(
+            r"\b(method|algorithm|architecture|framework|environment|pipeline)\b",
+            lead_text,
+        )
+    ):
+        secondary_types.append("method")
+        signals.append("method_secondary_profile")
     return {
-        "schema_version": "0.1",
+        "schema_version": "0.2",
         "paper_type": paper_type,
+        "primary_paper_type": paper_type,
+        "secondary_paper_types": secondary_types,
         "paper_type_label_zh": PAPER_TYPE_LABELS_ZH[paper_type],
         "confidence": confidence,
         "signals": signals,
@@ -1173,6 +1271,25 @@ def accept_visual_review(run_dir: Path) -> dict[str, Any]:
     run_record = load_json(run_dir / "run.json")
     validation = load_json(run_dir / "validation.json")
     figures = load_json(run_dir / "figures.json")
+    final_path = run_dir / "final-note.md"
+    if (
+        run_record.get("review_status") == "user_visual_review_passed"
+        and final_path.is_file()
+        and validation.get("status") in {"completed", "completed_with_warnings"}
+    ):
+        autonomous_run = load_json(run_dir / "autonomous-run.json")
+        autonomous_run["status"] = validation["status"]
+        autonomous_run["visual_review"] = run_record.get("visual_review")
+        autonomous_run.setdefault("artifacts", {})["final_note"] = final_path.name
+        autonomous_run["artifacts"]["validation"] = "validation.json"
+        autonomous_run["quality"] = validation.get("quality", {})
+        atomic_write_json(run_dir / "autonomous-run.json", autonomous_run)
+        return {
+            "status": validation["status"],
+            "final_note": str(final_path),
+            "review_status": "user_visual_review_passed",
+            "quality": validation.get("quality", {}),
+        }
     if run_record.get("review_status") != "user_visual_review_pending":
         raise AutonomousPipelineError(
             "The run is not waiting for user visual review."
@@ -1202,7 +1319,6 @@ def accept_visual_review(run_dir: Path) -> dict[str, Any]:
     run_record["status"] = "visual_review_accepted"
     atomic_write_json(run_dir / "run.json", run_record)
 
-    final_path = run_dir / "final-note.md"
     if final_path.exists():
         raise AutonomousPipelineError(
             f"Refusing to overwrite existing final note: {final_path}"
@@ -1211,20 +1327,21 @@ def accept_visual_review(run_dir: Path) -> dict[str, Any]:
         rendered_path, final_validation = build_run(run_dir, final_path)
     except PipelineError as exc:
         raise AutonomousPipelineError(str(exc)) from exc
-    if final_validation.get("status") != "completed":
+    final_status = final_validation.get("status")
+    if final_status not in {"completed", "completed_with_warnings"}:
         raise AutonomousPipelineError(
             "Accepted visual review did not produce a fully completed run."
         )
 
     autonomous_run = load_json(run_dir / "autonomous-run.json")
-    autonomous_run["status"] = "completed"
+    autonomous_run["status"] = final_status
     autonomous_run["visual_review"] = run_record["visual_review"]
     autonomous_run.setdefault("artifacts", {})["final_note"] = rendered_path.name
     autonomous_run["artifacts"]["validation"] = "validation.json"
     autonomous_run["quality"] = final_validation.get("quality", {})
     atomic_write_json(run_dir / "autonomous-run.json", autonomous_run)
     return {
-        "status": "completed",
+        "status": final_status,
         "final_note": str(rendered_path),
         "review_status": "user_visual_review_passed",
         "quality": final_validation.get("quality", {}),
@@ -1236,6 +1353,7 @@ def _mineru_plan(
     pages: list[dict[str, Any]],
     figure_candidates: list[dict[str, Any]],
     allow_upload: bool,
+    consent_mode: str,
 ) -> dict[str, Any]:
     whole_eligible = (
         len(pages) <= 20 and pdf_path.stat().st_size <= 10 * 1024 * 1024
@@ -1258,6 +1376,7 @@ def _mineru_plan(
     return {
         "schema_version": "0.1",
         "upload_consent": allow_upload,
+        "consent_mode": consent_mode,
         "whole_document_eligible": whole_eligible,
         "route": route,
         "selected_original_pages": selected_pages,
@@ -1282,8 +1401,13 @@ def build_autonomous_plan(
     run_dir: Path,
     *,
     allow_mineru_upload: bool,
+    mineru_consent_mode: str = "ask_each_time",
 ) -> dict[str, Any]:
     """Create all non-semantic work packets without pre-filling the ledgers."""
+    if mineru_consent_mode not in MINERU_CONSENT_MODES:
+        raise AutonomousPipelineError(
+            f"Unsupported MinerU consent mode: {mineru_consent_mode}"
+        )
     run_dir = run_dir.resolve()
     _require_empty_blind_ledgers(run_dir)
     source = load_json(run_dir / "source-bundle.json")
@@ -1311,10 +1435,17 @@ def build_autonomous_plan(
         pages,
         figure_candidates,
         allow_mineru_upload,
+        mineru_consent_mode,
     )
 
     source["pages"] = pages
     source["metadata"]["paper_type"] = paper_profile["paper_type"]
+    source["metadata"]["primary_paper_type"] = paper_profile[
+        "primary_paper_type"
+    ]
+    source["metadata"]["secondary_paper_types"] = paper_profile[
+        "secondary_paper_types"
+    ]
     source["metadata"]["paper_type_label_zh"] = paper_profile[
         "paper_type_label_zh"
     ]
@@ -1357,6 +1488,8 @@ def build_autonomous_plan(
         "baseline_engine": "PyMuPDF",
         "page_count": len(pages),
         "paper_type": paper_profile["paper_type"],
+        "primary_paper_type": paper_profile["primary_paper_type"],
+        "secondary_paper_types": paper_profile["secondary_paper_types"],
         "passes": reading_passes,
         "blind_input_policy": {
             "reference_notes_allowed": False,
@@ -1392,6 +1525,80 @@ def build_autonomous_plan(
     return autonomous_run
 
 
+def execute_planned_mineru(
+    run_dir: Path,
+    *,
+    client_factory: Any = None,
+) -> dict[str, Any]:
+    """Execute an eligible consented MinerU route and fuse only structure hints."""
+    from mineru_adapter import create_flash_subset, run_flash
+
+    run_dir = run_dir.resolve()
+    plan_path = run_dir / "mineru-plan.json"
+    plan = load_json(plan_path)
+    if plan.get("status") != "pending":
+        return plan
+    selected_pages = [
+        int(page) for page in plan.get("selected_original_pages", [])
+    ]
+    if not selected_pages or plan.get("upload_consent") is not True:
+        raise AutonomousPipelineError(
+            "Pending MinerU plan lacks selected pages or upload consent."
+        )
+    source_path = run_dir / "source-bundle.json"
+    source = load_json(source_path)
+    pdf_path = Path(source["pdf"]["path"]).resolve()
+    output_dir = run_dir / "mineru"
+    consent_mode = str(plan.get("consent_mode") or "ask_each_time")
+
+    try:
+        if plan.get("route") == "whole_document":
+            run_flash(
+                pdf_path,
+                source_path,
+                output_dir,
+                consent_external_upload=True,
+                client_factory=client_factory,
+                original_pdf_sha256=source["pdf"]["sha256"],
+                original_pages=selected_pages,
+                consent_mode=consent_mode,
+            )
+        else:
+            with tempfile.TemporaryDirectory(
+                prefix="litanchor-mineru-"
+            ) as temporary:
+                subset_pdf, subset_bundle = create_flash_subset(
+                    pdf_path,
+                    source_path,
+                    selected_pages,
+                    Path(temporary) / "subset",
+                )
+                run_flash(
+                    subset_pdf,
+                    subset_bundle,
+                    output_dir,
+                    consent_external_upload=True,
+                    client_factory=client_factory,
+                    original_pdf_sha256=source["pdf"]["sha256"],
+                    original_pages=selected_pages,
+                    consent_mode=consent_mode,
+                )
+        fuse_mineru_sections(run_dir, output_dir)
+        fuse_mineru_figure_candidates(run_dir, output_dir)
+        return load_json(plan_path)
+    except Exception as exc:
+        plan["status"] = "failed"
+        plan["failure_type"] = type(exc).__name__
+        plan["failure_reason"] = str(exc)
+        plan["authoritative_evidence_created"] = False
+        atomic_write_json(plan_path, plan)
+        autonomous_run_path = run_dir / "autonomous-run.json"
+        autonomous_run = load_json(autonomous_run_path)
+        autonomous_run["mineru"] = plan
+        atomic_write_json(autonomous_run_path, autonomous_run)
+        return plan
+
+
 def _start_from_zotero(args: argparse.Namespace) -> Path:
     from zotero_local import ZoteroLocalClient, prepare_zotero_item
 
@@ -1425,6 +1632,7 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--output-root", type=Path, default=Path("runtime/runs"))
     start.add_argument("--base-url", default="http://127.0.0.1:23119/api")
     start.add_argument("--allow-mineru-upload", action="store_true")
+    start.add_argument("--config-path", type=Path)
 
     status = subparsers.add_parser("status")
     status.add_argument("--run-dir", type=Path, required=True)
@@ -1435,18 +1643,41 @@ def build_parser() -> argparse.ArgumentParser:
     finalize.add_argument("--run-dir", type=Path, required=True)
     accept_review = subparsers.add_parser("accept-visual-review")
     accept_review.add_argument("--run-dir", type=Path, required=True)
+    consent = subparsers.add_parser("set-mineru-consent")
+    consent.add_argument("--mode", choices=sorted(MINERU_CONSENT_MODES), required=True)
+    consent.add_argument("--config-path", type=Path)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.command == "start":
+        if args.command == "set-mineru-consent":
+            config_path = set_mineru_consent_mode(args.mode, args.config_path)
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "mineru_consent_mode": args.mode,
+                        "config_path": str(config_path),
+                        "tracked_by_git": False,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        elif args.command == "start":
             run_dir = args.run_dir or _start_from_zotero(args)
+            consent_mode = load_mineru_consent_mode(args.config_path)
+            allow_upload = effective_mineru_upload_consent(
+                consent_mode,
+                per_run_consent=args.allow_mineru_upload,
+            )
             plan = build_autonomous_plan(
                 run_dir,
-                allow_mineru_upload=args.allow_mineru_upload,
+                allow_mineru_upload=allow_upload,
+                mineru_consent_mode=consent_mode,
             )
+            mineru_result = execute_planned_mineru(run_dir)
             print(
                 json.dumps(
                     {
@@ -1455,6 +1686,8 @@ def main(argv: list[str] | None = None) -> int:
                         "paper_type": plan["paper_type"],
                         "page_count": plan["page_count"],
                         "mineru_route": plan["mineru"]["route"],
+                        "mineru_status": mineru_result["status"],
+                        "mineru_consent_mode": consent_mode,
                     },
                     ensure_ascii=False,
                 )

@@ -18,21 +18,26 @@ Candidate: `0.5.0-rc1`
       formal evidence.
 - [x] ResNet, LOVECLIM and U-Net pass the current deterministic gates as extended
       non-autonomous regressions.
+- [x] Three additional unseen generalization papers passed the same structured
+      pipeline and user review without paper-specific Skill rules.
+- [x] Generic fixes from the generalization run were regenerated from
+      structured artifacts rather than hand-editing final Markdown.
+- [x] Persistent local MinerU consent modes and automatic eligible-file routing
+      are covered by regression tests; no consent value is committed.
 - [x] Anti-leak and repository privacy audit passed.
-- [x] Full test suite: 110 passed, 0 failed.
+- [x] Full test suite: 116 passed, 0 failed.
+- [x] Skill package validation and Python compilation checks passed.
+- [x] User approved the reviewed generalization notes and final release steps.
 
 ## Pending before merge or release
 
-- [ ] User reviews the six-paper metrics, failure taxonomy and Git diff.
-- [ ] Draft PR is approved for merge.
-- [ ] Version text is changed from development candidate to the chosen release
-      identifier.
+- [ ] Push the freeze commit and mark the Draft PR ready.
+- [ ] Confirm GitHub CI passes on the exact pushed commit.
+- [ ] Merge that commit to `main`, tag `v0.5.0-rc1` and publish the Pre-release.
 
 ## GitHub decision
 
 - Development branch push: **allowed**.
-- Draft PR: **allowed**.
-- Merge to `main`: **blocked on final Git diff review and PR approval**.
-- Tag `v0.5.0-rc1`: **blocked until merge approval**.
-- GitHub Pre-release: **blocked until tag approval**.
-- Stable `v0.5.0`: **out of scope for this pass**.
+- PR ready and merge after green CI: **allowed**.
+- Tag `v0.5.0-rc1` and GitHub Pre-release after merge: **allowed**.
+- Stable `v0.5.0`: **blocked on the final unseen-paper smoke test**.

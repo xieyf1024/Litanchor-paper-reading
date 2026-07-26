@@ -41,8 +41,22 @@ leak and must be rejected.
 python scripts/autonomous_deep_reading.py start --run-dir "<prepared-run>"
 ```
 
-Add `--allow-mineru-upload` only after explicit consent. This records a
-MinerU route; it does not make MinerU authoritative.
+Set one local upload-consent mode before routine use:
+
+```powershell
+python scripts/autonomous_deep_reading.py set-mineru-consent `
+  --mode always_for_eligible_files
+```
+
+The supported modes are `always_for_eligible_files`, `ask_each_time`, and
+`never`. The setting is stored in the user's local LitAnchor configuration,
+not in the repository. With `ask_each_time`, add `--allow-mineru-upload` only
+for a run that the user has explicitly approved.
+
+`start` automatically runs the eligible MinerU Flash route and fuses aligned
+structure hints before semantic execution. A service failure is recorded
+explicitly and leaves PyMuPDF as the authoritative baseline; it never creates
+authoritative evidence.
 
 The start command must produce:
 
@@ -65,6 +79,18 @@ before ClaimRecords. Do not use top-k retrieval as a substitute for reading a
 required section. A deep note must provide multiple evidence-backed details
 for substantive method, experiment, result, and limitation sections when the
 paper contains them.
+
+For a method or algorithm paper, reconstruct the end-to-end workflow rather
+than naming only its headline components. When present in the source, cover
+input or data generation, representation, training or transformation,
+conditioning, inference or decoding, evaluation, and uncertainty handling.
+Classify equations, evaluation metrics, and tunable or physical parameters as
+different ClaimRecord types.
+
+A ClaimRecord that combines multiple independently stated mechanisms,
+experimental conditions, or result aspects must cite every EvidenceUnit needed
+to support the combined wording. Verify ambiguous superscripts, range symbols,
+and units against the rendered original page before materialization.
 
 MinerU may improve structure, reading order, captions, tables, equations, and
 OCR candidates. Accept a MinerU block only after aligning it to an original

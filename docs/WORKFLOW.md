@@ -51,7 +51,7 @@ Zotero Local API GET or manual PDF
 - `scripts/litanchor_local.py` performs native-text preparation, validation and preview rendering.
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
-- `scripts/mineru_adapter.py` optionally calls the token-free MinerU Flash service after explicit upload consent, enforces 10 MiB/20-page limits, and records `exact`/`fuzzy`/`unmatched` page alignment without promoting any block to formal evidence.
+- `scripts/autonomous_deep_reading.py` reads a local three-mode upload-consent policy and automatically calls the token-free MinerU Flash service for eligible whole papers or page-preserving subsets. `scripts/mineru_adapter.py` enforces 10 MiB/20-page limits and records `exact`/`fuzzy`/`unmatched` alignment without promoting any block to formal evidence.
 - `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the canonical Final-template heading/slot contract.
 - `scripts/autonomous_deep_reading.py` is the v0.5 development entry point. It creates a PyMuPDF-authoritative page baseline, classifies the paper, materializes six reading-pass work packets, fuses aligned MinerU headings, enforces blind-run origins and creates separate fidelity/recall review contracts.
 

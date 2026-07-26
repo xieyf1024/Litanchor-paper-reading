@@ -6,8 +6,9 @@ Branch: `codex/v0.5-autonomous-deep-reading`
 ## Scope
 
 The audit searched the distributable Skill instructions, references, scripts,
-schemas and templates for the nine evaluation-paper titles, known DOI strings
-and paper-specific answer content.
+schemas and templates for the official six papers, the three v0.4.1 extended
+regressions, the three additional generalization papers, known DOI strings and
+paper-specific answer content.
 
 ## Result
 
@@ -21,6 +22,9 @@ and paper-specific answer content.
 - All six autonomous semantic drafts record
   `reference_notes_used=false`, `human_prefill_count=0` and
   `human_edit_count=0`.
+- The three additional generalization notes were generated without reference
+  notes or paper-specific branches. Their fixes were promoted only as generic
+  schemas, workflow rules, validators and tests.
 - Calibration reference notes were not used as semantic inputs; they remain
   silver references rather than machine-scored gold.
 - MinerU produced zero authoritative EvidenceUnits. Aligned blocks were used
@@ -35,8 +39,8 @@ and paper-specific answer content.
 - The repository secret-pattern scan found no committed API key, token or
   secret-shaped assignment.
 - Zotero is accessed through the loopback Local API in read-only mode.
-- No new MinerU upload was made during calibration regression; cached results
-  were reused only for identical PDF hashes with prior consent receipts.
+- MinerU consent values are local configuration only and are excluded from the
+  repository. Tests use an injected fake client rather than a live upload.
 
 ## Decision
 

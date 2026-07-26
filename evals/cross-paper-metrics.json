@@ -158,8 +158,8 @@
   "release_gate": {
     "deterministic_content_gate": "pass",
     "privacy_and_repository_gate": "pass",
-    "automated_tests": {"passed": 110, "failed": 0},
-    "remaining_human_gate": "final Git diff review and PR approval",
-    "decision": "ready for freeze commit and Draft PR update; merge, tag, and GitHub Pre-release require final approval"
+    "automated_tests": {"passed": 116, "failed": 0},
+    "remaining_human_gate": "none for release candidate; stable release still requires the final unseen-paper smoke test",
+    "decision": "approved for freeze commit, PR promotion, merge and v0.5.0-rc1 GitHub Pre-release after green CI"
   }
 }

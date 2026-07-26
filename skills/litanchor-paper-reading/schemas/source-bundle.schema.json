@@ -47,6 +47,19 @@
           ]
         },
         "paper_type_label_zh": {"type": ["string", "null"]},
+        "primary_paper_type": {
+          "enum": [
+            "method-algorithm",
+            "model-description",
+            "empirical-research",
+            "review"
+          ]
+        },
+        "secondary_paper_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["benchmark", "method"]}
+        },
         "metadata_warnings": {"type": "array", "items": {"type": "string"}},
         "keywords": {"type": "array", "items": {"type": "string"}}
       }

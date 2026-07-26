@@ -44,7 +44,7 @@ Use the bundled scripts rather than reimplementing their behavior:
 - `scripts/zotero_local.py`: exact, loopback-only Zotero acquisition.
 - `scripts/litanchor_local.py`: manual PDF preparation, validation, and rendering.
 - `scripts/autonomous_deep_reading.py` and `scripts/autonomous_semantic.py`: autonomous full-paper work packets, ledger materialization, independent review, and finalization.
-- `scripts/mineru_adapter.py`: consent-gated, non-authoritative MinerU structure enhancement.
+- `scripts/mineru_adapter.py`: policy-gated, non-authoritative MinerU structure enhancement.
 - `scripts/pdf_figures.py`: original-PDF figure rendering and crop provenance.
 - `scripts/export_obsidian.py`: contained, hash-checked, no-overwrite export.
 - `scripts/paper_quality_gate.py`: deterministic publication blockers.

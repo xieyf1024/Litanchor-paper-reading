@@ -41,6 +41,7 @@
         "model",
         "equation",
         "metric",
+        "parameter",
         "experiment",
         "result",
         "figure_interpretation",
