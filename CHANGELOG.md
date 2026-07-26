@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.5.0 — 2026-07-26 — Autonomous Deep Reading
+
+- Promoted the autonomous deep-reading pipeline after the release candidate,
+  six-paper evaluation and three additional cross-domain generalization cases.
+- Passed a final fully unseen, source-closed smoke test under the frozen
+  workflow and rubric with no severe fidelity failure.
+- Kept the release paper-independent: no test title, answer, reference note or
+  paper-specific branch was added to the distributable Skill.
+- Preserved PyMuPDF as the physical-page and evidence authority while keeping
+  MinerU Flash as a consent-controlled, non-authoritative structure enhancer.
+- Kept visual acceptance, no-overwrite Obsidian export, local-only consent and
+  runtime privacy boundaries unchanged.
+- Stable release gate: 116 repository tests, Skill validation, Python
+  compilation and anti-leak/privacy checks passed locally.
+
 ## v0.5.0-rc1 — 2026-07-26 — Autonomous Deep Reading Pre-release
 
 - Froze a three-paper blind corpus using only Zotero metadata, original PDFs
