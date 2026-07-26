@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/visual-analysis.schema.json",
+  "title": "LitAnchor VisualAnalysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "inventory_complete", "analyses"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "inventory_complete": {"type": "boolean"},
+    "analyses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "visual_id",
+          "figure_label",
+          "page_index",
+          "crop_path",
+          "crop_validation_status",
+          "caption_original",
+          "context_original",
+          "selection_reason",
+          "interpretation_zh",
+          "reading_cautions",
+          "supported_claim_ids",
+          "origin"
+        ],
+        "properties": {
+          "visual_id": {"type": "string", "minLength": 1},
+          "figure_label": {"type": "string", "minLength": 1},
+          "page_index": {"type": "integer", "minimum": 1},
+          "crop_path": {"type": "string", "minLength": 1},
+          "crop_validation_status": {"enum": ["pass", "warning", "fail"]},
+          "caption_original": {"type": "string", "minLength": 1},
+          "context_original": {"type": "string", "minLength": 1},
+          "selection_reason": {"type": "string", "minLength": 1},
+          "interpretation_zh": {"type": "string", "minLength": 1},
+          "reading_cautions": {"type": "string", "minLength": 1},
+          "supported_claim_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^C-[A-Za-z0-9_-]+$"}
+          },
+          "origin": {"const": "auto_synthesized"}
+        }
+      }
+    }
+  }
+}

@@ -75,6 +75,27 @@ class MinerUAdapterTests(unittest.TestCase):
                     client_factory=lambda: object(),
                 )
 
+    def test_selected_page_subset_preserves_original_page_mapping(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf, bundle = self.make_pdf_and_bundle(root, page_count=22)
+            selected = [9, 11, 12, 13, 14, 15]
+            subset_pdf, subset_bundle = MODULE.create_flash_subset(
+                pdf,
+                bundle,
+                selected,
+                root / "subset",
+            )
+            payload = json.loads(subset_bundle.read_text(encoding="utf-8"))
+            self.assertEqual(payload["pdf"]["page_count"], 6)
+            self.assertEqual(
+                [page["page_index"] for page in payload["pages"]],
+                selected,
+            )
+            self.assertEqual(payload["pdf"]["original_physical_pages"], selected)
+            self.assertEqual(payload["pdf"]["original_pdf_sha256"], MODULE.sha256_file(pdf))
+            self.assertEqual(payload["pdf"]["sha256"], MODULE.sha256_file(subset_pdf))
+
     def test_writes_raw_markdown_alignment_and_privacy_receipt(self):
         class FakeClient:
             def flash_extract(self, source, **options):

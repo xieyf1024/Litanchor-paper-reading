@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xieyf1024/Litanchor-paper-reading/schemas/missing-information-check.schema.json",
+  "title": "LitAnchor MissingInformationCheck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "checks"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "section_target",
+          "searched_pages",
+          "search_terms",
+          "reviewer_role",
+          "status"
+        ],
+        "properties": {
+          "section_target": {"type": "string", "minLength": 1},
+          "searched_pages": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "integer", "minimum": 1}
+          },
+          "search_terms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "reviewer_role": {"const": "missing-information-reviewer"},
+          "status": {"enum": ["confirmed_absent", "confirmed_not_applicable", "found"]},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

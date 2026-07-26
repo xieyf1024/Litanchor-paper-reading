@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import time
 import unicodedata
 from collections import Counter
@@ -135,6 +136,86 @@ def _load_flash_client() -> Any:
         return MinerU(token=None)
 
 
+def create_flash_subset(
+    pdf_path: Path,
+    source_bundle_path: Path,
+    original_pages: list[int],
+    staging_dir: Path,
+) -> tuple[Path, Path]:
+    """Create an eligible temporary PDF while retaining original page IDs."""
+    if (
+        not original_pages
+        or len(original_pages) > MAX_FLASH_PAGES
+        or len(set(original_pages)) != len(original_pages)
+    ):
+        raise MinerUAdapterError(
+            "A Flash subset requires 1–20 unique original physical pages."
+        )
+    pdf_path = pdf_path.resolve()
+    source_bundle_path = source_bundle_path.resolve()
+    source = json.loads(source_bundle_path.read_text(encoding="utf-8"))
+    original_page_count = source.get("pdf", {}).get("page_count")
+    if (
+        not isinstance(original_page_count, int)
+        or any(page < 1 or page > original_page_count for page in original_pages)
+    ):
+        raise MinerUAdapterError("Flash subset contains an invalid original page.")
+    if source.get("pdf", {}).get("sha256") != sha256_file(pdf_path):
+        raise MinerUAdapterError("Original SourceBundle PDF hash mismatch.")
+    try:
+        import pymupdf
+    except ImportError as exc:
+        raise MinerUAdapterError(
+            "PyMuPDF is required to create a page-preserving Flash subset."
+        ) from exc
+
+    staging_dir.mkdir(parents=True, exist_ok=False)
+    subset_pdf = staging_dir / "mineru-subset.pdf"
+    original_document = pymupdf.open(pdf_path)
+    subset_document = pymupdf.open()
+    try:
+        for page_index in original_pages:
+            subset_document.insert_pdf(
+                original_document,
+                from_page=page_index - 1,
+                to_page=page_index - 1,
+            )
+        subset_document.save(subset_pdf)
+    finally:
+        subset_document.close()
+        original_document.close()
+
+    pages_by_index = {
+        page.get("page_index"): page
+        for page in source.get("pages", [])
+        if isinstance(page, dict)
+    }
+    missing = [page for page in original_pages if page not in pages_by_index]
+    if missing:
+        raise MinerUAdapterError(
+            f"SourceBundle lacks selected original pages: {missing}."
+        )
+    subset_source = dict(source)
+    subset_source["pdf"] = dict(source["pdf"])
+    subset_source["pdf"].update(
+        {
+            "path": str(subset_pdf),
+            "sha256": sha256_file(subset_pdf),
+            "page_count": len(original_pages),
+            "original_pdf_sha256": source["pdf"]["sha256"],
+            "original_physical_pages": original_pages,
+        }
+    )
+    subset_source["pages"] = [pages_by_index[page] for page in original_pages]
+    subset_bundle = staging_dir / "source-bundle.json"
+    subset_bundle.write_text(
+        json.dumps(subset_source, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return subset_pdf, subset_bundle
+
+
 def run_flash(
     pdf_path: Path,
     source_bundle_path: Path,
@@ -148,6 +229,9 @@ def run_flash(
     enable_formula: bool | None = None,
     enable_table: bool | None = None,
     timeout: int = 300,
+    original_pdf_sha256: str | None = None,
+    original_pages: list[int] | None = None,
+    consent_mode: str = "ask_each_time",
 ) -> dict[str, Any]:
     if not consent_external_upload:
         raise MinerUAdapterError("MinerU Flash requires explicit external-upload consent")
@@ -203,6 +287,9 @@ def run_flash(
         "page_count": page_count,
         "options": options,
         "token_supplied": False,
+        "consent_mode": consent_mode,
+        "original_pdf_sha256": original_pdf_sha256 or digest,
+        "original_physical_pages": original_pages or list(range(1, page_count + 1)),
     }
     response = {
         "schema_version": "0.1",
@@ -221,9 +308,12 @@ def run_flash(
         "service": "MinerU Flash",
         "service_host": "mineru.net",
         "consent_external_upload": True,
+        "consent_mode": consent_mode,
         "token_used": False,
         "uploaded_at": started_at,
         "source_pdf_sha256": digest,
+        "original_pdf_sha256": original_pdf_sha256 or digest,
+        "original_physical_pages": original_pages or list(range(1, page_count + 1)),
         "file_size_bytes": file_size,
         "page_count": page_count,
         "purpose": "optional document-structure enhancement; not final evidence",
@@ -256,24 +346,72 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--formula", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--table", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument(
+        "--original-pages",
+        help="Comma-separated original physical pages for a long-PDF subset, e.g. 9,11-15",
+    )
     return parser
+
+
+def parse_original_pages(value: str) -> list[int]:
+    pages: list[int] = []
+    for part in value.split(","):
+        token = part.strip()
+        if not token:
+            continue
+        if "-" in token:
+            start_text, end_text = token.split("-", 1)
+            start, end = int(start_text), int(end_text)
+            if start > end:
+                raise MinerUAdapterError("Original page range is reversed.")
+            pages.extend(range(start, end + 1))
+        else:
+            pages.append(int(token))
+    if not pages:
+        raise MinerUAdapterError("No original pages were selected.")
+    return pages
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        result = run_flash(
-            args.pdf,
-            args.source_bundle,
-            args.output,
-            consent_external_upload=args.consent_external_upload,
-            language=args.language,
-            page_range=args.page_range,
-            is_ocr=args.ocr,
-            enable_formula=args.formula,
-            enable_table=args.table,
-            timeout=args.timeout,
-        )
+        if args.original_pages:
+            selected_pages = parse_original_pages(args.original_pages)
+            original_digest = sha256_file(args.pdf.resolve())
+            with tempfile.TemporaryDirectory(prefix="litanchor-mineru-") as temporary:
+                subset_pdf, subset_bundle = create_flash_subset(
+                    args.pdf,
+                    args.source_bundle,
+                    selected_pages,
+                    Path(temporary) / "subset",
+                )
+                result = run_flash(
+                    subset_pdf,
+                    subset_bundle,
+                    args.output,
+                    consent_external_upload=args.consent_external_upload,
+                    language=args.language,
+                    page_range=None,
+                    is_ocr=args.ocr,
+                    enable_formula=args.formula,
+                    enable_table=args.table,
+                    timeout=args.timeout,
+                    original_pdf_sha256=original_digest,
+                    original_pages=selected_pages,
+                )
+        else:
+            result = run_flash(
+                args.pdf,
+                args.source_bundle,
+                args.output,
+                consent_external_upload=args.consent_external_upload,
+                language=args.language,
+                page_range=args.page_range,
+                is_ocr=args.ocr,
+                enable_formula=args.formula,
+                enable_table=args.table,
+                timeout=args.timeout,
+            )
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except (MinerUAdapterError, json.JSONDecodeError, OSError) as exc:

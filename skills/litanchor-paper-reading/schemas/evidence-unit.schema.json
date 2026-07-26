@@ -6,20 +6,30 @@
   "additionalProperties": false,
   "required": [
     "evidence_id",
+    "origin",
     "evidence_type",
     "page_index",
     "section",
     "quote_original",
+    "context_before",
+    "context_after",
     "epistemic_status",
     "contains_number",
     "contains_unit",
     "confidence",
+    "extraction_confidence",
     "needs_review",
     "page_verified",
-    "source_match_kind"
+    "source_match_kind",
+    "alignment_kind",
+    "mineru_used_as",
+    "authoritative_source"
   ],
   "properties": {
     "evidence_id": {"type": "string", "pattern": "^E-[A-Za-z0-9_-]+$"},
+    "origin": {
+      "enum": ["auto_extracted", "auto_synthesized", "curated", "user"]
+    },
     "evidence_type": {
       "enum": [
         "summary",
@@ -63,6 +73,8 @@
       ]
     },
     "quote_original": {"type": "string", "minLength": 1},
+    "context_before": {"type": "string"},
+    "context_after": {"type": "string"},
     "epistemic_status": {
       "enum": ["observed", "supported", "interpreted", "hypothesized", "speculative", "unknown"]
     },
@@ -71,10 +83,42 @@
     "contains_unit": {"type": "boolean"},
     "contains_variable": {"type": "boolean"},
     "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1},
     "needs_review": {"type": "boolean"},
     "page_verified": {"type": "boolean"},
     "source_match_kind": {
       "enum": ["exact", "normalized", "fuzzy", "unmatched"]
+    },
+    "alignment_kind": {
+      "enum": ["exact", "normalized", "fuzzy", "unmatched"]
+    },
+    "mineru_used_as": {
+      "enum": ["structure_hint", "not_used"]
+    },
+    "authoritative_source": {
+      "const": "pymupdf_page"
+    },
+    "symbol_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "method", "corrections"],
+      "properties": {
+        "status": {"const": "corrected_from_original_page"},
+        "method": {"const": "pymupdf_page_render"},
+        "corrections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["extracted", "verified"],
+            "properties": {
+              "extracted": {"type": "string", "minLength": 1},
+              "verified": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
     },
     "issues": {"type": "array", "items": {"type": "string"}}
   }

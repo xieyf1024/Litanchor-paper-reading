@@ -4,9 +4,11 @@
 
 LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它计划从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
 
-**当前状态：v0.4.1 Deep Reading Pipeline Pre-release。** Zotero、PDF 页码、证据追踪、关键图裁剪和受限 Obsidian 导出已经形成可靠基础。v0.4.1 已接入 `Paper Template - Final`、扩展 ClaimRecord，并增加深读完整性阻断；ResNet、LOVECLIM 和气候 U-Net 示例已通过真实论文正向验证，并明确标记为人工辅助回归产物。旧三篇简略输出仅保留为失败回归样例。尚未完成的是可重复的自动专项提取/编排路径，因此 `prepare` 后仍需由 Skill 按多遍流程建立证据与主张账本。
+**当前发布版：v0.4.1 Deep Reading Pipeline Pre-release；当前开发候选：v0.5.0-rc1。** Zotero、PDF 物理页、证据追踪、关键图裁剪和受限 Obsidian 导出已经形成可靠基础。v0.4.1 接入 `Paper Template - Final`、扩展 ClaimRecord，并增加深读完整性阻断；ResNet、LOVECLIM 和气候 U-Net 示例继续作为明确标记的人工辅助回归产物。
 
-本轮根因与正向验证数据分别见 [deep-output failure diagnosis](evals/reports/deep-output-failure-diagnosis.md)、[v0.4.1 forward validation](evals/reports/v0.4.1-deep-repair-forward-validation.md) 和 [v0.4.1 final validation](docs/v0.4.1-final-validation.md)。人工辅助示例见 [examples/v0.4.1](examples/v0.4.1/)。
+`codex/v0.5-autonomous-deep-reading` 已跑通单篇自主深读候选闭环：冻结无参考答案输入，用 PyMuPDF 建立权威页级工作包，按论文类型执行六遍全文阅读，自动调用符合授权策略的 MinerU Flash 并融合非权威结构提示，先生成 Evidence/Claim Ledger，再生成 SectionSynthesis、关键视觉分析、独立忠实度/召回审查和 Final 模板笔记。官方六篇评测共覆盖 81 个物理页、182 条 EvidenceUnit、155 条 ClaimRecord 与 15 张关键图，所有确定性质量指标均为 1.0、无 Blocker；另有三篇全新论文完成泛化冒烟测试并通过用户对内容、关键图、排版与 Zotero 链接的验收。`v0.5.0-rc1` 已通过本地发布门并获准在 CI 通过后合并、标记为 GitHub Pre-release；稳定版仍需最后一篇完全未见论文的冒烟测试。
+
+本轮数据与发布边界见 [v0.5 final validation candidate](docs/v0.5-final-validation.md)、[cross-paper metrics](evals/cross-paper-metrics.json)、[failure taxonomy](evals/failure-taxonomy.md) 和 [release checklist](docs/release-checklist.md)。人工辅助示例仍见 [examples/v0.4.1](examples/v0.4.1/)。
 
 ## 核心约束
 
@@ -72,6 +74,8 @@ Skill 必须按背景/问题/贡献、数据/方法、结果/图表、讨论/限
 
 产物保存在被 Git 忽略的 `runtime/`。所有 `deep`/`internalize` 输出必须使用 `assets/Paper Template - Final.md`。`build` 会阻断错误或未验证页码、无法在原页找到的引文、必需内容组缺失、内容召回或章节深度不足、未完成关键视觉筛选、未通过裁剪来源门禁、数值/单位不一致、Final 模板缺节、语义校验失败和文件覆盖。页码未知时不会回退成 `p.1`。
 
+v0.5 自主候选使用 `autonomous_deep_reading.py start` 建立六遍阅读包，并按本地授权策略自动执行符合条件的 MinerU 路由；随后由 Skill 生成逐页语义审阅回执，并用 `autonomous_semantic.py` 物化 Evidence/Claim 账本。`finalize` 只有在页面回执、SectionSynthesis、视觉分析和独立双审查均通过后才生成 Final 模板候选。用户确认视觉和链接后，再执行 `accept-visual-review` 与受限导出。完整顺序见 [autonomous deep-reading reference](skills/litanchor-paper-reading/references/autonomous-deep-reading.md)。
+
 从原 PDF 裁剪一张已核对的关键图：
 
 ```powershell
@@ -87,7 +91,14 @@ Skill 必须按背景/问题/贡献、数据/方法、结果/图表、讨论/限
 .\.venv\Scripts\pip install -r requirements-mineru.txt
 ```
 
-它只在用户对该文档明确同意外部上传后运行，调用无需 Token 的 Flash/Quick Parse 接口，并强制检查单文件不超过 10 MiB、20 页。输出只用于标题层级、阅读顺序、图题和复杂结构候选；`exact`、`fuzzy`、`unmatched` 对齐结果都不能绕过 PyMuPDF 原页核验。
+先在本地设置授权策略：
+
+```powershell
+.\.venv\Scripts\python skills\litanchor-paper-reading\scripts\autonomous_deep_reading.py `
+  set-mineru-consent --mode always_for_eligible_files
+```
+
+支持 `always_for_eligible_files`、`ask_each_time` 和 `never`。配置只保存在用户本机，不进入 Git。`start` 会依据该策略自动调用无需 Token 的 Flash/Quick Parse 接口，并强制检查单文件不超过 10 MiB、20 页；长论文只对选定的复杂页建立保留原物理页码的合规子集。输出只用于标题层级、阅读顺序、图题和复杂结构候选；`exact`、`fuzzy`、`unmatched` 对齐结果都不能绕过 PyMuPDF 原页核验。
 
 ## Zotero Local API 与测试 Inbox
 
@@ -111,7 +122,7 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 ## 当前阶段边界
 
-当前实现只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用 OCR 或 Zotero MCP。原生文本由 pypdf 逐页提取，PyMuPDF 负责原 PDF 视觉证据；MinerU Flash 仍是独立、默认关闭的可选结构增强通道，尚未自动进入最终证据和笔记生成流程。
+当前候选只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用付费 MinerU API、完整本地 MinerU、Zotero MCP 或无人审核发布。PyMuPDF 始终是权威全文页级基线；MinerU Flash 仅是依据本地授权策略调用或复用同哈希缓存的非权威结构增强层。v0.5 在最终 Git 差异审查、PR 合并与 Pre-release 发布完成前仍是候选。
 
 详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
 

@@ -58,6 +58,6 @@ Embed the PNG with a Vault-relative Obsidian wikilink. Keep the manifest outside
 - **Obsidian→Zotero:** implemented as page-level `zotero://open-pdf` links and requires no Obsidian plugin.
 - **Zotero→Obsidian:** defer because it requires Zotero writes and stable Obsidian paths. It is not equivalent to the current traceability link.
 - **Codex→Obsidian:** keep plain Markdown and filesystem export; do not require an Obsidian plugin.
-- **PDF parsing:** keep PyMuPDF and the original PDF as the page/visual evidence authority. `scripts/mineru_adapter.py` exposes an optional token-free MinerU Flash route only after explicit per-document upload consent and eligibility checks (10 MiB, 20 pages). Its output must align back to PyMuPDF pages; unmatched content cannot become evidence. This project does not use the paid precision API.
+- **PDF parsing:** keep PyMuPDF and the original PDF as the page/visual evidence authority. `scripts/autonomous_deep_reading.py` applies the local `always_for_eligible_files`, `ask_each_time`, or `never` consent mode and automatically executes eligible token-free MinerU Flash routes (10 MiB, 20 pages). The local setting is never committed. MinerU output must align back to PyMuPDF pages; unmatched content cannot become evidence. This project does not use the paid precision API.
 
 No API keys, cookies, private Zotero database, production Vault or unpublished corpus should be committed.

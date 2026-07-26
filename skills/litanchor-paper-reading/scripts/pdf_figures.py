@@ -40,7 +40,10 @@ def _caption_pattern(label: str) -> re.Pattern[str]:
     if match is None:
         raise FigureCropError("Figure label must look like 'Figure 1' or 'Fig. 2'")
     number = re.escape(match.group(1))
-    return re.compile(rf"^\s*fig(?:ure)?\.?\s*{number}\s*[:.]", re.IGNORECASE)
+    return re.compile(
+        rf"^\s*fig(?:ure)?\.?\s*{number}(?:\s*[:.]|\s+)",
+        re.IGNORECASE,
+    )
 
 
 def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]]:
@@ -48,7 +51,24 @@ def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]
     matches: list[tuple[Any, str]] = []
     for block in page.get_text("blocks"):
         text = " ".join(str(block[4]).split())
-        if pattern.search(text):
+        direct_match = pattern.search(text)
+        if direct_match is None:
+            embedded_match = re.search(
+                pattern.pattern.lstrip("^"),
+                text,
+                flags=pattern.flags,
+            )
+            suffix = text[embedded_match.end() :].strip() if embedded_match else ""
+            prefix = text[: embedded_match.start()].strip() if embedded_match else ""
+            if (
+                embedded_match is None
+                or len(prefix) > 24
+                or len(suffix) < 20
+            ):
+                continue
+        elif len(text[direct_match.end() :].strip()) < 20:
+            continue
+        if direct_match is not None or embedded_match is not None:
             matches.append((pymupdf.Rect(block[:4]), text))
     return matches
 
@@ -403,7 +423,7 @@ def main(argv: list[str] | None = None) -> int:
             discussion_location=args.discussion_location,
             zotero_page_link=args.zotero_page_link,
         )
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
         return 0
     except FigureCropError as exc:
         print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)

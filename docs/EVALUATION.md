@@ -2,7 +2,13 @@
 
 ## Current phase
 
-v0.4.1 is being repaired at the Deep Reading Pipeline layer. The earlier candidate proved integration, page traceability, crop provenance and safe export, but its three blind `deep` notes failed the product-quality contract: they used a simplified renderer, omitted Final-template modules and contained too few explanatory claims.
+v0.4.1 has been released as a Pre-release after repairing the deterministic
+Deep Reading Pipeline layer. v0.5 has started with a new three-paper blind
+corpus, PyMuPDF-authoritative work packets, token-free MinerU structure
+alignment, autonomous-origin controls and independent fidelity/recall review
+contracts. The runs remain `awaiting_agent_analysis`; they are not yet
+automatic deep-reading results. See
+`evals/reports/v0.5-autonomous-start.md`.
 
 One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
 
@@ -76,7 +82,7 @@ An existing AI-assisted note may become a gold annotation only after a human ind
 
 A candidate patch may be promoted only when it fixes a reproducible target case, introduces a regression test, preserves every hard reliability rule, does not increase permissions, shows no retained-set regression and receives maintainer approval. A single personal preference belongs in local configuration rather than the shared Skill.
 
-## v0.4 verification
+## Verification
 
 Run:
 

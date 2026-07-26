@@ -49,6 +49,8 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(fields["name"], "litanchor-paper-reading")
         self.assertIn("Use when", fields["description"])
         self.assertLessEqual(len(fields["description"]), 1024)
+        self.assertNotRegex(text, r"\bv\d+\.\d+\b")
+        self.assertNotIn("experimental", text.lower())
 
     def test_skill_references_and_assets_exist(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
@@ -82,7 +84,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 7)
+        self.assertEqual(len(schemas), 13)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")

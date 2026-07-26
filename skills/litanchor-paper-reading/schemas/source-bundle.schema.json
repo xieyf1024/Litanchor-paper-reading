@@ -33,7 +33,34 @@
         "journal": {"type": ["string", "null"]},
         "doi": {"type": ["string", "null"]},
         "citekey": {"type": ["string", "null"]},
-        "paper_type": {"type": "array", "items": {"type": "string"}},
+        "paper_type": {
+          "oneOf": [
+            {
+              "enum": [
+                "method-algorithm",
+                "model-description",
+                "empirical-research",
+                "review"
+              ]
+            },
+            {"type": "array", "items": {"type": "string"}}
+          ]
+        },
+        "paper_type_label_zh": {"type": ["string", "null"]},
+        "primary_paper_type": {
+          "enum": [
+            "method-algorithm",
+            "model-description",
+            "empirical-research",
+            "review"
+          ]
+        },
+        "secondary_paper_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["benchmark", "method"]}
+        },
+        "metadata_warnings": {"type": "array", "items": {"type": "string"}},
         "keywords": {"type": "array", "items": {"type": "string"}}
       }
     },

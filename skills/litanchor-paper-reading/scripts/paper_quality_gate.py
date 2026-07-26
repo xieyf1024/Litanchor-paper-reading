@@ -22,7 +22,7 @@ FINAL_REQUIRED_HEADINGS = (
     "### 3.1 研究对象、数据或材料",
     "### 3.2 方法与研究设计",
     "### 3.3 关键模型、算法或技术环节",
-    "### 3.4 核心公式与评价指标",
+    "### 3.4 核心公式、评价指标与关键参数",
     "### 3.5 实验、比较与复现要点",
     "## 4. 核心结果与证据",
     "## 5. 重要图表",
@@ -51,6 +51,7 @@ DEEP_REQUIRED_GROUPS = {
             "model",
             "equation",
             "metric",
+            "parameter",
             "experiment",
         },
         4,
@@ -74,6 +75,13 @@ PAPER_TYPE_ALIASES = {
     "empirical-research": "empirical-research",
     "review": "review",
     "review paper": "review",
+}
+
+PAPER_TYPE_LABELS_ZH = {
+    "method-algorithm": "方法或算法论文",
+    "model-description": "模型说明论文",
+    "empirical-research": "实证研究论文",
+    "review": "综述论文",
 }
 
 PAPER_TYPE_REQUIRED_GROUPS = {
@@ -114,7 +122,7 @@ FINAL_SECTION_CLAIM_TYPES = {
     "3.1": {"data", "material", "preprocessing"},
     "3.2": {"method"},
     "3.3": {"model"},
-    "3.4": {"equation", "metric"},
+    "3.4": {"equation", "metric", "parameter"},
     "3.5": {"experiment"},
     "6.1": {"interpretation", "discussion", "hypothesis"},
     "6.2": {"conclusion"},
@@ -214,8 +222,9 @@ def validate_numeric_rendering_integrity(markdown: str) -> list[dict[str, str]]:
     patterns = (
         r"%\s*%",
         r"(?:°|◦)\s*C\s*(?:°|◦)\s*C",
-        r"\b(years?|months?|days?|hours?|hrs?|Ghz|GHz|Mhz|MHz|km|mm|cm|m|s)"
+        r"\b(years?|months?|days?|hours?|hrs?|Ghz|GHz|Mhz|MHz|km|mm|cm)"
         r"\s*\1\b",
+        r"\b(m|s)\s+\1\b",
     )
     matches = [
         match.group(0)
@@ -231,6 +240,395 @@ def validate_numeric_rendering_integrity(markdown: str) -> list[dict[str, str]]:
                 "Rendered numeric values contain duplicated unit suffixes: "
                 + ", ".join(sorted(set(matches)))
             ),
+        }
+    ]
+
+
+SUSPICIOUS_RANGE_PATTERN = re.compile(
+    r"(?<![\d.])(?P<lower>\d+(?:[.,]\d+)?)\s*±\s*"
+    r"(?P<upper>\d+(?:[.,]\d+)?)(?![\d.])"
+)
+SUSPICIOUS_WORD_RANGE_PATTERN = re.compile(
+    r"\b[A-Za-z]{3,}±[A-Za-z]{3,}\b"
+)
+UNCERTAINTY_MARKERS = re.compile(
+    r"\b(?:mean|average|standard deviation|s\.?d\.?|standard error|"
+    r"s\.?e\.?m\.?|uncertainty|confidence interval|CI)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _verified_symbol_corrections(item: dict[str, Any]) -> dict[str, str]:
+    receipt = item.get("symbol_verification")
+    if not isinstance(receipt, dict):
+        return {}
+    if receipt.get("status") != "corrected_from_original_page":
+        return {}
+    if receipt.get("method") != "pymupdf_page_render":
+        return {}
+    corrections = receipt.get("corrections")
+    if not isinstance(corrections, list):
+        return {}
+    return {
+        str(correction.get("extracted")): str(correction.get("verified"))
+        for correction in corrections
+        if isinstance(correction, dict)
+        and str(correction.get("extracted") or "").strip()
+        and str(correction.get("verified") or "").strip()
+    }
+
+
+def validate_range_symbol_integrity(
+    evidence: list[Any],
+) -> list[dict[str, str]]:
+    """Block likely dashes decoded as ± until the original page is checked."""
+    suspicious: list[str] = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            continue
+        quote = str(item.get("quote_original") or "")
+        corrections = _verified_symbol_corrections(item)
+        for match in SUSPICIOUS_RANGE_PATTERN.finditer(quote):
+            token = match.group(0)
+            lower = float(match.group("lower").replace(",", "."))
+            upper = float(match.group("upper").replace(",", "."))
+            nearby = quote[max(0, match.start() - 50) : match.end() + 50]
+            plausible_uncertainty = (
+                upper < lower
+                and bool(UNCERTAINTY_MARKERS.search(nearby))
+                and bool(re.search(r"\s±\s", token))
+            )
+            verified = token in corrections and "±" not in corrections[token]
+            if not plausible_uncertainty and not verified:
+                suspicious.append(
+                    f"{item.get('evidence_id', '<unknown>')}:{token}"
+                )
+        for match in SUSPICIOUS_WORD_RANGE_PATTERN.finditer(quote):
+            token = match.group(0)
+            verified = token in corrections and "±" not in corrections[token]
+            if not verified:
+                suspicious.append(
+                    f"{item.get('evidence_id', '<unknown>')}:{token}"
+                )
+    if not suspicious:
+        return []
+    return [
+        {
+            "issue_type": "range_symbol_integrity",
+            "message": (
+                "Evidence contains ± pairs that may be mis-decoded dashes; "
+                "verify the original rendered PDF page and record a "
+                "symbol_verification receipt: "
+                + ", ".join(suspicious)
+            ),
+        }
+    ]
+
+
+GENERIC_HEADING_PATTERN = re.compile(
+    r"^(?:"
+    r"关键模型|核心结果|关键结果|结构化要点|实验|指标|公式|模型|方法|结果|"
+    r"名称原文未说明|原文未说明|不适用"
+    r")(?:\s*\d+)?$"
+)
+INFORMATIVE_HEADING_TYPES = {
+    "model",
+    "metric",
+    "equation",
+    "experiment",
+    "result",
+}
+
+
+def validate_generic_claim_headings(
+    claims: list[Any],
+) -> list[dict[str, str]]:
+    """Require informative headings for records rendered as named deep sections."""
+    invalid: list[str] = []
+    for claim in claims:
+        if not isinstance(claim, dict) or _claim_type(claim) not in INFORMATIVE_HEADING_TYPES:
+            continue
+        title = re.sub(r"\s+", " ", str(claim.get("title_zh") or "").strip())
+        if not title or GENERIC_HEADING_PATTERN.fullmatch(title):
+            invalid.append(
+                f"{claim.get('claim_id', '<unknown>')}:{title or '<missing>'}"
+            )
+    if not invalid:
+        return []
+    return [
+        {
+            "issue_type": "generic_heading_detection",
+            "message": (
+                "Named deep-reading records require evidence-grounded informative "
+                "headings rather than numbered placeholders: "
+                + ", ".join(invalid)
+            ),
+        }
+    ]
+
+
+def validate_metadata_consistency(
+    source: dict[str, Any],
+    paper_type: Any,
+    *,
+    require_paper_type: bool = True,
+) -> list[dict[str, str]]:
+    """Validate machine metadata without silently replacing Zotero values."""
+    metadata = source.get("metadata")
+    if not isinstance(metadata, dict):
+        return [
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": "SourceBundle metadata is missing or invalid.",
+            }
+        ]
+    findings: list[dict[str, str]] = []
+    if canonical_paper_type(paper_type) is None:
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker" if require_paper_type else "info",
+                "message": (
+                    "paper_type is missing or is not a supported machine enum"
+                    + ("." if require_paper_type else "; skim output remains provisional.")
+                ),
+            }
+        )
+    title = str(metadata.get("title") or "").strip()
+    if not title:
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": "Title is missing from source metadata.",
+            }
+        )
+    year = metadata.get("year")
+    if year is not None and (
+        not isinstance(year, int) or not 1000 <= year <= 2200
+    ):
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": f"Year has an invalid value: {year!r}.",
+            }
+        )
+    doi = metadata.get("doi")
+    if doi is not None and str(doi).strip() and not re.fullmatch(
+        r"10\.\d{4,9}/\S+",
+        str(doi).strip(),
+        flags=re.IGNORECASE,
+    ):
+        findings.append(
+            {
+                "issue_type": "metadata_consistency",
+                "severity": "blocker",
+                "message": f"DOI has an invalid format: {doi!r}.",
+            }
+        )
+    for field in ("year", "journal", "doi"):
+        value = metadata.get(field)
+        if value is None or value == "":
+            findings.append(
+                {
+                    "issue_type": "metadata_consistency",
+                    "severity": "info",
+                    "message": (
+                        f"{field} was not supplied by the source metadata; "
+                        "LitAnchor did not infer a replacement."
+                    ),
+                }
+            )
+    return findings
+
+
+def validate_duplicated_section_content(
+    markdown: str,
+) -> list[dict[str, str]]:
+    """Reject verbatim substantive paragraphs repeated across rendered sections."""
+    visible = markdown.split("## 8. 术语、原文证据与滚雪球阅读", 1)[0]
+    paragraphs = [
+        re.sub(r"\s+", "", paragraph)
+        for paragraph in re.split(r"\n\s*\n", visible)
+        if not paragraph.lstrip().startswith(("#", "|", "!", "<!--"))
+    ]
+    substantive: list[str] = []
+    for paragraph in paragraphs:
+        content = re.sub(r"〔[^〕]+〕", "", paragraph)
+        marker_text = re.sub(r"[*_`#：:、，。；;|\-\s]", "", content)
+        if marker_text in {"本节证据", "证据"}:
+            continue
+        if len(content) >= 30:
+            substantive.append(content)
+    duplicates = sorted(
+        {paragraph for paragraph in substantive if substantive.count(paragraph) > 1}
+    )
+    if not duplicates:
+        return []
+    previews = [text[:60] + ("…" if len(text) > 60 else "") for text in duplicates]
+    return [
+        {
+            "issue_type": "duplicated_section_content",
+            "message": (
+                "Rendered deep note repeats substantive content verbatim across "
+                "sections; overview and formal analysis must differ in depth: "
+                + " | ".join(previews)
+            ),
+        }
+    ]
+
+
+def validate_table_sentence_rendering_integrity(
+    markdown: str,
+) -> list[dict[str, str]]:
+    """Reject mechanical punctuation joins inside rendered Markdown tables."""
+    malformed = sorted(
+        {
+            match.group(0)
+            for match in re.finditer(r"(?:。|！|？|；)\s*；", markdown)
+        }
+    )
+    if not malformed:
+        return []
+    return [
+        {
+            "issue_type": "table_sentence_rendering_integrity",
+            "message": (
+                "Rendered table text contains mechanically duplicated punctuation: "
+                + ", ".join(malformed)
+            ),
+        }
+    ]
+
+
+def evaluate_summary_completeness(
+    claims: list[Any],
+    evidence: list[Any],
+) -> list[dict[str, str]]:
+    """Require a deep-note summary to cover problem, method, and result evidence."""
+    summaries = [
+        claim
+        for claim in claims
+        if isinstance(claim, dict) and _claim_type(claim) == "summary"
+    ]
+    evidence_by_id = {
+        str(item.get("evidence_id")): item
+        for item in evidence
+        if isinstance(item, dict) and item.get("evidence_id")
+    }
+    problems: list[str] = []
+    if not summaries:
+        problems.append("no summary claim exists")
+    else:
+        summary = summaries[0]
+        text = re.sub(r"\s+", "", str(summary.get("claim_text_zh") or ""))
+        evidence_ids = [
+            str(item)
+            for item in summary.get("evidence_ids", [])
+            if str(item) in evidence_by_id
+        ]
+        evidence_types = {
+            str(evidence_by_id[item].get("evidence_type") or "")
+            for item in evidence_ids
+        }
+        groups = (
+            {"research_question", "research_gap", "background", "summary"},
+            {
+                "method_step",
+                "model",
+                "data",
+                "material",
+                "preprocessing",
+                "experiment",
+            },
+            {"result", "conclusion", "contribution"},
+        )
+        if len(text) < 80:
+            problems.append(f"summary is too short ({len(text)}/80 characters)")
+        if len(set(evidence_ids)) < 3:
+            problems.append("summary uses fewer than three distinct EvidenceUnits")
+        missing_groups = [
+            label
+            for label, group in zip(("problem", "method", "result"), groups)
+            if not evidence_types & group
+        ]
+        if missing_groups:
+            problems.append(
+                "summary lacks " + ", ".join(missing_groups) + " evidence"
+            )
+    if not problems:
+        return []
+    return [
+        {
+            "issue_type": "summary_completeness",
+            "message": "Deep-note summary failed: " + "; ".join(problems) + ".",
+        }
+    ]
+
+
+def validate_page_semantic_coverage(
+    page_classification: dict[str, Any],
+    page_count: int,
+) -> list[dict[str, str]]:
+    """Require every non-reference physical page to receive semantic review."""
+    pages = page_classification.get("pages")
+    problems: list[str] = []
+    if not isinstance(pages, list):
+        problems.append("page-classification.json has no pages array")
+        pages = []
+    page_numbers = [
+        item.get("page_index")
+        for item in pages
+        if isinstance(item, dict)
+    ]
+    expected = list(range(1, page_count + 1))
+    if sorted(page_numbers) != expected or len(set(page_numbers)) != page_count:
+        problems.append("physical-page classification is incomplete or duplicated")
+    valid_classes = {
+        "main_content",
+        "references_only",
+        "appendix",
+        "supplementary_content",
+        "extraction_failed",
+    }
+    for item in pages:
+        if not isinstance(item, dict):
+            continue
+        page = item.get("page_index")
+        classification = item.get("classification")
+        if classification not in valid_classes:
+            problems.append(f"p.{page} has invalid classification")
+            continue
+        required = item.get("semantic_review_required")
+        reviewed = item.get("semantic_reviewed")
+        if classification == "references_only":
+            if required is not False or reviewed is not True:
+                problems.append(f"p.{page} reference exclusion is not explicit")
+            if not str(item.get("exclusion_reason") or "").strip():
+                problems.append(f"p.{page} reference exclusion has no reason")
+        else:
+            if required is not True or reviewed is not True:
+                problems.append(
+                    f"p.{page} {classification} content was not semantically reviewed"
+                )
+            outcome = item.get("review_outcome")
+            if outcome not in {"evidence_captured", "no_core_claims"}:
+                problems.append(f"p.{page} has no valid semantic review outcome")
+            if outcome == "evidence_captured" and not item.get("evidence_ids"):
+                problems.append(f"p.{page} captured evidence but lists no Evidence ID")
+            if (
+                outcome == "no_core_claims"
+                and not str(item.get("review_notes") or "").strip()
+            ):
+                problems.append(f"p.{page} no-core-claims decision has no rationale")
+    if not problems:
+        return []
+    return [
+        {
+            "issue_type": "page_semantic_coverage",
+            "message": "Physical-page semantic coverage failed: " + "; ".join(problems) + ".",
         }
     ]
 

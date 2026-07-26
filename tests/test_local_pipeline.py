@@ -28,6 +28,16 @@ class LocalPipelineTests(unittest.TestCase):
         page = "ice-covered con-\ntinents use model-\ngenerated ice volume"
         self.assertTrue(MODULE.quote_is_traceable(quote, page))
 
+    def test_quote_trace_tolerates_soft_hyphen_line_wrap(self):
+        quote = "general simulation features"
+        page = "general simula\u00ad\n tion features"
+        self.assertTrue(MODULE.quote_is_traceable(quote, page))
+
+    def test_quote_trace_tolerates_pdf_space_after_slash(self):
+        quote = "mixed sequential/concurrent mode"
+        page = "mixed sequential/ concurrent mode"
+        self.assertTrue(MODULE.quote_is_traceable(quote, page))
+
     def test_quote_trace_tolerates_unicode_hyphens_and_pdf_punctuation_spacing(self):
         quote = (
             "The neural network‐based method follows Lehtinen et al. (2018)."
@@ -198,6 +208,15 @@ class LocalPipelineTests(unittest.TestCase):
             result = json.loads((run_dir / "validation.json").read_text(encoding="utf-8"))
             self.assertIn("numeric_fidelity", {item["issue_type"] for item in result["issues"]})
 
+    def test_allows_dimensionless_numeric_item_with_empty_unit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = self.make_run(Path(temporary), unit="")
+            result, *_ = MODULE.validate_run(run_dir)
+            self.assertNotIn(
+                "numeric_fidelity",
+                {item["issue_type"] for item in result["issues"]},
+            )
+
     def test_blocks_number_in_claim_that_is_absent_from_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             run_dir = self.make_run(Path(temporary))
@@ -310,6 +329,55 @@ class LocalPipelineTests(unittest.TestCase):
             self.assertEqual(coverage["extraction_status"], "complete")
             self.assertEqual(coverage["analysis_status"], "insufficient")
             self.assertEqual(coverage["coverage_status"], "incomplete")
+
+    def test_deep_coverage_uses_last_relevant_main_page_not_pdf_midpoint(self):
+        source = {
+            "paper_id": "nature-layout",
+            "pdf": {"page_count": 19, "preflight_status": "PASS"},
+            "pages": [
+                {
+                    "page_index": page,
+                    "raw_text": f"Readable content for physical page {page} with sufficient detail.",
+                }
+                for page in range(1, 20)
+            ],
+        }
+        evidence = [
+            {
+                "page_index": page,
+                "section": section,
+                "page_verified": True,
+                "source_match_kind": "exact",
+            }
+            for page, section in [(2, "Introduction"), (5, "Results"), (9, "Methods")]
+        ]
+        page_classification = {
+            "pages": [
+                {
+                    "page_index": page,
+                    "classification": (
+                        "references_only"
+                        if page == 7
+                        else "appendix"
+                        if page >= 10
+                        else "main_content"
+                    ),
+                    "semantic_reviewed": True,
+                }
+                for page in range(1, 20)
+            ]
+        }
+
+        coverage = MODULE.build_coverage_receipt(
+            source,
+            evidence,
+            {"run_id": "run", "reading_mode": "deep"},
+            page_classification,
+        )
+
+        self.assertTrue(coverage["reaches_later_half"])
+        self.assertEqual(coverage["analysis_status"], "complete")
+        self.assertEqual(coverage["coverage_status"], "complete")
 
     def test_verified_pages_render_distinct_zotero_links(self):
         with tempfile.TemporaryDirectory() as temporary:

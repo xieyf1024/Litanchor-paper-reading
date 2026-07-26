@@ -1,8 +1,11 @@
+import io
 import json
+import hashlib
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,6 +112,35 @@ class ZoteroLocalTests(unittest.TestCase):
 
 
 class ObsidianExportTests(unittest.TestCase):
+    def test_cli_json_is_safe_for_legacy_windows_console_encoding(self):
+        output_bytes = io.BytesIO()
+        output = io.TextIOWrapper(output_bytes, encoding="gbk")
+        result = {
+            "status": "exported_with_warnings",
+            "note": "El niño_southern oscillation.candidate.md",
+        }
+        with (
+            mock.patch.object(export_obsidian, "export_run", return_value=result),
+            mock.patch.object(sys, "stdout", output),
+        ):
+            exit_code = export_obsidian.main(
+                [
+                    "run",
+                    "--allowed-root",
+                    "vault",
+                    "--inbox",
+                    "vault/inbox",
+                    "--confirm-export",
+                ]
+            )
+            output.flush()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            json.loads(output_bytes.getvalue().decode("gbk"))["note"],
+            result["note"],
+        )
+
     def make_run(self, root: Path, *, warning=False, zotero=False) -> Path:
         run_dir = root / "run"
         run_dir.mkdir()
@@ -255,6 +287,171 @@ class ObsidianExportTests(unittest.TestCase):
             (warning_run / "preview.md").write_text("tampered", encoding="utf-8")
             with self.assertRaises(litanchor_local.PipelineError):
                 export_obsidian.export_run(warning_run, vault, inbox, allow_warnings=True, confirmed=True)
+
+    def test_autonomous_candidate_exports_assets_rewrites_embeds_and_writes_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_dir = self.make_run(root, zotero=True)
+            visual_dir = run_dir / "visuals"
+            visual_dir.mkdir()
+            image = visual_dir / "figure-1.png"
+            image.write_bytes(b"verified image bytes")
+            manifest = visual_dir / "figure-1.json"
+            write_json(manifest, {"crop_validation_status": "pass"})
+            figures = json.loads((run_dir / "figures.json").read_text(encoding="utf-8"))
+            figures["selected"] = [
+                {
+                    "figure_label": "Figure 1",
+                    "image_path": str(image),
+                    "manifest_path": str(manifest),
+                    "embed_path": "visuals/figure-1.png",
+                }
+            ]
+            write_json(run_dir / "figures.json", figures)
+            run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            run["autonomous_generation"] = True
+            run["review_status"] = "user_visual_review_pending"
+            write_json(run_dir / "run.json", run)
+            validation = json.loads(
+                (run_dir / "validation.json").read_text(encoding="utf-8")
+            )
+            preview = Path(validation["files"]["markdown_note"])
+            markdown = preview.read_text(encoding="utf-8")
+            markdown += "\n![[visuals/figure-1.png]]\n"
+            preview.write_text(markdown, encoding="utf-8")
+            validation["status"] = "completed_with_warnings"
+            validation["quality"]["markdown_sha256"] = hashlib.sha256(
+                markdown.encode("utf-8")
+            ).hexdigest()
+            write_json(run_dir / "validation.json", validation)
+            vault = root / "vault"
+            inbox = vault / "00_Inbox"
+            inbox.mkdir(parents=True)
+
+            result = export_obsidian.export_run(
+                run_dir,
+                vault,
+                inbox,
+                allow_warnings=True,
+                confirmed=True,
+                asset_slug="test-paper",
+            )
+
+            exported = Path(result["note"])
+            self.assertTrue(exported.name.endswith(".candidate.md"))
+            exported_markdown = exported.read_text(encoding="utf-8")
+            self.assertIn("![[_assets/test-paper/figure-1.png]]", exported_markdown)
+            self.assertNotIn("![[visuals/figure-1.png]]", exported_markdown)
+            self.assertTrue((vault / "_assets" / "test-paper" / "figure-1.png").is_file())
+            receipt = Path(result["receipt"])
+            self.assertEqual(receipt.parent.name, "run")
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8"))["review_status"],
+                "user_visual_review_pending",
+            )
+
+    def test_accepted_autonomous_review_exports_as_final_note(self):
+        self.assertFalse(
+            export_obsidian.candidate_export_required(
+                {
+                    "autonomous_generation": True,
+                    "review_status": "user_visual_review_passed",
+                }
+            )
+        )
+        self.assertTrue(
+            export_obsidian.candidate_export_required(
+                {
+                    "autonomous_generation": True,
+                    "review_status": "user_visual_review_pending",
+                }
+            )
+        )
+
+    def test_accepted_review_promotes_candidate_without_overwriting_audit_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_dir = self.make_run(root, zotero=True)
+            visual_dir = run_dir / "visuals"
+            visual_dir.mkdir()
+            image = visual_dir / "figure-1.png"
+            image.write_bytes(b"verified image bytes")
+            manifest = visual_dir / "figure-1.json"
+            write_json(manifest, {"crop_validation_status": "pass"})
+            figures = json.loads((run_dir / "figures.json").read_text(encoding="utf-8"))
+            figures["selected"] = [
+                {
+                    "figure_label": "Figure 1",
+                    "image_path": str(image),
+                    "manifest_path": str(manifest),
+                    "embed_path": "visuals/figure-1.png",
+                }
+            ]
+            write_json(run_dir / "figures.json", figures)
+            run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            run["autonomous_generation"] = True
+            run["review_status"] = "user_visual_review_pending"
+            write_json(run_dir / "run.json", run)
+            validation = json.loads(
+                (run_dir / "validation.json").read_text(encoding="utf-8")
+            )
+            preview = Path(validation["files"]["markdown_note"])
+            markdown = preview.read_text(encoding="utf-8")
+            markdown += "\n![[visuals/figure-1.png]]\n"
+            preview.write_text(markdown, encoding="utf-8")
+            validation["status"] = "completed_with_warnings"
+            validation["quality"]["markdown_sha256"] = hashlib.sha256(
+                markdown.encode("utf-8")
+            ).hexdigest()
+            write_json(run_dir / "validation.json", validation)
+            vault = root / "vault"
+            inbox = vault / "00_Inbox"
+            inbox.mkdir(parents=True)
+
+            candidate = export_obsidian.export_run(
+                run_dir,
+                vault,
+                inbox,
+                allow_warnings=True,
+                confirmed=True,
+                asset_slug="test-paper",
+            )
+            run["review_status"] = "user_visual_review_passed"
+            write_json(run_dir / "run.json", run)
+            validation["status"] = "completed"
+            write_json(run_dir / "validation.json", validation)
+
+            promoted = export_obsidian.export_run(
+                run_dir,
+                vault,
+                inbox,
+                confirmed=True,
+                asset_slug="test-paper",
+            )
+
+            self.assertTrue(Path(candidate["note"]).is_file())
+            self.assertTrue(Path(promoted["note"]).is_file())
+            self.assertTrue(promoted["note"].endswith("Test Paper.md"))
+            self.assertNotEqual(
+                Path(candidate["receipt"]).parent,
+                Path(promoted["receipt"]).parent,
+            )
+            self.assertTrue(Path(promoted["receipt"]).parent.name.endswith("-final"))
+            self.assertEqual(
+                json.loads(Path(promoted["receipt"]).read_text(encoding="utf-8"))[
+                    "promoted_from"
+                ],
+                candidate["receipt"],
+            )
+            self.assertEqual(candidate["assets"], promoted["assets"])
+            with self.assertRaises(litanchor_local.PipelineError):
+                export_obsidian.export_run(
+                    run_dir,
+                    vault,
+                    inbox,
+                    confirmed=True,
+                    asset_slug="test-paper",
+                )
 
 
 if __name__ == "__main__":
