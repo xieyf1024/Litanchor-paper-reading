@@ -41,7 +41,7 @@ from paper_quality_gate import (  # noqa: E402
 )
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.5.0-rc1"
+SKILL_VERSION = "0.5.0"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}

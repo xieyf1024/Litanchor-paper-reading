@@ -1,7 +1,7 @@
 # v0.5 release checklist
 
 Date: 2026-07-26
-Candidate: `0.5.0-rc1`
+Release: `0.5.0`
 
 ## Passed
 
@@ -28,16 +28,25 @@ Candidate: `0.5.0-rc1`
 - [x] Full test suite: 116 passed, 0 failed.
 - [x] Skill package validation and Python compilation checks passed.
 - [x] User approved the reviewed generalization notes and final release steps.
+- [x] The `v0.5.0-rc1` freeze commit was merged to `main`, tagged and published
+      as a GitHub Pre-release.
+- [x] A separate fully unseen, source-closed paper passed the frozen rubric at
+      98/100 with zero severe-failure signals.
+- [x] Final unseen runtime artifacts and paper-specific answers remain outside
+      the distributable Skill and Git history.
 
-## Pending before merge or release
+## Stable release actions
 
-- [ ] Push the freeze commit and mark the Draft PR ready.
-- [ ] Confirm GitHub CI passes on the exact pushed commit.
-- [ ] Merge that commit to `main`, tag `v0.5.0-rc1` and publish the Pre-release.
+- [x] Run the 116-test local suite, Skill validation, compilation and anti-leak
+      checks on the exact stable commit.
+- [ ] Push `codex/v0.5-stable-release`, create and merge the stable PR.
+- [ ] Tag the merge commit `v0.5.0` and publish a normal GitHub Release.
 
 ## GitHub decision
 
-- Development branch push: **allowed**.
-- PR ready and merge after green CI: **allowed**.
-- Tag `v0.5.0-rc1` and GitHub Pre-release after merge: **allowed**.
-- Stable `v0.5.0`: **blocked on the final unseen-paper smoke test**.
+- `v0.5.0-rc1` Pre-release: **completed**.
+- Stable branch push and PR: **allowed by the user**.
+- Stable `v0.5.0`: **release gate passed; publish after exact-commit local
+  validation**.
+- GitHub Actions: **no workflow is configured in this repository; the recorded
+  local release suite is the executable gate**.
