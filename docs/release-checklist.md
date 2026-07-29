@@ -39,14 +39,14 @@ Release: `0.5.0`
 
 - [x] Run the 116-test local suite, Skill validation, compilation and anti-leak
       checks on the exact stable commit.
-- [ ] Push `codex/v0.5-stable-release`, create and merge the stable PR.
-- [ ] Tag the merge commit `v0.5.0` and publish a normal GitHub Release.
+- [x] Push `codex/v0.5-stable-release`, create PR #3 and merge it into `main`.
+- [x] Tag merge commit `94d7974` as `v0.5.0` and publish the normal GitHub
+      Release.
 
 ## GitHub decision
 
 - `v0.5.0-rc1` Pre-release: **completed**.
-- Stable branch push and PR: **allowed by the user**.
-- Stable `v0.5.0`: **release gate passed; publish after exact-commit local
-  validation**.
+- Stable branch push and PR #3: **completed**.
+- Stable `v0.5.0`: **published**.
 - GitHub Actions: **no workflow is configured in this repository; the recorded
   local release suite is the executable gate**.

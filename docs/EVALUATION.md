@@ -2,40 +2,59 @@
 
 ## Current phase
 
-v0.4.1 has been released as a Pre-release after repairing the deterministic
-Deep Reading Pipeline layer. v0.5 has started with a new three-paper blind
-corpus, PyMuPDF-authoritative work packets, token-free MinerU structure
-alignment, autonomous-origin controls and independent fidelity/recall review
-contracts. The runs remain `awaiting_agent_analysis`; they are not yet
-automatic deep-reading results. See
-`evals/reports/v0.5-autonomous-start.md`.
+v0.5.0 is the published stable autonomous deep-reading release.
 
-One real-PDF smoke run verifies the vertical path on `Attention Is All You Need`: 15 physical pages were extracted, three abstract EvidenceUnits and three Chinese ClaimRecords were validated, and a private Markdown preview was generated. This is a pipeline smoke test, not a full-paper accuracy score.
+Release evidence:
 
-All six local benchmark PDFs also complete native-text preflight with their warning pages preserved; see `evals/reports/corpus-preflight.md`.
+- six official autonomous papers: 81 physical pages, 182 EvidenceUnits,
+  155 ClaimRecords and 15 selected visuals;
+- three extended non-autonomous renderer/quality regressions;
+- three cross-domain generalization runs regenerated from structured artifacts
+  and accepted by the user;
+- one separate source-closed unseen smoke test under the frozen workflow and
+  rubric;
+- 116 repository tests plus Skill validation, compilation, privacy and
+  anti-leak checks.
 
-A five-page whole-paper `skim` forward test covers research question, gap, method, core results, one key figure, limitations, speculative wording and conclusions; see `evals/reports/full-paper-forward-test.md`. The test remains distinct from an independently annotated gold evaluation.
+See `v0.5-final-validation.md`, `../evals/cross-paper-metrics.json`,
+`../evals/failure-taxonomy.md` and `release-checklist.md`.
 
-A separate v0.3 integration smoke test resolves that same public paper from the live Zotero Local API, confirms that its attachment hash matches the corpus inventory, validates five abstract-grounded claims, generates verified Zotero page links, and writes one note plus four sidecars only under the authorized test root. A repeated export is blocked and the exported note hash matches validation; see `evals/reports/zotero-obsidian-smoke.md`.
+The local PDFs and private runtime artifacts are excluded from Git. Their safe
+inventory is documented in `../evals/PDF_CORPUS.md`.
 
-The local PDFs are excluded from Git. Their non-redistributable inventory is documented in `evals/PDF_CORPUS.md` with titles, DOI where known, page counts, SHA-256 hashes and intended stress dimensions.
+## Corpus roles
 
-All six corpus papers were independently resolved from the live Zotero `[AI]` or `[XMU]` collections and matched to the inventory hashes; see `evals/reports/zotero-six-paper-resolution.md`. Private Item/Attachment Keys remain outside the public repository.
+### Development regression
 
-Three detailed notes in the authorized Obsidian test Inbox are treated as **AI-assisted references**, not gold labels. They help define coverage and annotation fields but cannot score the system that generated them. The promotion checklist is in `evals/gold/AI_ASSISTED_REFERENCE_GUIDE.md`. The Attention note was also checked against the original PDF and a user-selected Bilibili explainer; see `evals/reports/attention-reference-review.md`.
+All papers already used to design, debug or inspect LitAnchor are development
+material. They may be rerun after every change to catch regressions, but they
+do not provide unseen generalization evidence.
 
-The earlier ResNet, LOVECLIM and U-Net candidates remain useful only as failed regression artifacts. Passing deterministic evidence/page/visual gates did not establish deep-reading quality. See `evals/reports/deep-output-failure-diagnosis.md`. They must be regenerated from fresh ledgers after the repaired pipeline passes its tests.
+### Frozen holdout
 
-The repair adds four deterministic regression surfaces:
+For v0.6, select at least three papers that have not contributed reference
+notes, prompt changes, quality rules or paper-specific fixes. Freeze the Skill,
+schemas, templates and rubric before running them.
 
-- sparse one-claim `deep` ledgers are blocked;
-- required background/question/contribution/method/result/discussion/limit/conclusion groups are enforced;
-- rich claims must contain explanatory details, conditions or numeric context;
-- rendered `deep`/`internalize` notes must contain the complete canonical Final-template heading set with no unresolved slots.
+If a holdout result causes a rule change, move that paper into the development
+set and choose a replacement holdout for the next release decision.
 
-## Gold annotation plan
+### Pathological PDF fixtures
 
-For each public benchmark paper, annotate:
+Use synthetic or redistributable fixtures for deterministic failure coverage:
+
+- two-column and cross-column reading order;
+- formula, range-symbol and unit corruption;
+- dense tables and figure captions;
+- scanned or low-text pages;
+- long papers, page subsets and Methods-after-References layouts.
+
+These fixtures test parsing, routing and failure detection. They do not count
+as scientific-content accuracy scores.
+
+## Gold annotation guidance
+
+For a content-scored public paper, annotate:
 
 - research question, background and gap;
 - data, materials, models, method steps, parameters and metrics;
@@ -44,11 +63,12 @@ For each public benchmark paper, annotate:
 - physical PDF page, exact evidence excerpt and author modality;
 - parser failures and pages requiring visual review.
 
-At least two papers should receive independent double annotation before disagreements are reconciled.
+An AI-assisted note may become a gold annotation only after a human checks the
+selected claims against the original PDF, verifies physical pages and
+quotations, labels modality and scope and resolves disagreements without using
+the candidate output as the sole answer key.
 
-An existing AI-assisted note may become a gold annotation only after a human independently checks each selected claim against the original PDF, verifies physical pages and quotations, labels modality and scope, records parser failures, and resolves disagreements without using the candidate output as the sole answer key.
-
-## Metrics and MVP gates
+## Quality gates
 
 | Metric | Definition | Gate |
 |---|---|---:|
@@ -67,20 +87,48 @@ An existing AI-assisted note may become a gold annotation only after a human ind
 | Core section depth | core claims with explanation/conditions/numeric context / core claims | 100% |
 | Blocker detection | correctly reported blocker cases / gold blockers | 100% |
 | YAML/Markdown validity | valid formal exports / all formal exports | 100% |
+| Existing-note protection | blocked or candidate exports / all collisions | 100% |
 
-## Integration cases
+## Installation and integration evaluation for v0.6
 
-- exact title, citekey, DOI and Item Key match;
-- ambiguous title candidates;
-- missing/encrypted/scanned/corrupt PDF;
-- Zotero unavailable or Local API disabled;
-- missing Obsidian directory and filename collision;
-- formula, table and multi-column extraction failure;
-- regeneration after a user edits the protected note region.
+External testers and a second physical Windows machine are not mandatory for
+the v0.6 release gate. Use:
+
+1. GitHub-hosted Windows runners with Python 3.10 through 3.14;
+2. fresh virtual environments, temporary Agent Skills directories, temporary
+   configuration and temporary Vaults;
+3. a stub loopback Zotero API plus synthetic PDFs in CI;
+4. one isolated local-profile install on the maintainer’s Windows system;
+5. one live Zotero-to-Obsidian smoke run after synthetic tests pass.
+
+Cover:
+
+- first install, repeated install and interrupted install;
+- repair, upgrade, rollback and uninstall;
+- Chinese characters, spaces and long paths;
+- Zotero unavailable, Local API disabled, ambiguous items and multiple PDFs;
+- missing Vault, invalid Inbox and filename collision;
+- MinerU consent, timeout, rate limit, empty result and PyMuPDF fallback;
+- formula, table, multi-column and low-text extraction failure;
+- regeneration after user-owned note content exists.
+
+This proves installation independence and controlled failure behavior without
+claiming that a completely new Windows user or outside beta cohort has been
+tested. Public issue reports can extend the evidence after release.
 
 ## Controlled-evolution gate
 
-A candidate patch may be promoted only when it fixes a reproducible target case, introduces a regression test, preserves every hard reliability rule, does not increase permissions, shows no retained-set regression and receives maintainer approval. A single personal preference belongs in local configuration rather than the shared Skill.
+A candidate patch may be promoted only when it:
+
+- fixes a reproducible general problem;
+- adds a regression case;
+- preserves every hard reliability rule;
+- does not increase permissions;
+- shows no retained-set regression;
+- contains no test-paper answer or paper-specific branch;
+- receives maintainer approval.
+
+Personal preferences stay in local configuration.
 
 ## Verification
 
@@ -88,6 +136,10 @@ Run:
 
 ```powershell
 python -m unittest discover -s tests -v
+python -m compileall -q skills tests
 ```
 
-Install `requirements.txt` before running the complete suite; otherwise dependency-specific PDF tests are explicitly skipped. Also run the official Skill validator against `skills/litanchor-paper-reading/`.
+Install `requirements.txt` before the complete suite; dependency-specific PDF
+tests are otherwise skipped. Also run the official Skill validator against
+`skills/litanchor-paper-reading/`, the repository anti-leak/privacy audit and
+the release checklist.

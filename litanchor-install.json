@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "name": "litanchor-paper-reading",
+  "display_name": "LitAnchor 文锚",
+  "version": "0.6.0-beta.1-dev",
+  "release_channel": "development",
+  "supported_platforms": [
+    {
+      "os": "windows",
+      "architectures": [
+        "AMD64"
+      ],
+      "minimum_version": "10"
+    }
+  ],
+  "python": {
+    "minimum_version": "3.10",
+    "tested_versions": [
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13",
+      "3.14"
+    ],
+    "newer_versions_policy": "probe_then_warn",
+    "requires_pip": true,
+    "requires_venv": true
+  },
+  "zotero": {
+    "minimum_major_version": 7,
+    "tested_major_versions": [
+      7
+    ],
+    "newer_versions_policy": "probe_then_warn",
+    "required_api_version": "3"
+  },
+  "dependencies": {
+    "core": "requirements.txt",
+    "mineru": "requirements-mineru.txt",
+    "development": "requirements-dev.txt"
+  },
+  "payload": {
+    "skill_source": "skills/litanchor-paper-reading",
+    "skill_directory_name": "litanchor-paper-reading",
+    "manager": "tools/litanchor_manager.py",
+    "bootstrap": "install.ps1",
+    "launcher": "litanchor.ps1"
+  },
+  "paths": {
+    "install_root": "%LOCALAPPDATA%\\LitAnchor",
+    "config": "%LOCALAPPDATA%\\LitAnchor\\config.json",
+    "runtime": "%LOCALAPPDATA%\\LitAnchor\\runtime",
+    "skills_root_env": "CODEX_HOME",
+    "skills_root_suffix": "skills"
+  },
+  "entrypoints": {
+    "install": "install.ps1 -Action Install",
+    "upgrade": "install.ps1 -Action Upgrade",
+    "repair": "install.ps1 -Action Repair",
+    "rollback": "install.ps1 -Action Rollback",
+    "uninstall": "install.ps1 -Action Uninstall -Confirm",
+    "doctor": "litanchor.ps1 doctor",
+    "setup": "litanchor.ps1 setup",
+    "run_plan": "litanchor.ps1 run-plan"
+  },
+  "installer_actions": [
+    "install",
+    "upgrade",
+    "repair",
+    "rollback",
+    "uninstall",
+    "status"
+  ],
+  "artifacts": {
+    "checksums_file": "SHA256SUMS.txt",
+    "package_manifest": "package-manifest.json",
+    "hash_algorithm": "sha256"
+  },
+  "license": {
+    "spdx": "AGPL-3.0-only",
+    "file": "LICENSE",
+    "notice": "NOTICE.md",
+    "third_party": "THIRD_PARTY.md"
+  }
+}

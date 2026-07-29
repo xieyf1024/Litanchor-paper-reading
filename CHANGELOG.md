@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased — v0.6 Zero-Config Public Beta
+
+- Synchronized the current product, integration, workflow, schema, evaluation
+  and release-checklist documents with the published v0.5.0 state.
+- Documented the supported Windows/Python/Zotero/Obsidian baseline and the
+  minimum-version, capability-probed compatibility policy.
+- Added the v0.6 Agent-assisted installation and public-beta hardening roadmap.
+- Removed unused integration comparisons from the active Skill reference and
+  current user-facing boundaries while retaining historical specifications as
+  clearly marked records.
+- Added a machine-readable installation manifest, receipt-tracked user-local
+  installer, idempotent install/upgrade/repair, archived rollback and
+  confirmation-gated uninstall.
+- Added Obsidian Vault discovery by name, contained first-run setup, persistent
+  MinerU consent, machine-readable doctor checks and an Agent-facing run plan.
+- Added deterministic Windows release ZIP/checksum generation and Windows
+  Python 3.10–3.14 GitHub Actions coverage.
+- Made Agent entry intent-based instead of requiring two literal example
+  sentences, and added provisional support for future Python/Zotero versions.
+- Kept the public dependency split lightweight: two core PDF packages, one
+  optional MinerU requirement and PyYAML only for development validation.
+
 ## v0.5.0 — 2026-07-26 — Autonomous Deep Reading
 
 - Promoted the autonomous deep-reading pipeline after the release candidate,

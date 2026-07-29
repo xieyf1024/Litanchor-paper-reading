@@ -1,0 +1,86 @@
+[CmdletBinding()]
+param(
+    [Parameter(Position = 0, Mandatory = $true)]
+    [ValidateSet("doctor", "setup", "discover-vaults", "run-plan")]
+    [string]$Command,
+    [string]$InstallRoot,
+    [string]$ConfigPath,
+    [string]$Vault,
+    [string]$VaultPath,
+    [string]$Inbox = "LitAnchor\00_Inbox",
+    [ValidateSet("always_for_eligible_files", "ask_each_time", "never")]
+    [string]$MinerUConsent,
+    [switch]$CreateInbox,
+    [string]$RegistryPath,
+    [string]$Paper,
+    [ValidateSet("title", "doi", "citekey", "item_key")]
+    [string]$Selector = "title",
+    [ValidateSet("json", "human")]
+    [string]$Format = "json",
+    [switch]$CheckMinerUNetwork
+)
+
+$ErrorActionPreference = "Stop"
+if (-not $InstallRoot) {
+    if ($env:LOCALAPPDATA) {
+        $InstallRoot = Join-Path $env:LOCALAPPDATA "LitAnchor"
+    } else {
+        $InstallRoot = Join-Path $HOME ".litanchor"
+    }
+}
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $InstallRoot "config.json"
+}
+
+$statePath = Join-Path $InstallRoot "install-state.json"
+$python = $null
+$skillPath = $null
+if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+    $state = Get-Content -LiteralPath $statePath -Encoding UTF8 | ConvertFrom-Json
+    $python = $state.venv_python
+    $skillPath = $state.active_skill_path
+}
+if (-not $python -or -not (Test-Path -LiteralPath $python -PathType Leaf)) {
+    $python = "python"
+}
+if (-not $skillPath) {
+    $skillPath = Join-Path $PSScriptRoot "skills\litanchor-paper-reading"
+}
+$setupScript = Join-Path $skillPath "scripts\litanchor_setup.py"
+if (-not (Test-Path -LiteralPath $setupScript -PathType Leaf)) {
+    throw "LitAnchor setup entry point is missing: $setupScript"
+}
+
+$arguments = @($setupScript, $Command)
+if ($Command -ne "discover-vaults") {
+    $arguments += @("--config-path", $ConfigPath)
+}
+if ($Command -eq "discover-vaults") {
+    if ($RegistryPath) { $arguments += @("--registry-path", $RegistryPath) }
+} elseif ($Command -eq "setup") {
+    if ($VaultPath) {
+        $arguments += @("--vault-path", $VaultPath)
+    } elseif ($Vault) {
+        $arguments += @("--vault", $Vault)
+    } else {
+        throw "Setup requires -Vault or -VaultPath."
+    }
+    if (-not $MinerUConsent) {
+        throw "Setup requires -MinerUConsent."
+    }
+    $arguments += @("--inbox", $Inbox, "--mineru-consent", $MinerUConsent)
+    if ($RegistryPath) { $arguments += @("--registry-path", $RegistryPath) }
+    if ($CreateInbox) { $arguments += "--create-inbox" }
+} elseif ($Command -eq "doctor") {
+    $arguments += @("--format", $Format)
+    if ($Paper) { $arguments += @("--paper-title", $Paper) }
+    if ($CheckMinerUNetwork) { $arguments += "--check-mineru-network" }
+} else {
+    if (-not $Paper) {
+        throw "Run-plan requires -Paper."
+    }
+    $arguments += @("--paper", $Paper, "--selector", $Selector)
+    if ($Vault) { $arguments += @("--vault", $Vault) }
+}
+& $python @arguments
+exit $LASTEXITCODE

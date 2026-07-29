@@ -2,9 +2,11 @@
 
 > Anchor every insight to the source.
 
-LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它计划从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
+LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Skill。它从 Zotero 获取用户指定的单篇论文，以论文原文为唯一事实来源，生成带页码和证据映射的中文 Obsidian 笔记。
 
-**当前发布版：v0.5.0 Autonomous Deep Reading。** Zotero、PDF 物理页、证据追踪、关键图裁剪、受限 Obsidian 导出和自主全文精读已经形成可审计闭环。ResNet、LOVECLIM 和气候 U-Net 示例继续作为明确标记的人工辅助回归产物，不计入自主评测。
+**当前发布版：v0.5.0 Autonomous Deep Reading。** 这是 Windows 优先的稳定开发者预览 / Early Public Beta。Zotero、PDF 物理页、证据追踪、关键图裁剪、受限 Obsidian 导出和自主全文精读已经形成可审计闭环。ResNet、LOVECLIM 和气候 U-Net 示例继续作为明确标记的人工辅助回归产物，不计入自主评测。
+
+**当前开发线：v0.6.0-beta.1-dev Zero-Config Public Beta。** 本分支正在把安装、首次配置、诊断和安全生命周期隐藏到 Agent 后面；它不是已发布的稳定版。
 
 v0.5.0 跑通单篇自主深读闭环：冻结无参考答案输入，用 PyMuPDF 建立权威页级工作包，按论文类型执行六遍全文阅读，按本地授权策略调用 MinerU Flash 并融合非权威结构提示，先生成 Evidence/Claim Ledger，再生成 SectionSynthesis、关键视觉分析、独立忠实度/召回审查和 Final 模板笔记。官方六篇评测共覆盖 81 个物理页、182 条 EvidenceUnit、155 条 ClaimRecord 与 15 张关键图，所有确定性质量指标均为 1.0、无 Blocker；三篇额外跨领域论文通过泛化冒烟测试和用户验收；最后一篇完全未见论文也在冻结工作流下通过量化发布门，未触发严重忠实度错误。
 
@@ -35,7 +37,22 @@ v0.5.0 跑通单篇自主深读闭环：冻结无参考答案输入，用 PyMuPD
 
 测试论文保存在本地 `Test-PDF/`，已被 `.gitignore` 排除，不随公开仓库分发。
 
-## 安装 Skill
+## 适用环境与依赖
+
+当前发布版面向已经具备基础本地环境的用户：
+
+- Windows 10/11 x64；
+- 能执行本地 Shell、读写授权目录并下载 GitHub Release 的 Agent，例如 Codex Desktop/CLI；
+- Python 3.10 或更高版本 x64，包含 `pip` 和 `venv`；当前 CI 覆盖
+  3.10–3.14，更新版本先通过依赖与 doctor 探测；
+- Zotero 7 或更高版本桌面端，已允许本机应用通信，目标条目具有本地
+  PDF 附件；不设置武断的最高版本；
+- Obsidian Desktop 1.x 和一个本地文件系统 Vault；
+- 能访问 GitHub、Python 包索引，以及在用户允许时访问 MinerU 的网络环境。
+
+核心 Python 依赖只有 `pypdf>=6.0,<7.0` 与 `PyMuPDF>=1.26,<2.0`。符合条件的 PDF 如需启用 MinerU 结构增强，再安装 `mineru-open-sdk>=0.2.5,<0.3`。完整的必需条件、可选依赖、本地配置和 v0.6 轻量安装目标见 [Installation requirements](docs/INSTALLATION_REQUIREMENTS.md)。
+
+## 当前 v0.5 安装方式
 
 将 `skills/litanchor-paper-reading/` 整个目录复制到 Codex 的 Skills 目录，例如：
 
@@ -50,6 +67,39 @@ v0.5.0 跑通单篇自主深读闭环：冻结无参考答案输入，用 PyMuPD
 ```
 
 当前版本会先检查可用输入和工具；缺少 Zotero 或写入能力时必须报告缺口，不得假装已经连接。
+
+## v0.6 Agent 安装入口
+
+v0.6 的目标体验只有两个自然语言意图步骤。下面只是示例，不是必须
+逐字照说的命令；Agent 应按语义识别安装或单篇精读意图：
+
+```text
+帮我安装 Skill：https://github.com/xieyf1024/Litanchor-paper-reading
+```
+
+```text
+精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
+```
+
+本地能力完整的 Agent 会读取 `litanchor-install.json`，校验 Release
+包，运行 `install.ps1`，创建隔离环境并安装轻量核心；只有选择允许
+MinerU 时才通过 `Repair -IncludeMinerU` 补装可选 SDK。首次配置只允许询问
+Vault、Literature Inbox 和 MinerU 授权模式；用户无需手动执行 Python、
+`pip`、PowerShell、复制 Skill 或编辑 JSON。
+
+仓库开发态可由 Agent 调用：
+
+```powershell
+.\install.ps1 -Action Install
+.\litanchor.ps1 doctor
+.\litanchor.ps1 setup -Vault "Vault 名称" -Inbox "LitAnchor\00_Inbox" -MinerUConsent always_for_eligible_files -CreateInbox
+.\litanchor.ps1 run-plan -Paper "论文标题" -Vault "Vault 名称"
+```
+
+这些是 Agent 执行接口，不是普通用户必须输入的安装步骤。`doctor`
+返回机器可读的 Python、依赖、Zotero Local API、Vault 路径、UTF-8
+写入、空间和 MinerU 状态；安装、修复、升级、回滚和卸载只处理
+安装收据确认属于 LitAnchor 的文件。
 
 ## 手动 PDF 最小闭环
 
@@ -120,11 +170,11 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 警告状态还必须显式添加 `--allow-warnings`。导出前会验证 Markdown 哈希、Inbox 路径包含关系、侧车文件和目标碰撞；现有文件不会被覆盖。
 
-## 当前阶段边界
+## 当前运行范围
 
-当前版本只支持本机 Zotero Local API 与用户明确授权的测试目录。它不修改 Zotero，不写正式 Vault 的其他位置，不提供 Zotero→Obsidian 反向链接或双向同步，不批量处理论文，也不启用付费 MinerU API、完整本地 MinerU、Zotero MCP 或无人审核发布。PyMuPDF 始终是权威全文页级基线；MinerU Flash 仅是依据本地授权策略调用或复用同哈希缓存的非权威结构增强层。
+v0.5.0 的稳定路径是：本机 Zotero Local API 或用户提供的单篇 PDF，经 PyMuPDF 权威页级解析、按授权自动执行的 MinerU 结构增强、六遍精读、双审查和 Final 模板编排后，写入用户明确授权的 Obsidian Vault 子目录。Zotero 保持只读，已有笔记默认不覆盖。
 
-详细规格见 [docs/PRODUCT.md](docs/PRODUCT.md)、[docs/WORKFLOW.md](docs/WORKFLOW.md)、[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)、[docs/EVALUATION.md](docs/EVALUATION.md) 和 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)。
+下一阶段聚焦 Agent 辅助安装、环境诊断、MinerU 融合实证、CI 和可发布安装包，详见 [v0.6 roadmap](docs/ROADMAP_V0.6.md)。产品、流程、数据、评测和集成规格分别见 [PRODUCT](docs/PRODUCT.md)、[WORKFLOW](docs/WORKFLOW.md)、[DATA_SCHEMA](docs/DATA_SCHEMA.md)、[EVALUATION](docs/EVALUATION.md) 和 [INTEGRATIONS](docs/INTEGRATIONS.md)。
 
 ## License
 

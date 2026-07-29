@@ -28,6 +28,26 @@ Record candidate ID, base version, feedback/run IDs, target layer, reproducible 
 
 Never automatically change source closure, evidence requirements, export blocking, user-file protection, privacy, credentials, licenses, permission scope or release authority.
 
+## Compatibility adaptation
+
+Runtime compatibility evolves through capability evidence rather than a
+permanent exact-version allowlist:
+
+1. Keep a minimum supported version for Python, Zotero and other user-visible
+   prerequisites; do not set a maximum solely because a newer version was not
+   available when the Skill was written.
+2. Treat versions in the release CI matrix as verified and newer versions as
+   provisional.
+3. On a provisional version, run deterministic dependency, Local API, schema,
+   path, parsing and export probes. Block only a failed required capability,
+   not the unfamiliar version number itself.
+4. Dependency-update automation may open candidate pull requests. It must not
+   merge, release or weaken a reliability rule automatically.
+5. Promote a new version to the verified matrix only after CI, installer
+   lifecycle, regression, privacy and anti-leak checks pass.
+6. Record compatibility failures as reusable cases without copying paper
+   content, private paths or credentials into the Skill.
+
 ## Compaction
 
 Before a minor release, or when rules duplicate/conflict or `SKILL.md` grows materially, merge redundant rules, move domain details into references, convert deterministic checks into code and remove prose already enforced by schemas. Preserve behavior with regression tests.

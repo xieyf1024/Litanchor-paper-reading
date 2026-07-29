@@ -19,49 +19,61 @@ flowchart TD
     K --> Q[Final-template composition]
     Q --> R[Deterministic validation]
     R -->|fail| X
-    R --> L[Semantic fidelity review]
+    R --> L[Fidelity review]
     L -->|fail| X
-    L --> M[Preview]
+    L --> T[Recall review]
+    T -->|fail| X
+    T --> M[Preview]
     M -->|authorized| N[Safe Obsidian export]
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented local slice (v0.4.1 Deep Reading Pipeline repair)
+## Implemented autonomous path (v0.5.0)
 
-Six deterministic scripts now implement the local integration path:
+The bundled scripts and Skill implement this local autonomous path:
 
 ```text
 Zotero Local API GET or manual PDF
 → one verified local PDF
-→ physical-page preflight/extraction
-→ mandatory visual-selection pass for deep notes
-→ 0–3 original-PDF key-figure crops plus provenance manifests
-→ optional consent-gated MinerU Flash structure candidates
+→ PyMuPDF-authoritative physical-page baseline
+→ consent-aware automatic MinerU whole-paper or page-subset route
 → private SourceBundle
-→ specialised reading passes
-→ Skill-generated Evidence/rich Claim ledgers
-→ required-content, recall and section-depth gate
+→ paper profile, section map and six specialised reading passes
+→ auto-extracted Evidence and auto-synthesized rich Claim ledgers
+→ SectionSynthesis
+→ all-figure inventory and 0–3 original-PDF key-figure crops
+→ independent fidelity and recall reviews
+→ required-content, depth, visual and evidence-quality gates
 → Paper Template - Final composition
-→ deterministic page/quote/numeric/template checks
+→ deterministic page/quote/numeric/symbol/template checks
 → non-overwriting Markdown preview
-→ hash-verified, path-contained, non-overwriting test Inbox export
+→ hash-verified, path-contained, non-overwriting Obsidian export
 ```
 
 - `scripts/zotero_local.py` restricts the base URL to loopback `/api`, sends only `GET`, requires one exact item and one PDF attachment, and then invokes the existing PDF preparation path.
-- `scripts/litanchor_local.py` performs native-text preparation, validation and preview rendering.
+- `scripts/litanchor_local.py` performs native-text preparation, validation and
+  preview rendering for the manual path.
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 - `scripts/autonomous_deep_reading.py` reads a local three-mode upload-consent policy and automatically calls the token-free MinerU Flash service for eligible whole papers or page-preserving subsets. `scripts/mineru_adapter.py` enforces 10 MiB/20-page limits and records `exact`/`fuzzy`/`unmatched` alignment without promoting any block to formal evidence.
 - `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the canonical Final-template heading/slot contract.
-- `scripts/autonomous_deep_reading.py` is the v0.5 development entry point. It creates a PyMuPDF-authoritative page baseline, classifies the paper, materializes six reading-pass work packets, fuses aligned MinerU headings, enforces blind-run origins and creates separate fidelity/recall review contracts.
+- `scripts/autonomous_deep_reading.py` creates the PyMuPDF-authoritative page
+  baseline, classifies the paper, materializes six reading-pass work packets,
+  fuses aligned MinerU headings, enforces autonomous origins and requires
+  separate fidelity/recall review contracts.
+- `scripts/autonomous_semantic.py` materializes and validates EvidenceUnits,
+  ClaimRecords, SectionSynthesis, visual analysis and independent review
+  results before finalization.
 
-The slice deliberately stops before local OCR, paid MinerU precision parsing, Zotero writes, reverse Obsidian links and full semantic automation. pypdf preserves the page-indexed native text used for quote matching; PyMuPDF renders and crops final visual evidence from the original PDF. Evidence selection, content recall and modality/scope review remain model responsibilities; deterministic gates can reject obvious under-reading but cannot prove scientific completeness without gold comparison.
+PyMuPDF is the autonomous page/evidence authority; MinerU contributes aligned
+structure candidates. Evidence selection, scientific content recall and
+modality/scope review remain Agent reasoning responsibilities. Deterministic
+gates reject known failure classes but do not replace comparison with human
+annotations for scientific completeness.
 
-On the v0.5 development branch, PyMuPDF also becomes the authoritative
-full-text physical-page baseline for autonomous candidates. The correct state
-after work-packet and MinerU fusion is `awaiting_agent_analysis`; no Final note
-may be composed while the ledgers are empty or either independent review is
-pending.
+After work-packet and MinerU fusion, the correct state is
+`awaiting_agent_analysis`. No Final note may be composed while ledgers are
+empty, visual analysis is pending or either independent review is incomplete.
 
 ## Stages and exit criteria
 
@@ -77,7 +89,9 @@ pending.
 10. **Build rich claim ledger.** Generate intermediate knowledge objects only from evidence units; add explanatory detail, conditions, importance and Final-template section identity. Preserve scope, subject, causality and modality.
 11. **Apply deep quality gate.** Require all core content groups, adequate claim/detail density and explanatory depth. Page dispersion alone is insufficient.
 12. **Compose note.** Load `assets/Paper Template - Final.md` for `deep`/`internalize`; keep `skim` separate. Render only validated structured data.
-13. **Validate.** Run deterministic checks, Final-template checks and semantic fidelity review. A blocker or error prevents formal export.
+13. **Validate.** Run deterministic checks, Final-template checks, independent
+    fidelity review and paper-structure/content recall review. A blocker or
+    error prevents formal export.
 14. **Preview and export.** Show the note, warnings, failed pages and output paths. Write only to an explicitly authorized directory; never overwrite an existing note automatically.
 15. **Record feedback.** Store feedback as a FeedbackEvent. Do not edit the formal Skill during a paper-reading run.
 

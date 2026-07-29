@@ -7,7 +7,7 @@ Use this order:
 1. `scripts/zotero_local.py` with the local, read-only Zotero API.
 2. User-provided PDF.
 
-Do not install a connector during a reading run without approval. Zotero MCP is not a LitAnchor runtime dependency or supported adapter. Do not read `zotero.sqlite` directly. Do not create, modify, tag or delete Zotero items.
+Do not read `zotero.sqlite` directly. Do not create, modify, tag or delete Zotero items.
 
 Capture verified metadata, Item Key, attachment key, citekey, annotations and PDF identity. If the attachment key is verified, form page links as:
 
@@ -17,7 +17,7 @@ zotero://open-pdf/library/items/<attachment-key>?page=<physical-page>
 
 Never invent an Item Key, attachment key or page link.
 
-For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with exactly one of `--item-key`, `--title`, `--doi`, or `--citekey`. Require one exact item and one PDF attachment. Do not use a non-loopback API URL or install Zotero MCP during the run.
+For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with exactly one of `--item-key`, `--title`, `--doi`, or `--citekey`. Require one exact item and one PDF attachment. Do not use a non-loopback API URL.
 
 ## Obsidian export
 

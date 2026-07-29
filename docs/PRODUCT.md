@@ -2,11 +2,22 @@
 
 ## Summary
 
-LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学术精读 Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据该论文原文，按固定流程生成可追溯的中文 Obsidian Markdown 笔记。
+LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学术精读
+Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
+该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
+
+Current stable release: `v0.5.0 Autonomous Deep Reading`
+Public status: Windows-first stable developer preview / Early Public Beta
 
 ## Product promise
 
-LitAnchor 不承诺替代阅读全文，也不判断论文结论在学界是否正确。它承诺让正式笔记中的重要事实能够回到原文，并在无法可靠处理时明确失败。
+LitAnchor 不承诺替代阅读全文，也不判断论文结论在学界是否正确。它承诺：
+
+- 正式笔记中的重要事实可以回到原文物理页；
+- 方法、指标、关键图表、结果、解释和限制经过独立覆盖；
+- 数值、单位、条件、范围和作者语气不会被静默增强；
+- 无法可靠处理时明确失败；
+- Zotero 保持只读，Obsidian 只写入授权目录且默认不覆盖。
 
 质量优先级固定为：
 
@@ -14,11 +25,23 @@ LitAnchor 不承诺替代阅读全文，也不判断论文结论在学界是否�
 忠实性 > 可追溯性 > 关键信息完整性 > 结构清晰度 > 阅读效率 > 表达流畅度
 ```
 
-## Target users and jobs
+## Target users and baseline
 
-- 阅读英文论文的研究生新生与跨专业科研学习者。
-- 使用 Zotero 管理文献、使用 Obsidian 沉淀知识的研究人员。
-- 核心任务：指定一篇论文，获得结构清晰、证据可回溯、可安全存档的中文笔记。
+Core users:
+
+- 阅读英文论文的研究生与跨专业科研学习者；
+- 使用 Zotero 管理文献、使用 Obsidian 沉淀知识的研究人员；
+- 能使用具有本地执行能力的 Agent 完成安装和精读的人。
+
+Supported baseline:
+
+- Windows 10/11 x64；
+- Python 3.10 或更高版本（当前 CI 覆盖 3.10–3.14）；
+- Zotero 7 或更高版本 Desktop 与本地 PDF 附件；
+- Obsidian Desktop 和本地 Vault；
+- 能执行本地 Shell、访问 GitHub 并写入授权目录的 Agent。
+
+完整条件见 `INSTALLATION_REQUIREMENTS.md`。
 
 ## Modes
 
@@ -28,92 +51,75 @@ LitAnchor 不承诺替代阅读全文，也不判断论文结论在学界是否�
 | `deep` | 默认的研究生级精读 | 背景、空白、数据、方法、指标、关键公式与图表、结果、讨论、局限性、结论 |
 | `internalize` | 在 `deep` 结果上支持学习迁移 | 125 学习法、写作表达、可追踪参考文献、待研究问题；所有启发与原文事实分层 |
 
-## Scope
+## Stable v0.5.0 scope
 
-### v0.4.1：Deep Reading Pipeline 修复中
+The published stable path includes:
 
-- 将此前三篇简略盲测笔记降级为失败回归样例；它们只通过了机械可追踪门，不满足产品质量。
-- `deep` 与 `internalize` 统一加载 `Paper Template - Final`；`skim` 保持独立。
-- ClaimRecord 扩展为带标题、解释细节、条件、重要性和模板章节的中间知识对象。
-- 新增必需内容组、内容召回、章节深度和 Final 模板契约阻断。
-- 在修复后的三篇论文重新生成并完成人工验收前，不合并发布，也不进入 v0.5。
+1. exact single-paper resolution from Zotero Local API or a user-provided PDF;
+2. PyMuPDF-authoritative physical-page extraction and original-PDF crops;
+3. consent-aware automatic MinerU structure enhancement for eligible whole
+   papers or page-preserving subsets;
+4. paper-type-aware six-pass full-text reading;
+5. EvidenceUnit, ClaimRecord and SectionSynthesis materialization;
+6. complete figure inventory and zero to three selected method/result visuals;
+7. independent fidelity and recall review;
+8. `Paper Template - Final` composition;
+9. deterministic page, quote, number, symbol, depth, Markdown and collision
+   gates;
+10. hash-verified, path-contained and non-overwriting Obsidian export.
 
-### v0.4：当前交付
+Release evidence:
 
-- 保留 v0.3 的 Zotero Local API、页码链接和受限 Obsidian 导出闭环。
-- 将 PyMuPDF 加入本地 PDF 证据层，用原 PDF 渲染和裁剪关键图像，并为图像保存来源清单。
-- 笔记属性只显示第一作者；完整作者列表继续保存在 SourceBundle。
-- Zotero 标题查询可用去标点前缀重试，但最终仍要求规范化标题完全一致。
-- 三篇现有精读笔记被定位为“AI 辅助参考标准”，用于形成标注规范；未经独立人工复核不得称为金标准。
-- MinerU 与 PyMuPDF 采用协作设计：MinerU 未来只做经同意的结构增强，PyMuPDF 和原 PDF 负责最终页码、引文与视觉证据。
-- 不安装 Zotero MCP、Obsidian 插件、OCR 模型或后台服务。
+- six official autonomous evaluation papers;
+- three extended non-autonomous renderer/quality regressions;
+- three cross-domain generalization cases;
+- one final source-closed unseen smoke test;
+- 116 repository tests plus Skill, compilation, privacy and anti-leak checks.
 
-语义证据提取与忠实度审查仍由调用 Skill 的模型完成；脚本只验证结构化声明，不能替代人工金标准。
+These papers are evaluation artifacts. Their titles, conclusions, values and
+paper-specific fixes do not enter the distributable Skill.
 
-### v0.3：已完成本地集成闭环
+## v1 product experience
 
-- 保留 v0.2 的手动 PDF、证据账本、主张账本、校验与预览能力。
-- 使用 Zotero Local API v3，按标题、DOI、citekey 或 Item Key 唯一解析单篇论文。
-- 仅通过回环地址和 `GET` 读取元数据、PDF 附件 Key 与本地附件路径。
-- 在正文生成经验证的 `zotero://open-pdf/...?...page=` 物理页链接。
-- 仅向显式授权测试根目录下的 Inbox 写入，不覆盖笔记或侧车。
-- 导出前验证 Markdown SHA-256、校验状态、路径包含关系、警告接受与碰撞。
-- 不新增 Python 运行依赖、MCP 服务、Obsidian 插件或后台进程。
-
-### v0.2：已完成本地最小闭环
-
-- v0.1 的可安装 Skill、UI 元数据、模板、Schema、文档与评测骨架。
-- 单篇手动 PDF 的有效性检查、物理页提取、文件哈希和原生文本覆盖率判断。
-- 私有运行目录中的 SourceBundle、Evidence/Claim 账本和运行记录。
-- 页码、引文回溯、Evidence ID、数值、单位与基础结构的确定性校验。
-- 仅从已校验账本生成、不覆盖既有文件的 Markdown 预览。
-- 合成空白/损坏 PDF 的负向回归测试和一篇真实论文的纵向冒烟测试。
-
-### v0.1：已完成基础
-
-- 可安装 Skill 指令与 UI 元数据。
-- 可靠性、工作流、集成、阅读方法和受控进化参考。
-- Obsidian 笔记、校验报告、失败报告模板。
-- SourceBundle、EvidenceUnit、ClaimRecord、NotePackage、FeedbackEvent JSON Schema。
-- 产品文档、测试语料清单和无外部依赖的契约测试。
-
-v0.1 是设计与测试骨架，不宣称已经跑通 Zotero、PDF 解析或 Obsidian 自动写入。
-
-### MVP：当前剩余验证
+The target public workflow contains two user requests:
 
 ```text
-单篇手动 PDF 或 Zotero Local API（已完成）
-→ 页面级预检与提取（已完成）
-→ 证据单元与富结构主张账本（结构和质量门已修复，真实论文重跑待完成）
-→ Paper Template - Final 与确定性校验（实现完成，真实论文验收待完成）
-→ 测试 Inbox 安全写入（已完成集成冒烟测试）
-→ 多论文金标准与完整语义评测（待完成）
+帮我安装 Skill：https://github.com/xieyf1024/Litanchor-paper-reading
 ```
 
-v0.4 只证明了工程闭环、原 PDF 关键图像导出和六篇 Zotero 语料解析。它没有证明研究生级 `deep` 内容质量；此前三篇简略盲测输出已被否决。
+```text
+精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
+```
 
-### Later
+The Agent handles the LitAnchor virtual environment, dependencies, Skill
+installation, diagnostics, paper resolution, autonomous reading and contained
+export. The user is interrupted only for first-run choices, ambiguous sources,
+collisions, external-upload consent or reliability blockers.
 
-- Zotero 原生批注读取增强；Zotero MCP 不纳入项目运行路线。
-- Zotero→Obsidian 反向链接；只有明确开启 Zotero 写权限后才考虑，且不属于轻量 MVP。
-- 扫描件 OCR、复杂表格、公式识别与需明确同意的 MinerU 结构增强层；不采用 MinerU 付费精准解析 API。
-- 多论文比较、文献矩阵和 Agent 调度。
+v0.6 implements and validates this Agent-assisted setup and public-beta
+hardening path. See `ROADMAP_V0.6.md`.
 
-## Non-goals
+## Permanent product boundaries
 
-- 不默认部署数据库、向量库、嵌入模型或长期后台服务。
-- 不进行全文逐段翻译、开放式网络补全或论文外知识混写。
-- 不自动判断论文真假或综合质量。
-- 不在首版开发 Obsidian 插件、批量处理或知识图谱。
-- 不修改 Zotero 条目，不覆盖既有 Obsidian 笔记。
-- 不在运行中自动改写或发布正式 Skill。
+- Formal paper facts come only from the supplied paper.
+- External learning or user reflection stays visibly separate from paper
+  claims.
+- Unverified pages, quotations or visual crops cannot become formal evidence.
+- A blocker prevents formal export.
+- Existing notes, Zotero records and user-owned files are never silently
+  replaced or modified.
+- Evaluation papers can teach general failure classes and workflow rules, not
+  their answers.
 
-## Release gates for a runnable version
+## Release gates
 
-- 核心事实证据覆盖率 100%，严重不受支持主张为 0。
-- 页码准确率至少 99%，核心数值错误为 0。
-- 阻断级解析失败检测率 100%。
-- 正式导出的 YAML/Markdown 通过率 100%。
-- `deep`/`internalize` 的 Final 模板完整率 100%，必需内容组完整率 100%。
-- 核心方法、结果、讨论、局限性和结论不得由无解释的一句话替代。
-- 用户编辑区域保留，重名文件默认阻断。
+- core factual claim evidence coverage 100%;
+- severe unsupported claims 0;
+- physical-page accuracy at least 99%;
+- core numeric errors 0 and numeric fidelity at least 99.5%;
+- blocker detection 100%;
+- Final-template, YAML and Markdown validity 100%;
+- required method/result/discussion/limitation coverage for the detected paper
+  type;
+- installation, export and rollback stay inside LitAnchor-owned or
+  user-authorized paths.
