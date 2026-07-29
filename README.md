@@ -174,7 +174,14 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 
 v0.5.0 的稳定路径是：本机 Zotero Local API 或用户提供的单篇 PDF，经 PyMuPDF 权威页级解析、按授权自动执行的 MinerU 结构增强、六遍精读、双审查和 Final 模板编排后，写入用户明确授权的 Obsidian Vault 子目录。Zotero 保持只读，已有笔记默认不覆盖。
 
-下一阶段聚焦 Agent 辅助安装、环境诊断、MinerU 融合实证、CI 和可发布安装包，详见 [v0.6 roadmap](docs/ROADMAP_V0.6.md)。产品、流程、数据、评测和集成规格分别见 [PRODUCT](docs/PRODUCT.md)、[WORKFLOW](docs/WORKFLOW.md)、[DATA_SCHEMA](docs/DATA_SCHEMA.md)、[EVALUATION](docs/EVALUATION.md) 和 [INTEGRATIONS](docs/INTEGRATIONS.md)。
+v0.6 已完成 Agent 辅助安装、环境诊断、MinerU 融合实证、Windows CI、
+冻结留出评测和可发布安装包，当前处于 `v0.6.0-beta.1` 发布候选收尾。
+结果见 [v0.6 validation](evals/reports/v0.6-public-beta-validation.md)、
+[MinerU component A/B](evals/reports/v0.6-mineru-ab.md) 和
+[v0.6 roadmap](docs/ROADMAP_V0.6.md)。产品、流程、数据、评测和集成规格分别见
+[PRODUCT](docs/PRODUCT.md)、[WORKFLOW](docs/WORKFLOW.md)、
+[DATA_SCHEMA](docs/DATA_SCHEMA.md)、[EVALUATION](docs/EVALUATION.md) 和
+[INTEGRATIONS](docs/INTEGRATIONS.md)。
 
 ## License
 

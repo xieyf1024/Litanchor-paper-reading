@@ -41,14 +41,23 @@ def _git_tracked_files() -> list[str]:
 
 def _evaluation_tokens() -> list[str]:
     tokens: set[str] = set()
-    corpus = ROOT / "evals" / "cases" / "v0.5-blind-corpus.json"
-    if corpus.is_file():
+    for corpus in sorted((ROOT / "evals" / "cases").glob("*.json")):
         payload = json.loads(corpus.read_text(encoding="utf-8"))
-        for paper in payload.get("papers", []):
-            for key in ("title", "doi"):
-                value = paper.get(key)
-                if isinstance(value, str) and value.strip():
-                    tokens.add(value.strip())
+        stack = [payload]
+        while stack:
+            current = stack.pop()
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    if (
+                        key.casefold() in {"title", "doi"}
+                        and isinstance(value, str)
+                        and len(value.strip()) >= 12
+                    ):
+                        tokens.add(value.strip())
+                    elif isinstance(value, (dict, list)):
+                        stack.append(value)
+            elif isinstance(current, list):
+                stack.extend(current)
     for example in (ROOT / "examples").glob("**/*.md"):
         text = example.read_text(encoding="utf-8")
         match = re.search(r"(?m)^title:\s*[\"']?(.+?)[\"']?\s*$", text)

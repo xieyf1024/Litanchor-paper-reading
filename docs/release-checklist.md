@@ -48,5 +48,36 @@ Release: `0.5.0`
 - `v0.5.0-rc1` Pre-release: **completed**.
 - Stable branch push and PR #3: **completed**.
 - Stable `v0.5.0`: **published**.
-- GitHub Actions: **no workflow is configured in this repository; the recorded
-  local release suite is the executable gate**.
+- GitHub Actions: **added on the v0.6 development line**.
+
+# v0.6.0-beta.1 release checklist
+
+Date: 2026-07-29
+
+## Passed
+
+- [x] Natural-language routing is intent-based; examples are not literal
+      trigger strings.
+- [x] Python `>=3.10` and Zotero `>=7` are minimum-version contracts with no
+      arbitrary maximum; newer versions use capability probes and warnings.
+- [x] Installer lifecycle, setup, doctor, run-plan and release artifact tests
+      pass.
+- [x] GitHub-hosted Windows CI passes on Python 3.10 through 3.14.
+- [x] Three release-eligible frozen holdouts pass the published rubric.
+- [x] Holdout cases that changed general rules were moved to development, and
+      a previously exposed replacement was disqualified before evaluation.
+- [x] Whole-document and selected-complex-page MinerU routes completed with
+      original-page alignment and zero MinerU-authoritative EvidenceUnits.
+- [x] Six pathological PDF/failure fixtures pass in the project environment.
+- [x] MinerU timeout preserves the PyMuPDF baseline.
+- [x] Final-template completeness, evidence coverage, page accuracy and
+      numeric fidelity are 100% across the release-eligible holdouts.
+- [x] Existing notes remain protected by contained no-overwrite export.
+
+## Final branch actions
+
+- [x] Run the 148-test local suite, Skill validation, compilation, Markdown
+      links, anti-leak/privacy audit and release build on the exact candidate.
+- [ ] Push the candidate and update Draft PR #4.
+- [ ] Confirm GitHub Actions on the pushed candidate.
+- [ ] Publish `v0.6.0-beta.1` only after the user approves the Draft PR result.

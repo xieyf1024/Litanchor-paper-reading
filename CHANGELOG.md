@@ -21,6 +21,18 @@
   sentences, and added provisional support for future Python/Zotero versions.
 - Kept the public dependency split lightweight: two core PDF packages, one
   optional MinerU requirement and PyYAML only for development validation.
+- Passed three release-eligible frozen holdouts under the pre-published v0.6
+  rubric after moving two failure-driven cases to development and
+  disqualifying one previously exposed replacement.
+- Completed whole-document and page-preserving MinerU routes on the holdouts:
+  236 of 265 blocks aligned to PyMuPDF pages, two section candidates and twelve
+  figure candidates were added, and zero authoritative EvidenceUnits came
+  from MinerU.
+- Passed six synthetic pathological PDF/failure cases, including two-column
+  order, scan fallback, mixed blank pages, long documents,
+  Methods-after-References and MinerU timeout fallback.
+- Expanded the anti-leak audit to include titles and DOIs from every tracked
+  evaluation manifest rather than only the original v0.5 corpus.
 
 ## v0.5.0 — 2026-07-26 — Autonomous Deep Reading
 

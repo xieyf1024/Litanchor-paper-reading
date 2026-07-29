@@ -1,6 +1,6 @@
 # LitAnchor v0.6 roadmap
 
-Status: implementation in progress
+Status: `v0.6.0-beta.1` release candidate
 Target: Agent-assisted setup and public-beta hardening
 
 Implementation checkpoint:
@@ -13,14 +13,14 @@ Implementation checkpoint:
   test root;
 - Phase 3 intent-based Agent entry: implemented; examples are not literal
   trigger strings;
-- Phase 4 conditional MinerU route: the SDK, external service call and
-  PyMuPDF-page alignment passed with a non-private synthetic PDF. LitAnchor's
-  product policy still honors persistent `always_for_eligible_files` consent;
-  the current Codex execution environment separately declined a real-paper
-  upload without exact-file authorization;
-- Phase 5 local release validation: complete; first GitHub-hosted CI run is
-  pending the development-branch push;
-- Phase 6 holdout and public-beta release gates remain open.
+- Phase 4 conditional MinerU route: complete on eligible whole documents,
+  original-page-preserving long-document subsets and synthetic service-failure
+  fallback;
+- Phase 5 local and GitHub-hosted Windows CI validation: complete for Python
+  3.10 through 3.14;
+- Phase 6 frozen holdout and pathological public-beta gates: complete. Three
+  release-eligible holdouts passed; cases that caused fixes or had prior
+  exposure were not counted.
 
 ## Product outcome
 
