@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from litanchor_local import page_quote_match_kind, quote_match_kind, utc_now
+from litanchor_local import page_quote_match_kind, page_quote_match_location, utc_now
 from paper_quality_gate import evidence_quote_completeness
 
 
@@ -481,23 +481,17 @@ def materialize_semantic_ledgers(
                 f"{seed.get('evidence_id')} references absent page {page_index}."
             )
         quote = _clean_source_text(str(seed["quote_original"]))
-        source_match = page_quote_match_kind(quote, page)
-        matching_block = next(
-            (
-                block
-                for block in page.get("text_blocks", [])
-                if isinstance(block, dict)
-                and block.get("block_type") == "text"
-                and quote_match_kind(quote, str(block.get("text") or ""))
-                in {"exact", "normalized"}
-            ),
-            None,
-        )
-        if source_match not in {"exact", "normalized"} or matching_block is None:
+        source_match, matching_blocks = page_quote_match_location(quote, page)
+        matching_block = matching_blocks[0] if len(matching_blocks) == 1 else None
+        if source_match not in {"exact", "normalized"}:
             raise SemanticContractError(
                 f"{seed.get('evidence_id')} quote is not traceable on page {page_index}."
             )
-        block_id = str(matching_block["block_id"])
+        block_id = (
+            str(matching_block["block_id"])
+            if isinstance(matching_block, dict) and matching_block.get("block_id")
+            else None
+        )
         context_before, context_after, bbox = _source_context(page, block_id)
         markers = [
             marker

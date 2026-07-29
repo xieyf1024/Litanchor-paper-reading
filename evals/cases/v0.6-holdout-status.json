@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1",
+  "base_manifest": "v0.6-frozen-holdout.json",
+  "cases": [
+    {
+      "case_id": "holdout-madagascar-biogeography",
+      "status": "promoted_to_development",
+      "reason": "The first frozen run exposed general cross-column quote reconstruction and spaced figure-caption parsing failures. The fixes are reusable and contain no paper-specific answers.",
+      "replacement_required": true
+    },
+    {
+      "case_id": "holdout-early-eocene-moc",
+      "status": "promoted_to_development",
+      "reason": "The frozen run exposed a general visual-export failure: explicit figure geometry was silently expanded to a full-page image when edge ink was detected. The renderer now preserves explicit crops for review instead of degrading Obsidian readability.",
+      "replacement_required": true
+    }
+  ]
+}

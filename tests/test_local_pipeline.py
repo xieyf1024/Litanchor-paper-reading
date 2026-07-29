@@ -47,6 +47,70 @@ class LocalPipelineTests(unittest.TestCase):
         )
         self.assertTrue(MODULE.quote_is_traceable(quote, page))
 
+    def test_page_quote_trace_reconstructs_same_column_line_blocks(self):
+        page = {
+            "page_width": 600,
+            "raw_text": (
+                "Aim: The method inte-\nleft affiliation\n"
+                "grates evidence across columns.\n"
+            ),
+            "text_blocks": [
+                {
+                    "block_id": "P1-B1",
+                    "block_type": "text",
+                    "bbox": [320, 100, 560, 112],
+                    "text": "The method inte-",
+                },
+                {
+                    "block_id": "P1-B2",
+                    "block_type": "text",
+                    "bbox": [40, 106, 250, 118],
+                    "text": "left affiliation",
+                },
+                {
+                    "block_id": "P1-B3",
+                    "block_type": "text",
+                    "bbox": [320, 114, 560, 126],
+                    "text": "grates evidence across columns.",
+                },
+            ],
+        }
+        kind, blocks = MODULE.page_quote_match_location(
+            "The method integrates evidence across columns.",
+            page,
+        )
+        self.assertEqual(kind, "normalized")
+        self.assertEqual([item["block_id"] for item in blocks], ["P1-B1", "P1-B3"])
+
+    def test_page_quote_trace_reconstructs_across_column_boundary(self):
+        page = {
+            "page_width": 600,
+            "raw_text": "right continuation\nleft sentence begins\nunrelated footer",
+            "text_blocks": [
+                {
+                    "block_id": "P1-B1",
+                    "block_type": "text",
+                    "bbox": [40, 700, 250, 712],
+                    "text": "The sentence begins in the left column and",
+                },
+                {
+                    "block_id": "P1-B2",
+                    "block_type": "text",
+                    "bbox": [320, 100, 560, 112],
+                    "text": "continues at the top of the right column.",
+                },
+            ],
+        }
+        kind, blocks = MODULE.page_quote_match_location(
+            (
+                "The sentence begins in the left column and continues at "
+                "the top of the right column."
+            ),
+            page,
+        )
+        self.assertEqual(kind, "normalized")
+        self.assertEqual([item["block_id"] for item in blocks], ["P1-B1", "P1-B2"])
+
     def test_trace_token_matches_unicode_numeric_range(self):
         self.assertTrue(
             MODULE.trace_token_present("1901–2020", "within the 1901-2020 period")

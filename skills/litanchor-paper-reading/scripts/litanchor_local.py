@@ -452,20 +452,94 @@ def quote_match_kind(quote: str, page_text: str) -> str:
     return "unmatched"
 
 
+def _numeric_bbox(block: dict[str, Any]) -> tuple[float, float, float, float] | None:
+    bbox = block.get("bbox")
+    if (
+        isinstance(bbox, list)
+        and len(bbox) == 4
+        and all(isinstance(value, (int, float)) for value in bbox)
+    ):
+        return tuple(float(value) for value in bbox)
+    return None
+
+
+def _layout_block_groups(page: dict[str, Any]) -> list[list[dict[str, Any]]]:
+    """Keep line blocks from the same PDF column in reading order."""
+    blocks = [
+        block
+        for block in page.get("text_blocks", [])
+        if isinstance(block, dict)
+        and block.get("block_type") == "text"
+        and str(block.get("text") or "").strip()
+        and _numeric_bbox(block) is not None
+    ]
+    if not blocks:
+        return []
+    page_width = float(page.get("page_width") or 0)
+    if page_width <= 0:
+        return [blocks]
+    midpoint = page_width / 2
+    narrow = [
+        block
+        for block in blocks
+        if (_numeric_bbox(block)[2] - _numeric_bbox(block)[0]) < page_width * 0.7
+    ]
+    left = [
+        block
+        for block in narrow
+        if (_numeric_bbox(block)[0] + _numeric_bbox(block)[2]) / 2 < midpoint
+    ]
+    right = [block for block in narrow if block not in left]
+    ordered_columns = [
+        sorted(
+            group,
+            key=lambda block: (_numeric_bbox(block)[1], _numeric_bbox(block)[0]),
+        )
+        for group in (left, right)
+        if group
+    ]
+    groups = [blocks, *ordered_columns]
+    if len(ordered_columns) > 1:
+        groups.append([block for column in ordered_columns for block in column])
+    return [
+        sorted(
+            group,
+            key=lambda block: (_numeric_bbox(block)[1], _numeric_bbox(block)[0]),
+        )
+        if group is blocks
+        else group
+        for group in groups
+    ]
+
+
+def page_quote_match_location(
+    quote: str,
+    page: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    """Match a quote and return the smallest layout-preserving block span."""
+    blocks = [
+        block
+        for block in page.get("text_blocks", [])
+        if isinstance(block, dict)
+        and block.get("block_type") == "text"
+        and str(block.get("text") or "").strip()
+    ]
+    for desired in ("exact", "normalized"):
+        for block in blocks:
+            if quote_match_kind(quote, str(block.get("text") or "")) == desired:
+                return desired, [block]
+        for group in _layout_block_groups(page):
+            text = "\n".join(str(block.get("text") or "") for block in group)
+            if quote_match_kind(quote, text) == desired:
+                return desired, group
+        if quote_match_kind(quote, str(page.get("raw_text", ""))) == desired:
+            return desired, []
+    return "unmatched", []
+
+
 def page_quote_match_kind(quote: str, page: dict[str, Any]) -> str:
     """Match a quote to a PyMuPDF page, including layout-preserving text blocks."""
-    candidates = [str(page.get("raw_text", ""))]
-    candidates.extend(
-        str(block.get("text", ""))
-        for block in page.get("text_blocks", [])
-        if isinstance(block, dict) and block.get("block_type") == "text"
-    )
-    matches = [quote_match_kind(quote, candidate) for candidate in candidates]
-    if "exact" in matches:
-        return "exact"
-    if "normalized" in matches:
-        return "normalized"
-    return "unmatched"
+    return page_quote_match_location(quote, page)[0]
 
 
 def build_coverage_receipt(
