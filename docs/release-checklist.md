@@ -76,7 +76,7 @@ Date: 2026-07-29
 
 ## Final branch actions
 
-- [x] Run the 148-test local suite, Skill validation, compilation, Markdown
+- [x] Run the 149-test local suite, Skill validation, compilation, Markdown
       links, anti-leak/privacy audit and release build on the exact candidate.
 - [ ] Push the candidate and update Draft PR #4.
 - [ ] Confirm GitHub Actions on the pushed candidate.

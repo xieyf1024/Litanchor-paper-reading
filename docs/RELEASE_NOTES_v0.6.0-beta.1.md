@@ -30,7 +30,7 @@ installation, setup, diagnosis and release layer.
 - Page accuracy, numeric fidelity, evidence coverage and template completeness
   were all 100% for the deterministic holdout gates.
 - 6 pathological PDF/failure fixtures passed.
-- 148 repository tests, Skill validation, compilation, Markdown-link and
+- 149 repository tests, Skill validation, compilation, Markdown-link and
   anti-leak/privacy checks passed locally.
 - MinerU added 2 section candidates and 12 figure candidates across the
   holdouts while creating zero authoritative EvidenceUnits.

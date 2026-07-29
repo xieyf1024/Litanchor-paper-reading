@@ -83,6 +83,15 @@ class RepositoryContractTests(unittest.TestCase):
             "probe_then_warn",
         )
 
+    def test_ci_fetches_history_required_by_frozen_evaluation(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(
+            workflow,
+            r"actions/checkout@v4\s+with:\s+fetch-depth:\s+0",
+        )
+
     def test_skill_references_and_assets_exist(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         paths = set(re.findall(r"`((?:references|assets)/[^`]+)`", text))

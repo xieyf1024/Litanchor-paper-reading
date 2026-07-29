@@ -33,6 +33,8 @@
   Methods-after-References and MinerU timeout fallback.
 - Expanded the anti-leak audit to include titles and DOIs from every tracked
   evaluation manifest rather than only the original v0.5 corpus.
+- Made GitHub Actions fetch complete Git history so frozen-evaluation ancestry
+  checks remain reproducible on pull-request runners.
 
 ## v0.5.0 — 2026-07-26 — Autonomous Deep Reading
 
