@@ -34,7 +34,7 @@ single-paper deep-reading pipeline from a Zotero PDF to a reviewed
 
 - MinerU Flash is optional, token-free and subject to service limits. PyMuPDF
   remains authoritative.
-- No Zotero MCP, Zotero write-back, bidirectional sync, paid MinerU API,
-  multi-paper review or unattended release.
+- Zotero remains read-only and Obsidian export remains contained and
+  non-overwriting.
 - Stable `v0.5.0` is intentionally withheld until a separate final unseen-paper
   smoke test passes without a blocker or severe fidelity error.

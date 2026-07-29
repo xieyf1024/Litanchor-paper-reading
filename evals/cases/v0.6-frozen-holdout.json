@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "frozen_at": "2026-07-29",
+  "frozen_skill_commit": "2ce31c55898b061aabbd5ae1ff4eb85b7db1d75e",
+  "rubric": {
+    "path": "evals/rubrics/v0.6-public-beta.md",
+    "sha256": "4e0932a97f964cc88782c9a336b9c5bcd5d2126442ed48410e1e09f254411f33"
+  },
+  "policy": {
+    "reference_notes_allowed": false,
+    "prefilled_ledgers_allowed": false,
+    "paper_specific_skill_rules_allowed": false,
+    "promotion_rule": "If a result changes the Skill, move that paper to development and replace it before the next release decision."
+  },
+  "cases": [
+    {
+      "case_id": "holdout-early-eocene-moc",
+      "split": "frozen_holdout",
+      "title": "Early eocene ocean meridional overturning circulation: The roles of atmospheric forcing and strait geometry",
+      "doi": "10.1029/2021PA004329",
+      "pdf_sha256": "98d45e93ee38474c0b7aa9d42c88fad8d8692ba55f5aff811440dffe6fa2586e",
+      "page_count": 22,
+      "stress_dimensions": [
+        "long_document_subset_route",
+        "earth_science",
+        "multi_figure_results"
+      ],
+      "expected_mineru_route": "selected_complex_pages"
+    },
+    {
+      "case_id": "holdout-madagascar-biogeography",
+      "split": "frozen_holdout",
+      "title": "Biogeographic mechanisms involved in the colonization of madagascar by african vertebrates: Rifting, rafting and runways",
+      "doi": "10.1111/jbi.14032",
+      "pdf_sha256": "fef0de3163fc1826c7fd2b5a2ea584214296a464cf3bb900c2bf3f4762a4ce66",
+      "page_count": 19,
+      "stress_dimensions": [
+        "whole_document_mineru_route",
+        "review_synthesis",
+        "mixed_evidence_types"
+      ],
+      "expected_mineru_route": "whole_document"
+    },
+    {
+      "case_id": "holdout-rumaila-toc",
+      "split": "frozen_holdout",
+      "title": "Prediction of total organic carbon at Rumaila oil field, Southern Iraq using conventional well logs and machine learning algorithms",
+      "doi": "10.1016/j.marpetgeo.2020.104347",
+      "pdf_sha256": "739b7b0cd912ac3c5e27e541dda35fd0b934fa0fb7e01d5020584d7decceab7d",
+      "page_count": 12,
+      "stress_dimensions": [
+        "whole_document_mineru_route",
+        "geoscience_machine_learning",
+        "tables_metrics_and_comparisons"
+      ],
+      "expected_mineru_route": "whole_document"
+    }
+  ]
+}

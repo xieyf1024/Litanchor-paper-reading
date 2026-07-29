@@ -18,6 +18,17 @@ class RepositoryContractTests(unittest.TestCase):
             "NOTICE.md",
             "requirements.txt",
             "requirements-mineru.txt",
+            "requirements-dev.txt",
+            "litanchor-install.json",
+            "install.ps1",
+            "litanchor.ps1",
+            ".github/dependabot.yml",
+            ".github/workflows/ci.yml",
+            "tools/litanchor_manager.py",
+            "tools/build_release.py",
+            "tools/validate_skill.py",
+            "tools/audit_release.py",
+            "tools/check_markdown_links.py",
             "Paper Template.md",
             "科研文献入门.md",
             "docs/PRODUCT.md",
@@ -32,6 +43,7 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/pdf_figures.py",
             "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
             "skills/litanchor-paper-reading/scripts/paper_quality_gate.py",
+            "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -51,6 +63,46 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertLessEqual(len(fields["description"]), 1024)
         self.assertNotRegex(text, r"\bv\d+\.\d+\b")
         self.assertNotIn("experimental", text.lower())
+        self.assertIn("regardless of exact wording", fields["description"])
+        entry = (SKILL / "references" / "zero-config.md").read_text(encoding="utf-8")
+        self.assertIn("Route by meaning, not by a fixed sentence", entry)
+        self.assertIn("not literal trigger", entry)
+
+    def test_install_manifest_uses_minimum_versions_and_capability_probes(self):
+        manifest = json.loads((ROOT / "litanchor-install.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["python"]["minimum_version"], "3.10")
+        self.assertEqual(
+            manifest["python"]["tested_versions"],
+            ["3.10", "3.11", "3.12", "3.13", "3.14"],
+        )
+        self.assertNotIn("maximum_version", manifest["python"])
+        self.assertEqual(manifest["zotero"]["minimum_major_version"], 7)
+        self.assertNotIn("maximum_major_version", manifest["zotero"])
+        self.assertEqual(
+            manifest["python"]["newer_versions_policy"],
+            "probe_then_warn",
+        )
+
+    def test_release_version_is_consistent_across_runtime_entrypoints(self):
+        manifest = json.loads((ROOT / "litanchor-install.json").read_text(encoding="utf-8"))
+        version = manifest["version"]
+        self.assertEqual(manifest["release_channel"], "beta")
+        self.assertNotIn("-dev", version)
+        for relative in (
+            "skills/litanchor-paper-reading/scripts/litanchor_local.py",
+            "skills/litanchor-paper-reading/scripts/autonomous_deep_reading.py",
+            "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
+        ):
+            self.assertIn(f'"{version}"', (ROOT / relative).read_text(encoding="utf-8"))
+
+    def test_ci_fetches_history_required_by_frozen_evaluation(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(
+            workflow,
+            r"actions/checkout@v4\s+with:\s+fetch-depth:\s+0",
+        )
 
     def test_skill_references_and_assets_exist(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
@@ -84,7 +136,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 13)
+        self.assertEqual(len(schemas), 14)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")

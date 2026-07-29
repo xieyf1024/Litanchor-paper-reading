@@ -35,7 +35,6 @@ that private candidate note into an accepted review.
 
 ## Boundaries
 
-v0.5.0 does not add Zotero MCP, Zotero write-back, bidirectional synchronization,
-paid MinerU APIs, local full MinerU, multi-paper reviews or unattended Skill
-publication. External MinerU upload still follows the user’s local consent
-mode, and PyMuPDF remains the evidence authority.
+External MinerU upload follows the user’s local consent mode, PyMuPDF remains
+the evidence authority, Zotero access remains read-only and Obsidian export is
+contained and non-overwriting.

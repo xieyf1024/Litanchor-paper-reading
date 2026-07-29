@@ -1,5 +1,8 @@
 # LitAnchor 项目方案 v0.2
 
+> [!warning] 历史设计记录
+> 本文件保留早期产品讨论和当时的方案比较，不再是当前执行规格。现行版本、运行路径和路线图以 `README.md`、`docs/PRODUCT.md`、`docs/WORKFLOW.md`、`docs/INTEGRATIONS.md` 与 `docs/ROADMAP_V0.6.md` 为准。
+
 > **项目名称：LitAnchor**  
 > 中文名：**文锚**  
 > 仓库名建议：`litanchor`  

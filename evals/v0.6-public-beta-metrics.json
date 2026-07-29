@@ -1,0 +1,84 @@
+{
+  "schema_version": "0.1",
+  "evaluated_at": "2026-07-29",
+  "candidate": "v0.6.0-beta.1",
+  "frozen_rubric_sha256": "4e0932a97f964cc88782c9a336b9c5bcd5d2126442ed48410e1e09f254411f33",
+  "holdout_integrity": {
+    "original_cases_promoted_to_development": 2,
+    "prior_exposure_disqualifications": 1,
+    "release_eligible_replacements": 2,
+    "release_eligible_passes": 3
+  },
+  "release_eligible_holdouts": [
+    {
+      "case_id": "holdout-rumaila-toc",
+      "page_count": 12,
+      "evidence_count": 26,
+      "claim_count": 22,
+      "mineru_route": "whole_document",
+      "mineru_blocks": 133,
+      "mineru_exact": 22,
+      "mineru_fuzzy": 106,
+      "mineru_unmatched": 5,
+      "mineru_added_sections": 1,
+      "mineru_added_figure_candidates": 0,
+      "authoritative_evidence_from_mineru": 0,
+      "release_gate": "pass"
+    },
+    {
+      "case_id": "holdout-phanerozoic-deep-learning",
+      "page_count": 17,
+      "evidence_count": 43,
+      "claim_count": 27,
+      "mineru_route": "selected_complex_pages",
+      "mineru_selected_original_pages": [4, 6, 7, 8, 9, 10],
+      "mineru_blocks": 18,
+      "mineru_exact": 2,
+      "mineru_fuzzy": 16,
+      "mineru_unmatched": 0,
+      "mineru_added_sections": 0,
+      "mineru_added_figure_candidates": 7,
+      "authoritative_evidence_from_mineru": 0,
+      "release_gate": "pass"
+    },
+    {
+      "case_id": "holdout-model-interpretability",
+      "page_count": 10,
+      "evidence_count": 33,
+      "claim_count": 29,
+      "mineru_route": "whole_document",
+      "mineru_blocks": 114,
+      "mineru_exact": 49,
+      "mineru_fuzzy": 41,
+      "mineru_unmatched": 24,
+      "mineru_added_sections": 1,
+      "mineru_added_figure_candidates": 5,
+      "authoritative_evidence_from_mineru": 0,
+      "release_gate": "pass"
+    }
+  ],
+  "aggregate": {
+    "papers": 3,
+    "physical_pages": 39,
+    "evidence_count": 102,
+    "claim_count": 78,
+    "mineru_blocks": 265,
+    "mineru_aligned_blocks": 236,
+    "mineru_alignment_rate": 0.890566,
+    "mineru_added_sections": 2,
+    "mineru_added_figure_candidates": 12,
+    "authoritative_evidence_from_mineru": 0,
+    "template_completeness": 1.0,
+    "evidence_coverage": 1.0,
+    "page_reference_accuracy": 1.0,
+    "numeric_fidelity": 1.0,
+    "severe_unsupported_claims": 0
+  },
+  "pathological_fixtures": {
+    "case_count": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped_in_project_environment": 0
+  },
+  "decision": "pass"
+}

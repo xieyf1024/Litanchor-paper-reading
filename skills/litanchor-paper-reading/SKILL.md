@@ -1,6 +1,6 @@
 ---
 name: litanchor-paper-reading
-description: Creates evidence-grounded Chinese close-reading notes from one academic paper and prepares safe Zotero-to-Obsidian artifacts. Use when the user asks to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, especially when page-level evidence, methods, figures, equations, limitations, or Obsidian Markdown are required.
+description: Installs, configures, diagnoses, upgrades, or runs LitAnchor and creates evidence-grounded Chinese close-reading notes from one academic paper with safe Zotero-to-Obsidian export. Use when the user's intent is to set up LitAnchor or to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, regardless of exact wording.
 ---
 
 # LitAnchor Paper Reading
@@ -24,6 +24,7 @@ Read `references/reliability-rules.md` and `references/workflow.md` completely f
 - `internalize` mode or adaptation to the user's study method: read `references/reading-method.md`.
 - Autonomous full-paper execution: read `references/autonomous-deep-reading.md`.
 - Feedback-driven Skill changes: read `references/controlled-evolution.md`.
+- Installation, setup, doctor, Vault-name resolution, or the two-intent public flow: read `references/zero-config.md`.
 
 Keep detailed rules in `references/`, deterministic behavior in `scripts/`, output templates and reusable material in `assets/`, and machine contracts in `schemas/`.
 
@@ -48,6 +49,7 @@ Use the bundled scripts rather than reimplementing their behavior:
 - `scripts/pdf_figures.py`: original-PDF figure rendering and crop provenance.
 - `scripts/export_obsidian.py`: contained, hash-checked, no-overwrite export.
 - `scripts/paper_quality_gate.py`: deterministic publication blockers.
+- `scripts/litanchor_setup.py`: local Vault discovery, first-run configuration, doctor checks, and run-plan resolution.
 
 Use the JSON Schemas under `schemas/` as the machine contracts. Do not loosen contracts to make invalid output pass.
 

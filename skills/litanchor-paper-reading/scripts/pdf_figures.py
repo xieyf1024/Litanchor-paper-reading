@@ -40,8 +40,9 @@ def _caption_pattern(label: str) -> re.Pattern[str]:
     if match is None:
         raise FigureCropError("Figure label must look like 'Figure 1' or 'Fig. 2'")
     number = re.escape(match.group(1))
+    figure_word = r"f\s*i\s*g(?:\s*u\s*r\s*e)?"
     return re.compile(
-        rf"^\s*fig(?:ure)?\.?\s*{number}(?:\s*[:.]|\s+)",
+        rf"^\s*{figure_word}\.?\s*{number}(?:\s*[:.]|\s+)",
         re.IGNORECASE,
     )
 
@@ -178,9 +179,11 @@ def _render_with_quality_gate(
     pymupdf: Any,
     dpi: int,
     expansion_step: float,
+    preserve_initial_on_failure: bool = False,
 ) -> tuple[Any, Any, str, float, bool, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
     current = pymupdf.Rect(clip)
+    initial = pymupdf.Rect(clip)
     threshold = 0.01
     for attempt_number in range(1, 4):
         pixmap = page.get_pixmap(dpi=dpi, clip=current, alpha=False)
@@ -196,6 +199,15 @@ def _render_with_quality_gate(
         )
         if not touches:
             return pixmap, current, "pass", 0.95, False, attempts
+        if preserve_initial_on_failure:
+            attempts.append(
+                {
+                    "attempt": "explicit_bbox_preserved",
+                    "clip_bbox": [round(value, 3) for value in initial],
+                    "reason": "Explicit user geometry is retained for visual review instead of expanding to a full page.",
+                }
+            )
+            return pixmap, initial, "needs_human_review", 0.7, True, attempts
         expanded = _expand_rect(pymupdf, current, page.rect, expansion_step)
         if expanded == current:
             break
@@ -349,6 +361,7 @@ def crop_figure(
             pymupdf=pymupdf,
             dpi=dpi,
             expansion_step=dynamic_margin,
+            preserve_initial_on_failure=explicit_rect is not None,
         )
         pymupdf_version = getattr(pymupdf, "pymupdf_version", None) or getattr(
             pymupdf, "__version__", "unknown"

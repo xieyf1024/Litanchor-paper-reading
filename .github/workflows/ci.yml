@@ -1,0 +1,87 @@
+name: Windows CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt -r requirements-dev.txt
+
+      - name: Run repository tests
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python -m unittest discover -s tests -v
+
+      - name: Compile Python sources
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python -m compileall -q skills tools tests
+
+      - name: Validate Skill package
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python tools/validate_skill.py
+
+      - name: Audit privacy, leakage and Markdown links
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python tools/audit_release.py
+          python tools/check_markdown_links.py
+
+      - name: Smoke-test idempotent installation
+        run: |
+          $installRoot = Join-Path $env:RUNNER_TEMP "LitAnchor 安装"
+          $skillsRoot = Join-Path $env:RUNNER_TEMP "Agent Skills"
+          $configPath = Join-Path $installRoot "config.json"
+          .\install.ps1 -Action Install -InstallRoot $installRoot -SkillsRoot $skillsRoot -ConfigPath $configPath -SkipDependencies
+          .\install.ps1 -Action Install -InstallRoot $installRoot -SkillsRoot $skillsRoot -ConfigPath $configPath -SkipDependencies
+          .\install.ps1 -Action Status -InstallRoot $installRoot -SkillsRoot $skillsRoot -ConfigPath $configPath
+          $vault = Join-Path $env:RUNNER_TEMP "研究 Vault"
+          New-Item -ItemType Directory -Force -Path (Join-Path $vault ".obsidian") | Out-Null
+          .\litanchor.ps1 setup -InstallRoot $installRoot -ConfigPath $configPath -VaultPath $vault -Inbox "LitAnchor\00_Inbox" -MinerUConsent never -CreateInbox
+          .\litanchor.ps1 run-plan -InstallRoot $installRoot -ConfigPath $configPath -Paper "Synthetic Paper" -Vault "研究 Vault"
+          .\install.ps1 -Action Uninstall -InstallRoot $installRoot -SkillsRoot $skillsRoot -ConfigPath $configPath -Confirm
+
+      - name: Build release artifact
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python tools/build_release.py --output dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LitAnchor-${{ matrix.python-version }}
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+            dist/package-manifest.json

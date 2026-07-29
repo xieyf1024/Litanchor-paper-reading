@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1",
+  "fixture_policy": "Generate synthetic PDFs in temporary directories; never commit copyrighted paper pages.",
+  "cases": [
+    {
+      "case_id": "path-two-column-reading-order",
+      "expected_behavior": "Preserve a coherent column reading order and emit a layout warning when needed."
+    },
+    {
+      "case_id": "path-image-only-scan",
+      "expected_behavior": "Return FALLBACK_REQUIRED rather than inventing native text."
+    },
+    {
+      "case_id": "path-mixed-text-and-blank-pages",
+      "expected_behavior": "Report incomplete native-text coverage without silently claiming PASS."
+    },
+    {
+      "case_id": "path-long-document",
+      "expected_behavior": "Retain every physical page and warn above the 60-page MVP boundary."
+    },
+    {
+      "case_id": "path-post-reference-methods",
+      "expected_behavior": "Classify substantive methods after references as appendix content, not references_only."
+    },
+    {
+      "case_id": "path-mineru-service-failure",
+      "expected_behavior": "Record the optional enhancement failure and continue with PyMuPDF as the authoritative baseline."
+    }
+  ]
+}

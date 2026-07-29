@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://litanchor.local/schemas/local-config.schema.json",
+  "title": "LitAnchor local configuration",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "obsidian",
+    "zotero",
+    "mineru"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "runtime_version": {
+      "type": "string"
+    },
+    "installation": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "install_root": {
+          "type": "string"
+        },
+        "runtime_root": {
+          "type": "string"
+        },
+        "venv_python": {
+          "type": "string"
+        },
+        "skill_path": {
+          "type": "string"
+        },
+        "mineru_dependency_installed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "obsidian": {
+      "type": "object",
+      "required": [
+        "vault_name",
+        "vault_path",
+        "allowed_root",
+        "inbox_path"
+      ],
+      "properties": {
+        "vault_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vault_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowed_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inbox_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "zotero": {
+      "type": "object",
+      "required": [
+        "base_url"
+      ],
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "pattern": "^http://(?:127\\.0\\.0\\.1|localhost|\\[::1\\])(?::[0-9]+)?/api/?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mineru": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "consent_mode",
+        "max_file_mib",
+        "max_pages"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "consent_mode": {
+          "enum": [
+            "always_for_eligible_files",
+            "ask_each_time",
+            "never"
+          ]
+        },
+        "max_file_mib": {
+          "type": "integer",
+          "const": 10
+        },
+        "max_pages": {
+          "type": "integer",
+          "const": 20
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

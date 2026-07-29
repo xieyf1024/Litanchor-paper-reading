@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "base_manifest": "v0.6-frozen-holdout-round2.json",
+  "cases": [
+    {
+      "case_id": "holdout-neuron-reconstruction",
+      "status": "disqualified_prior_exposure",
+      "reason": "A matching PDF SHA-256 was found in the private v0.5 final-smoke runtime before semantic evaluation began. The case is retained as an audit record but cannot count as unseen holdout evidence.",
+      "replacement_required": true
+    },
+    {
+      "case_id": "holdout-phanerozoic-deep-learning",
+      "status": "frozen_holdout",
+      "replacement_required": false
+    }
+  ]
+}

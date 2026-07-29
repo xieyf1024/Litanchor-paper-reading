@@ -102,6 +102,31 @@ class FigureCropTests(unittest.TestCase):
                     output_path=image,
                 )
 
+    def test_explicit_bbox_is_preserved_for_review_instead_of_full_page_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "source.pdf"
+            image = root / "figure-1.png"
+            self.make_pdf(pdf)
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 1",
+                output_path=image,
+                bbox="70,40,230,230",
+                dpi=144,
+            )
+
+            self.assertEqual(result["crop_method"], "explicit_bbox")
+            self.assertEqual(result["clip_bbox"], [70.0, 40.0, 230.0, 230.0])
+            self.assertEqual(result["crop_validation_status"], "needs_human_review")
+            self.assertTrue(result["needs_human_review"])
+            self.assertEqual(
+                result["validation_attempts"][-1]["attempt"],
+                "explicit_bbox_preserved",
+            )
+
     def test_caption_detection_allows_short_axis_prefix_but_ignores_body_reference(self):
         import pymupdf
 
@@ -133,6 +158,21 @@ class FigureCropTests(unittest.TestCase):
 
         self.assertEqual(len(matches), 1)
         self.assertIn("Overlapping fossil-coral", matches[0][1])
+
+    def test_caption_detection_accepts_spaced_figure_word(self):
+        import pymupdf
+
+        document = pymupdf.open()
+        page = document.new_page(width=300, height=400)
+        page.insert_text(
+            (40, 220),
+            "F I G U R E 2 Migration trajectories and ocean currents.",
+        )
+        matches = MODULE._caption_blocks(page, "Figure 2", pymupdf)
+        document.close()
+
+        self.assertEqual(len(matches), 1)
+        self.assertIn("Migration trajectories", matches[0][1])
 
 
 if __name__ == "__main__":

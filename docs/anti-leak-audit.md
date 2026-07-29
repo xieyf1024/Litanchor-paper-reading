@@ -1,7 +1,7 @@
-# v0.5 anti-leak and privacy audit
+# v0.5 and v0.6 anti-leak and privacy audit
 
-Date: 2026-07-26
-Branch: `codex/v0.5-stable-release`
+Updated: 2026-07-29
+Branch: `codex/v0.6-zero-config-public-beta`
 
 ## Scope
 
@@ -45,8 +45,22 @@ paper, known DOI strings and paper-specific answer content.
 - MinerU consent values are local configuration only and are excluded from the
   repository. Tests use an injected fake client rather than a live upload.
 
+## v0.6 extension
+
+- Evaluation tokens are now collected from every tracked JSON manifest under
+  `evals/cases/`, including replacement holdouts, instead of only the original
+  v0.5 corpus.
+- The two holdouts that exposed generic failures were moved to development
+  before fixes. Their content was not added to the distributable Skill.
+- A replacement with a previously observed PDF hash was disqualified before
+  semantic evaluation and replaced.
+- The three release-eligible holdout notes, ledgers, figures and original PDFs
+  remain in ignored runtime storage.
+- The tracked v0.6 metrics contain aggregate evaluation evidence and case IDs;
+  they do not contain Zotero item keys, attachment keys or local PDF paths.
+
 ## Decision
 
 **PASS.** No test-answer leakage, secret or private-paper artifact blocks the
-stable branch push. Any future example promoted from runtime must be sanitized
-and explicitly reviewed before tracking.
+v0.6 candidate push. Any future example promoted from runtime must be
+sanitized and explicitly reviewed before tracking.
