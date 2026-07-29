@@ -1,0 +1,50 @@
+{
+  "schema_version": "0.1",
+  "frozen_at": "2026-07-29",
+  "frozen_skill_commit": "f7a84364b029751c648e7ef583b5ce90389dd4dc",
+  "rubric": {
+    "path": "evals/rubrics/v0.6-public-beta.md",
+    "sha256": "4e0932a97f964cc88782c9a336b9c5bcd5d2126442ed48410e1e09f254411f33"
+  },
+  "policy": {
+    "reference_notes_allowed": false,
+    "prefilled_ledgers_allowed": false,
+    "paper_specific_skill_rules_allowed": false,
+    "skill_changes_during_round": false,
+    "promotion_rule": "If a result changes the Skill, move that paper to development and replace it before the next release decision."
+  },
+  "replaces": [
+    "holdout-madagascar-biogeography",
+    "holdout-early-eocene-moc"
+  ],
+  "cases": [
+    {
+      "case_id": "holdout-neuron-reconstruction",
+      "split": "frozen_holdout_round2",
+      "title": "Fast reconstruction of degenerate populations of conductance-based neuron models from spike times",
+      "doi": "10.1371/journal.pcbi.1014337",
+      "pdf_sha256": "8f9fc663674c9772b3f3e0fa49331e6170863d60073059f81701362da119dc5d",
+      "page_count": 22,
+      "stress_dimensions": [
+        "long_document_subset_route",
+        "computational_neuroscience",
+        "equations_and_posterior_evaluation"
+      ],
+      "expected_mineru_route": "selected_complex_pages"
+    },
+    {
+      "case_id": "holdout-phanerozoic-deep-learning",
+      "split": "frozen_holdout_round2",
+      "title": "Using deep learning to integrate paleoclimate and global biogeochemistry over the phanerozoic eon",
+      "doi": "10.5194/gmd-17-5413-2024",
+      "pdf_sha256": "f9b051655ed7ac33b2a838d11dc3d3d58968aea045a32240e69eeda1aa932f92",
+      "page_count": 17,
+      "stress_dimensions": [
+        "oversize_selected_complex_pages_route",
+        "earth_system_deep_learning",
+        "multi_source_data_and_visual_results"
+      ],
+      "expected_mineru_route": "selected_complex_pages"
+    }
+  ]
+}
