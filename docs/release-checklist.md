@@ -78,6 +78,7 @@ Date: 2026-07-29
 
 - [x] Run the 149-test local suite, Skill validation, compilation, Markdown
       links, anti-leak/privacy audit and release build on the exact candidate.
-- [ ] Push the candidate and update Draft PR #4.
-- [ ] Confirm GitHub Actions on the pushed candidate.
+- [x] Push the candidate and update Draft PR #4.
+- [x] Confirm GitHub Actions on the pushed candidate for Python 3.10 through
+      3.14.
 - [ ] Publish `v0.6.0-beta.1` only after the user approves the Draft PR result.
