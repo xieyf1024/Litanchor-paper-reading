@@ -83,6 +83,18 @@ class RepositoryContractTests(unittest.TestCase):
             "probe_then_warn",
         )
 
+    def test_release_version_is_consistent_across_runtime_entrypoints(self):
+        manifest = json.loads((ROOT / "litanchor-install.json").read_text(encoding="utf-8"))
+        version = manifest["version"]
+        self.assertEqual(manifest["release_channel"], "beta")
+        self.assertNotIn("-dev", version)
+        for relative in (
+            "skills/litanchor-paper-reading/scripts/litanchor_local.py",
+            "skills/litanchor-paper-reading/scripts/autonomous_deep_reading.py",
+            "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
+        ):
+            self.assertIn(f'"{version}"', (ROOT / relative).read_text(encoding="utf-8"))
+
     def test_ci_fetches_history_required_by_frozen_evaluation(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"

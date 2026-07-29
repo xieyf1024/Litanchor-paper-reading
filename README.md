@@ -6,7 +6,7 @@ LitAnchor 是一个面向研究生的轻量化、证据优先型学术精读 Ski
 
 **当前发布版：v0.5.0 Autonomous Deep Reading。** 这是 Windows 优先的稳定开发者预览 / Early Public Beta。Zotero、PDF 物理页、证据追踪、关键图裁剪、受限 Obsidian 导出和自主全文精读已经形成可审计闭环。ResNet、LOVECLIM 和气候 U-Net 示例继续作为明确标记的人工辅助回归产物，不计入自主评测。
 
-**当前开发线：v0.6.0-beta.1-dev Zero-Config Public Beta。** 本分支正在把安装、首次配置、诊断和安全生命周期隐藏到 Agent 后面；它不是已发布的稳定版。
+**当前公开测试版：v0.6.0-beta.1 Zero-Config Public Beta。** 该版本把安装、首次配置、诊断和安全生命周期隐藏到 Agent 后面；面向愿意使用本地 Agent、Zotero 与 Obsidian 的早期用户。
 
 v0.5.0 跑通单篇自主深读闭环：冻结无参考答案输入，用 PyMuPDF 建立权威页级工作包，按论文类型执行六遍全文阅读，按本地授权策略调用 MinerU Flash 并融合非权威结构提示，先生成 Evidence/Claim Ledger，再生成 SectionSynthesis、关键视觉分析、独立忠实度/召回审查和 Final 模板笔记。官方六篇评测共覆盖 81 个物理页、182 条 EvidenceUnit、155 条 ClaimRecord 与 15 张关键图，所有确定性质量指标均为 1.0、无 Blocker；三篇额外跨领域论文通过泛化冒烟测试和用户验收；最后一篇完全未见论文也在冻结工作流下通过量化发布门，未触发严重忠实度错误。
 
@@ -175,7 +175,7 @@ Zotero 桌面端开启 Local API 后，可以先检查连接，再按一个精�
 v0.5.0 的稳定路径是：本机 Zotero Local API 或用户提供的单篇 PDF，经 PyMuPDF 权威页级解析、按授权自动执行的 MinerU 结构增强、六遍精读、双审查和 Final 模板编排后，写入用户明确授权的 Obsidian Vault 子目录。Zotero 保持只读，已有笔记默认不覆盖。
 
 v0.6 已完成 Agent 辅助安装、环境诊断、MinerU 融合实证、Windows CI、
-冻结留出评测和可发布安装包，当前处于 `v0.6.0-beta.1` 发布候选收尾。
+冻结留出评测和可发布安装包，现以 `v0.6.0-beta.1` 开放公开测试。
 结果见 [v0.6 validation](evals/reports/v0.6-public-beta-validation.md)、
 [MinerU component A/B](evals/reports/v0.6-mineru-ab.md) 和
 [v0.6 roadmap](docs/ROADMAP_V0.6.md)。产品、流程、数据、评测和集成规格分别见

@@ -76,9 +76,12 @@ Date: 2026-07-29
 
 ## Final branch actions
 
-- [x] Run the 149-test local suite, Skill validation, compilation, Markdown
+- [x] Run the 150-test local suite, Skill validation, compilation, Markdown
       links, anti-leak/privacy audit and release build on the exact candidate.
 - [x] Push the candidate and update Draft PR #4.
 - [x] Confirm GitHub Actions on the pushed candidate for Python 3.10 through
       3.14.
-- [ ] Publish `v0.6.0-beta.1` only after the user approves the Draft PR result.
+- [x] User approved the Draft PR result and authorized publication of
+      `v0.6.0-beta.1`.
+- [x] Merge PR #4, tag the merge commit and publish the verified ZIP, checksum
+      and package manifest as a GitHub Pre-release.

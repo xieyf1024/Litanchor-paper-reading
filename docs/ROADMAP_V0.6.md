@@ -1,6 +1,6 @@
 # LitAnchor v0.6 roadmap
 
-Status: `v0.6.0-beta.1` release candidate
+Status: `v0.6.0-beta.1` public beta
 Target: Agent-assisted setup and public-beta hardening
 
 Implementation checkpoint:

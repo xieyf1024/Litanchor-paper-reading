@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.6 Zero-Config Public Beta
+## v0.6.0-beta.1 — 2026-07-29 — Zero-Config Public Beta
 
 - Synchronized the current product, integration, workflow, schema, evaluation
   and release-checklist documents with the published v0.5.0 state.
