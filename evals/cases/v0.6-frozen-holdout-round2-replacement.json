@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.1",
+  "frozen_at": "2026-07-29",
+  "frozen_skill_commit": "f7a84364b029751c648e7ef583b5ce90389dd4dc",
+  "rubric": {
+    "path": "evals/rubrics/v0.6-public-beta.md",
+    "sha256": "4e0932a97f964cc88782c9a336b9c5bcd5d2126442ed48410e1e09f254411f33"
+  },
+  "policy": {
+    "reference_notes_allowed": false,
+    "prefilled_ledgers_allowed": false,
+    "paper_specific_skill_rules_allowed": false,
+    "skill_changes_during_round": false,
+    "promotion_rule": "If a result changes the Skill, move that paper to development and replace it before the next release decision."
+  },
+  "replaces": "holdout-neuron-reconstruction",
+  "cases": [
+    {
+      "case_id": "holdout-model-interpretability",
+      "split": "frozen_holdout_round2_replacement",
+      "title": "A unified approach to interpreting model predictions",
+      "doi": null,
+      "pdf_sha256": "32518459c313a57876ec1646f3266d54569d3b9a70152dd4f28e742eef05a5f3",
+      "page_count": 10,
+      "stress_dimensions": [
+        "whole_document_mineru_route",
+        "machine_learning_method",
+        "algorithms_equations_and_multi_domain_evaluation"
+      ],
+      "expected_mineru_route": "whole_document"
+    }
+  ]
+}
