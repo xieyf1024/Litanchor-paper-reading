@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Reworked the bilingual repository landing pages around the two-intent public
+  experience, reliability contract, current boundaries and public-beta proof.
+- Added a current documentation index, stable-release roadmap, contribution
+  guide and privacy-aware GitHub issue forms.
+- Removed obsolete v0.4.1 previews, paper figure crops, failed sparse outputs,
+  repair reports, the superseded early project specification and raw personal
+  reading/template source notes from the current branch. Git tags and releases
+  continue to preserve version history.
+- Kept the v0.6 evaluation manifests, frozen holdouts, pathological fixtures,
+  rubrics, metrics and validation reports unchanged.
+- Clarified that the distilled reading method is an optional project-authored
+  heuristic for `internalize`, not a factual source or reliability rule.
+
 ## v0.6.0-beta.1 — 2026-07-29 — Zero-Config Public Beta
 
 - Synchronized the current product, integration, workflow, schema, evaluation

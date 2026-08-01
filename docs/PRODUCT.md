@@ -6,8 +6,8 @@ LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学�
 Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
 该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
 
-Current stable release: `v0.5.0 Autonomous Deep Reading`
-Public status: Windows-first stable developer preview / Early Public Beta
+Current public release: `v0.6.0-beta.1 Zero-Config Public Beta`
+Public status: Windows-first beta for local-capable Agents
 
 ## Product promise
 
@@ -51,7 +51,7 @@ Supported baseline:
 | `deep` | 默认的研究生级精读 | 背景、空白、数据、方法、指标、关键公式与图表、结果、讨论、局限性、结论 |
 | `internalize` | 在 `deep` 结果上支持学习迁移 | 125 学习法、写作表达、可追踪参考文献、待研究问题；所有启发与原文事实分层 |
 
-## Stable v0.5.0 scope
+## Autonomous deep-reading baseline
 
 The published stable path includes:
 
@@ -67,6 +67,11 @@ The published stable path includes:
 9. deterministic page, quote, number, symbol, depth, Markdown and collision
    gates;
 10. hash-verified, path-contained and non-overwriting Obsidian export.
+
+The v0.5.0 baseline was extended in v0.6.0-beta.1 with Agent-assisted install,
+doctor, setup, upgrade, rollback and uninstall; Windows Python 3.10–3.14 CI;
+frozen holdout evaluation; pathological PDF/failure fixtures; MinerU component
+A/B evidence; and deterministic Release artifacts.
 
 Release evidence:
 
@@ -97,7 +102,7 @@ export. The user is interrupted only for first-run choices, ambiguous sources,
 collisions, external-upload consent or reliability blockers.
 
 v0.6 implements and validates this Agent-assisted setup and public-beta
-hardening path. See `ROADMAP_V0.6.md`.
+hardening path. See `ROADMAP.md` for the remaining stable-release gates.
 
 ## Permanent product boundaries
 

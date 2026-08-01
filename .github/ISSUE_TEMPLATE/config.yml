@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/xieyf1024/Litanchor-paper-reading/blob/main/docs/README.md
+    about: Read the current product, installation, workflow, evaluation, and roadmap documents first.

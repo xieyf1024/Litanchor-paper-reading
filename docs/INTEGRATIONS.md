@@ -2,10 +2,10 @@
 
 ## Current implementation status
 
-The published v0.5.0 path connects to Zotero 7 through the loopback-only Local
-API, builds a PyMuPDF-authoritative page baseline, applies the user’s local
-MinerU consent policy and exports a reviewed note only to an explicitly
-authorized Obsidian Vault subdirectory.
+The current `v0.6.0-beta.1` path connects to Zotero 7 or newer through the
+loopback-only Local API, builds a PyMuPDF-authoritative page baseline, applies
+the user’s local MinerU consent policy and exports a reviewed note only to an
+explicitly authorized Obsidian Vault subdirectory.
 
 `pypdf` supports native-text preflight in the manual local path. PyMuPDF is the
 authority for autonomous physical pages, quotations, coordinates, Zotero page

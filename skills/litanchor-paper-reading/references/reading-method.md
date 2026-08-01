@@ -1,6 +1,9 @@
 # Reading method
 
-This reference distills the project author's `科研文献入门.md` and `Paper Template.md`.
+This optional reference distills the project author's reading workflow and
+early note-template experience. Treat it as a heuristic for selecting reading
+depth and composing the learning layer, not as a paper-fact source, external
+authority or reliability rule.
 
 ## Select depth
 
@@ -36,4 +39,3 @@ Label the entire layer: `以下属于学习启发，不是作者原文结论。`
 ## Questions and snowballing
 
 List unresolved terms/questions, potentially citable passages and references worth following. State only why the current paper makes them relevant; do not retrieve or summarize external sources in the closed-source note.
-
