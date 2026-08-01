@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+## v0.6.0-beta.2 — 2026-08-01 — Public Beta Stabilization
+
+- Unified manual and autonomous PDF preparation on PyMuPDF, removed the
+  redundant `pypdf` runtime dependency and made the documented physical-page
+  authority match the implementation.
+- Added a shared coordinate-aware PyMuPDF reading-order pass that preserves
+  spanning headings and reads each detected column from left to right.
+- Changed core, optional MinerU and development requirements to minimum-only
+  constraints while preserving their lightweight installation boundaries.
+- Rebuilt the bilingual landing-page pipeline and detailed workflow as
+  centered, staged Mermaid diagrams so Section Synthesis remains readable on
+  GitHub and in Obsidian.
+- Split public failure reports into installation/lifecycle, runtime/PDF and
+  note-quality issue forms with explicit privacy and anti-leak confirmations.
+- Added an allowlist-built `doctor --support-bundle` ZIP containing safe
+  versions, check statuses, stable error codes, MinerU routing and receipt
+  metadata without paper data, identifiers, credentials or local paths.
+- Added multilingual semantic intent-regression cases across all lifecycle
+  operations, five one-paper selector forms and ambiguity handling without
+  introducing phrase matching into the runtime Skill.
+- Added interrupted-activation repair, configuration preservation, Vault
+  non-interference and real Windows lifecycle smoke coverage.
+- Added a release-time Skill compaction gate for entry length, duplicate long
+  rules and missing referenced resources.
 - Reworked the bilingual repository landing pages around the two-intent public
   experience, reliability contract, current boundaries and public-beta proof.
 - Added a current documentation index, stable-release roadmap, contribution

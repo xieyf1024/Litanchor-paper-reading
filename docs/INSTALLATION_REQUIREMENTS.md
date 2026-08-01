@@ -44,11 +44,22 @@ Installed from `requirements.txt`:
 
 | Package | Version range | Role |
 |---|---:|---|
-| `pypdf` | `>=6.0,<7.0` | Native-text PDF preflight and the manual local path |
-| `PyMuPDF` | `>=1.26,<2.0` | Authoritative physical pages, coordinates, page rendering and figure crops |
+| `PyMuPDF` | `>=1.26` | PDF preflight, authoritative physical pages, text, coordinates, page rendering, subsets and figure crops |
 
 All other imports used by the bundled scripts are from the Python standard
 library.
+
+LitAnchor intentionally does not depend on `pypdf`: both the manual and
+autonomous paths use the same PyMuPDF physical-page baseline. The three
+requirements files are not duplicates and should not be collapsed:
+
+- `requirements.txt` keeps the default local runtime minimal;
+- `requirements-mineru.txt` is installed only after MinerU is enabled;
+- `requirements-dev.txt` is only for validation and release work.
+
+They declare minimum versions without artificial upper bounds. Newer versions
+are accepted only after CI or local capability probes complete; “installable”
+does not silently mean “release-certified”.
 
 ### Development and release validation
 
@@ -64,7 +75,7 @@ Installed from `requirements-mineru.txt` when the user enables MinerU:
 
 | Package | Version range | Role |
 |---|---:|---|
-| `mineru-open-sdk` | `>=0.2.5,<0.3` | Flash structure, reading-order, heading and figure-caption candidates |
+| `mineru-open-sdk` | `>=0.2.5` | Flash structure, reading-order, heading and figure-caption candidates |
 
 MinerU Flash requires network access and explicit local consent. The current
 whole-file route checks the service limit of at most 10 MiB and 20 pages; long
@@ -120,7 +131,13 @@ A later one-paper reading intent may be expressed as:
 精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
 ```
 
-The published `v0.6.0-beta.1` implements the manifest, user-local installer,
+The `v0.6.0-beta.2` release implements the manifest, user-local installer,
 setup, doctor and run-plan contracts. Clean-profile repetition, frozen
 generalization checks and public feedback remain before the stable v1.0
 release. See `ROADMAP.md`.
+
+For a shareable diagnostic, the Agent can run `litanchor.ps1 doctor
+-SupportBundle`. The ZIP is allowlist-built and contains versions, check
+statuses, stable error codes, MinerU routing and non-sensitive receipt fields.
+It never copies the raw local configuration or doctor report and excludes
+paper data, identifiers, notes, usernames, paths, Vault names and credentials.

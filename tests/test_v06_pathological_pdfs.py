@@ -123,6 +123,13 @@ class V06PathologicalPdfTests(unittest.TestCase):
             self.assertIn("RIGHT_START", text)
             self.assertLess(text.index("LEFT_END"), text.index("RIGHT_START"))
 
+            pages = AUTONOMOUS.extract_pymupdf_pages(pdf)
+            autonomous_text = pages[0]["raw_text"]
+            self.assertLess(
+                autonomous_text.index("LEFT_END"),
+                autonomous_text.index("RIGHT_START"),
+            )
+
     def test_methods_after_references_are_not_discarded_as_bibliography(self):
         pages = [
             {"page_index": 1, "raw_text": "Introduction and results.", "warnings": []},

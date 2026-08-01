@@ -459,6 +459,9 @@ def repair(
         shutil.rmtree(staging)
         changed = True
     _assert_owned_active_skill(target, state)
+    if backup.is_dir():
+        shutil.rmtree(backup)
+        changed = True
     mineru_enabled = bool(state.get("mineru_dependency_installed")) or include_mineru
     python = _sync_dependencies(
         install_root=install_root,
