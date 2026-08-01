@@ -6,7 +6,7 @@ LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学�
 Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
 该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
 
-Current candidate: `v0.6.0-beta.2 Zero-Config Public Beta`
+Current version: `v0.6.0-beta.2 Zero-Config Public Beta`
 Public status: Windows-first beta for local-capable Agents
 
 ## Product promise

@@ -11,7 +11,7 @@
 
 LitAnchor is a lightweight, evidence-first academic close-reading skill for graduate students and researchers. It resolves a single paper from Zotero, treats that paper as the only factual source, and writes a Chinese Obsidian note whose important claims remain traceable to physical PDF pages, source evidence, and Zotero links.
 
-Current candidate: **v0.6.0-beta.2 Zero-Config Public Beta**. It targets local-capable agents on Windows. It is not yet an unattended product for every PDF or browser-only chat client.
+Current version: **v0.6.0-beta.2 Zero-Config Public Beta**. It targets local-capable agents on Windows. It is not yet an unattended product for every PDF or browser-only chat client.
 
 ## Two-step experience
 
@@ -122,7 +122,7 @@ Public reports are split into installation/lifecycle, runtime/PDF, and note-qual
 
 ## Public-beta evidence
 
-The v0.6.0-beta.2 candidate extends beta.1's Windows Python 3.10–3.14 CI, frozen holdout evaluation, pathological PDF/failure tests, MinerU comparison, privacy checks, and deterministic release builds with public feedback forms, redacted support bundles, lifecycle recovery, semantic intent regression, and a smaller dependency surface. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill.
+v0.6.0-beta.2 extends beta.1's Windows Python 3.10–3.14 CI, frozen holdout evaluation, pathological PDF/failure tests, MinerU comparison, privacy checks, and deterministic release builds with public feedback forms, redacted support bundles, lifecycle recovery, semantic intent regression, and a smaller dependency surface. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill.
 
 - [v0.6 Public Beta validation](evals/reports/v0.6-public-beta-validation.md)
 - [MinerU component A/B](evals/reports/v0.6-mineru-ab.md)

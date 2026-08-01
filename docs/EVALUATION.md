@@ -2,7 +2,7 @@
 
 ## Current phase
 
-`v0.6.0-beta.2` is the current Zero-Config Public Beta candidate. It retains the v0.5.0
+`v0.6.0-beta.2` is the current Zero-Config Public Beta. It retains the v0.5.0
 autonomous deep-reading baseline and adds Agent-assisted installation,
 Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure cases,
 MinerU component comparison, lifecycle recovery, semantic intent regression,

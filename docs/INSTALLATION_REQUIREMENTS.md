@@ -131,7 +131,7 @@ A later one-paper reading intent may be expressed as:
 精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
 ```
 
-The `v0.6.0-beta.2` candidate implements the manifest, user-local installer,
+The `v0.6.0-beta.2` release implements the manifest, user-local installer,
 setup, doctor and run-plan contracts. Clean-profile repetition, frozen
 generalization checks and public feedback remain before the stable v1.0
 release. See `ROADMAP.md`.

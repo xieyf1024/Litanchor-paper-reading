@@ -1,6 +1,6 @@
 # LitAnchor v0.6.0-beta.2
 
-Public Beta stabilization candidate — 2026-08-01.
+Zero-Config Public Beta — 2026-08-01.
 
 ## What changed
 
@@ -58,5 +58,5 @@ silently overwritten.
   warn, fall back or block.
 - MinerU requires a local consent choice and network availability. Failure
   falls back to the PyMuPDF baseline without weakening evidence provenance.
-- This remains a Public Beta candidate until the exact commit passes the full
-  GitHub Actions matrix.
+- This is a Public Beta rather than the final v1.0 stable release; supported
+  environments and failure boundaries remain explicit.

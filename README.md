@@ -11,7 +11,7 @@
 
 LitAnchor 是一个面向研究生和科研工作者的轻量化、证据优先型学术精读 Skill。它从 Zotero 获取指定的单篇论文，只依据论文原文生成中文 Obsidian 笔记，并将重要主张锚定到 PDF 物理页、原文证据和 Zotero 跳转链接。
 
-当前候选版本：**v0.6.0-beta.2 Zero-Config Public Beta**。它面向 Windows 上具备本地 Shell、文件和网络权限的 Agent；还不是支持所有 PDF 和所有聊天客户端的无人审核产品。
+当前版本：**v0.6.0-beta.2 Zero-Config Public Beta**。它面向 Windows 上具备本地 Shell、文件和网络权限的 Agent；还不是支持所有 PDF 和所有聊天客户端的无人审核产品。
 
 ## 两步使用
 
@@ -131,7 +131,7 @@ Python 和 Zotero 只设最低版本，不设武断的最高版本；未覆盖�
 
 ## 当前评测状态
 
-v0.6.0-beta.2 候选版在 beta.1 的 Windows Python 3.10–3.14 CI、冻结留出评测、病理 PDF/失败路径、MinerU 融合对比、隐私审计和 Release 构建基础上，增加公开反馈、脱敏支持包、生命周期恢复、语义意图回归与依赖收敛。评测论文只用于学习可复用的失败类型与工作流规则，不得把论文答案写入可分发 Skill。
+v0.6.0-beta.2 在 beta.1 的 Windows Python 3.10–3.14 CI、冻结留出评测、病理 PDF/失败路径、MinerU 融合对比、隐私审计和 Release 构建基础上，增加公开反馈、脱敏支持包、生命周期恢复、语义意图回归与依赖收敛。评测论文只用于学习可复用的失败类型与工作流规则，不得把论文答案写入可分发 Skill。
 
 - [v0.6 Public Beta 验证](evals/reports/v0.6-public-beta-validation.md)
 - [MinerU 组件 A/B](evals/reports/v0.6-mineru-ab.md)
