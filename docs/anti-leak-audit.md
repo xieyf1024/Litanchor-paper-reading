@@ -3,6 +3,10 @@
 Updated: 2026-07-29
 Branch: `codex/v0.6-zero-config-public-beta`
 
+This is the release-time audit snapshot. The current branch subsequently
+removed the old public v0.4.1 examples and copyrighted figure crops; the
+underlying v0.6 evaluation manifests and audit rules remain unchanged.
+
 ## Scope
 
 The audit searched the distributable Skill instructions, references, scripts,
@@ -16,9 +20,8 @@ paper, known DOI strings and paper-specific answer content.
 - No paper-specific Evidence ID, conclusion, page number, figure choice or
   expected numerical answer occurs in `SKILL.md`, `references/`, `scripts/`,
   `schemas/` or `assets/`.
-- Paper-specific content is confined to ignored runtime artifacts, evaluation
-  reports, failed cases and public examples that are explicitly labeled as
-  examples.
+- Paper-specific content is confined to ignored runtime artifacts and the
+  minimum tracked evaluation metadata/reports required for reproducibility.
 - All six autonomous semantic drafts record
   `reference_notes_used=false`, `human_prefill_count=0` and
   `human_edit_count=0`.

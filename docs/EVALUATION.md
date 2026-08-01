@@ -2,7 +2,10 @@
 
 ## Current phase
 
-v0.5.0 is the published stable autonomous deep-reading release.
+`v0.6.0-beta.1` is the current Zero-Config Public Beta. It retains the v0.5.0
+autonomous deep-reading baseline and adds Agent-assisted installation,
+Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure cases,
+MinerU component comparison and deterministic Release packaging.
 
 Release evidence:
 
@@ -13,11 +16,13 @@ Release evidence:
   and accepted by the user;
 - one separate source-closed unseen smoke test under the frozen workflow and
   rubric;
-- 116 repository tests plus Skill validation, compilation, privacy and
-  anti-leak checks.
+- 150 repository tests plus Skill validation, compilation, Markdown-link,
+  privacy and anti-leak checks for the v0.6 beta freeze.
 
 See `v0.5-final-validation.md`, `../evals/cross-paper-metrics.json`,
-`../evals/failure-taxonomy.md` and `release-checklist.md`.
+`../evals/failure-taxonomy.md`, `../evals/v0.6-public-beta-metrics.json`,
+`../evals/reports/v0.6-public-beta-validation.md` and
+`release-checklist.md`.
 
 The local PDFs and private runtime artifacts are excluded from Git. Their safe
 inventory is documented in `../evals/PDF_CORPUS.md`.

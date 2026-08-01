@@ -28,7 +28,7 @@ flowchart TD
     M -->|not authorized| O[Return local artifacts]
 ```
 
-## Implemented autonomous path (v0.5.0)
+## Implemented autonomous path (v0.5 baseline, current v0.6 beta)
 
 The bundled scripts and Skill implement this local autonomous path:
 

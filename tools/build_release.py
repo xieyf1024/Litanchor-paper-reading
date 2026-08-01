@@ -36,6 +36,7 @@ def release_files(root: Path = ROOT) -> list[Path]:
         root / "requirements-mineru.txt",
         root / "requirements-dev.txt",
         root / "README.md",
+        root / "README_EN.md",
         root / "CHANGELOG.md",
         root / "LICENSE",
         root / "NOTICE.md",
@@ -43,7 +44,8 @@ def release_files(root: Path = ROOT) -> list[Path]:
         root / "tools" / "litanchor_manager.py",
         root / "tools" / "validate_skill.py",
         root / "docs" / "INSTALLATION_REQUIREMENTS.md",
-        root / "docs" / "ROADMAP_V0.6.md",
+        root / "docs" / "README.md",
+        root / "docs" / "ROADMAP.md",
     ]
     skill = root / "skills" / "litanchor-paper-reading"
     dynamic = [

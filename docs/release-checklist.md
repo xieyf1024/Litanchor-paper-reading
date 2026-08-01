@@ -1,4 +1,9 @@
-# v0.5 release checklist
+# Release checklist
+
+This file records completed public release gates. Current next-version gates
+are maintained in `ROADMAP.md`.
+
+## v0.5.0
 
 Date: 2026-07-26
 Release: `0.5.0`
@@ -50,7 +55,7 @@ Release: `0.5.0`
 - Stable `v0.5.0`: **published**.
 - GitHub Actions: **added on the v0.6 development line**.
 
-# v0.6.0-beta.1 release checklist
+## v0.6.0-beta.1
 
 Date: 2026-07-29
 

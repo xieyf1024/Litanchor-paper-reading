@@ -100,7 +100,7 @@ Ambiguous Zotero matches, multiple PDF attachments, an existing target note,
 an upload requiring confirmation, or a quality blocker may require an
 additional decision during a run.
 
-## v0.6 installation experience target
+## v0.6 installation experience
 
 The product contract is based on two intents, not two hard-coded sentences.
 For example, an installation intent may be expressed as:
@@ -120,7 +120,7 @@ A later one-paper reading intent may be expressed as:
 精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
 ```
 
-The v0.6 development line now implements the manifest, user-local installer,
-setup, doctor and run-plan contracts. Clean-profile and Release-candidate
-validation remain before the beta is published; v0.5.0 remains the current
-stable release.
+The published `v0.6.0-beta.1` implements the manifest, user-local installer,
+setup, doctor and run-plan contracts. Clean-profile repetition, frozen
+generalization checks and public feedback remain before the stable v1.0
+release. See `ROADMAP.md`.

@@ -28,8 +28,11 @@ class ReleasePackageTests(unittest.TestCase):
                 names = package.namelist()
                 self.assertTrue(any(name.endswith("/litanchor-install.json") for name in names))
                 self.assertTrue(any(name.endswith("/package-manifest.json") for name in names))
+                self.assertTrue(any(name.endswith("/README_EN.md") for name in names))
+                self.assertTrue(any(name.endswith("/docs/ROADMAP.md") for name in names))
                 self.assertFalse(any(name.casefold().endswith(".pdf") for name in names))
                 self.assertFalse(any("/runtime/" in name for name in names))
+                self.assertFalse(any("examples/v0.4.1" in name for name in names))
             manifest = json.loads(
                 Path(result["package_manifest"]).read_text(encoding="utf-8")
             )

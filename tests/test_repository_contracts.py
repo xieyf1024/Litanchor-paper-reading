@@ -12,6 +12,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_required_repository_files_exist(self):
         for relative in (
             "README.md",
+            "README_EN.md",
+            "CONTRIBUTING.md",
             "LICENSE",
             ".gitignore",
             "THIRD_PARTY.md",
@@ -24,15 +26,17 @@ class RepositoryContractTests(unittest.TestCase):
             "litanchor.ps1",
             ".github/dependabot.yml",
             ".github/workflows/ci.yml",
+            ".github/ISSUE_TEMPLATE/bug_report.yml",
+            ".github/ISSUE_TEMPLATE/feature_request.yml",
+            ".github/ISSUE_TEMPLATE/config.yml",
             "tools/litanchor_manager.py",
             "tools/build_release.py",
             "tools/validate_skill.py",
             "tools/audit_release.py",
             "tools/check_markdown_links.py",
-            "Paper Template.md",
-            "科研文献入门.md",
+            "docs/README.md",
             "docs/PRODUCT.md",
-            "docs/PROJECT_SPEC_V0.2.md",
+            "docs/ROADMAP.md",
             "docs/WORKFLOW.md",
             "docs/DATA_SCHEMA.md",
             "docs/EVALUATION.md",
@@ -46,6 +50,18 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
+
+    def test_retired_development_artifacts_stay_out_of_current_branch(self):
+        for relative in (
+            "Paper Template.md",
+            "科研文献入门.md",
+            "examples/v0.4.1",
+            "evals/failed/v0.4-sparse-output",
+            "docs/PROJECT_SPEC_V0.2.md",
+            "docs/ROADMAP_V0.6.md",
+            "docs/v0.4.1-final-validation.md",
+        ):
+            self.assertFalse((ROOT / relative).exists(), relative)
 
     def test_skill_frontmatter_is_minimal_and_triggerable(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")

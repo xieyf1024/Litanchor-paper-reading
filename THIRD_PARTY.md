@@ -1,6 +1,6 @@
 # Third-party references
 
-本项目不复制、修改或打包下列设计参考项目的代码。运行依赖由用户环境按 `requirements.txt` 安装，仓库不重新分发其源码。下表记录截至 2026-07-23 的项目判断；版本、许可证和服务政策在真正升级或引入前必须重新核实。本文件不是法律意见。
+本项目不复制、修改或打包下列设计参考项目的代码。运行依赖由用户环境按 `requirements.txt` 安装，仓库不重新分发其源码。下表记录截至 2026-08-01 的项目判断；版本、许可证和服务政策在真正升级或引入前必须重新核实。本文件不是法律意见。
 
 ## Runtime dependency
 
@@ -22,15 +22,14 @@
 | [Zotero MCP](https://github.com/54yyyu/zotero-mcp) | MIT | 搜索、元数据、全文、批注、citekey 和只读访问 | 仅作为调研对照；LitAnchor 采用 Zotero Local API，不提供此适配器 |
 | [paper-notes](https://github.com/ZinSheng/paper-notes) | MIT | evidence-first、解析失败阻断、运行产物分离、用户编辑优先 | 只借鉴工作流原则，不复制实现 |
 | [llm-for-zotero](https://github.com/yilewang/llm-for-zotero) | AGPL-3.0 | 原始文本与结构化文本双通道；结构工具定位、原 PDF 提供最终视觉证据 | 只借鉴架构并独立实现，不复制代码 |
-| [MinerU](https://github.com/opendatalab/MinerU) | 仓库与云端 SDK/服务应分别复核 | 复杂版面、OCR、公式、表格和图题的可选结构增强层 | v0.4.1 候选版已通过 Open SDK 实测免费 Flash 模式；仅在同意后上传，并重新对齐原 PDF |
+| [nature-paper-card](https://github.com/Yuan1z0825/nature-skills/tree/main/skills/nature-paper-card) | Apache-2.0 | 简洁的双语 Skill 展示、论文类型路由、来源标签和结构定位降级 | 只借鉴公开设计模式；LitAnchor 保留独立实现、Schema 与可靠性边界 |
+| [MinerU](https://github.com/opendatalab/MinerU) | 仓库与云端 SDK/服务应分别复核 | 复杂版面、OCR、公式、表格和图题的可选结构增强层 | v0.6 已验证整篇与保留页码子集路由；仅在同意后上传，并重新对齐原 PDF |
 
 MinerU 免费 Agent/Flash 接口的可用性、文件限制、限流和表格/公式能力由外部服务控制，不属于 LitAnchor 的稳定承诺。当前适配器强制执行 10 MiB、20 页限制，不读取 Token，并保存请求、响应、隐私回执与对齐产物。MinerU 输出不能直接成为正式证据；正式页码、引文和视觉对象必须回到原 PDF 核验。
 
-`examples/v0.4.1/assets/` 中的论文插图裁剪件仅用于展示与评测，仍受源论文的版权和许可条款约束，不属于本项目 AGPL 许可范围。具体来源见该目录的 `README.md`。
-
 ## Project-authored source material
 
-- `Paper Template.md`：项目作者提供的原始文献精读模板。
-- `科研文献入门.md`：项目作者提供的原始阅读方法笔记。
-
-可安装 Skill 中的 `assets/Paper Template - Final.md` 与 `references/reading-method.md` 是对以上材料及项目作者最终模板的整理，并遵循本仓库 AGPL-3.0-only 许可。
+可安装 Skill 中的 `assets/Paper Template - Final.md` 与
+`references/reading-method.md` 由项目作者整理并遵循本仓库
+AGPL-3.0-only 许可。`reading-method.md` 是可选学习方法，不构成外部权威
+或论文事实来源。
