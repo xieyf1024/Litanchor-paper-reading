@@ -26,7 +26,9 @@ class RepositoryContractTests(unittest.TestCase):
             "litanchor.ps1",
             ".github/dependabot.yml",
             ".github/workflows/ci.yml",
-            ".github/ISSUE_TEMPLATE/bug_report.yml",
+            ".github/ISSUE_TEMPLATE/installation_failure.yml",
+            ".github/ISSUE_TEMPLATE/runtime_pdf_failure.yml",
+            ".github/ISSUE_TEMPLATE/note_quality.yml",
             ".github/ISSUE_TEMPLATE/feature_request.yml",
             ".github/ISSUE_TEMPLATE/config.yml",
             "tools/litanchor_manager.py",
@@ -34,6 +36,8 @@ class RepositoryContractTests(unittest.TestCase):
             "tools/validate_skill.py",
             "tools/audit_release.py",
             "tools/check_markdown_links.py",
+            "evals/cases/v0.6-intent-regression.json",
+            "evals/rubrics/v0.6-intent-routing.md",
             "docs/README.md",
             "docs/PRODUCT.md",
             "docs/ROADMAP.md",
@@ -45,6 +49,7 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/zotero_local.py",
             "skills/litanchor-paper-reading/scripts/export_obsidian.py",
             "skills/litanchor-paper-reading/scripts/pdf_figures.py",
+            "skills/litanchor-paper-reading/scripts/pdf_reading_order.py",
             "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
             "skills/litanchor-paper-reading/scripts/paper_quality_gate.py",
             "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
@@ -83,6 +88,45 @@ class RepositoryContractTests(unittest.TestCase):
         entry = (SKILL / "references" / "zero-config.md").read_text(encoding="utf-8")
         self.assertIn("Route by meaning, not by a fixed sentence", entry)
         self.assertIn("not literal trigger", entry)
+
+    def test_intent_regression_covers_semantic_routes_and_ambiguities(self):
+        payload = json.loads(
+            (ROOT / "evals" / "cases" / "v0.6-intent-regression.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        allowed = set(payload["allowed_intents"])
+        cases = payload["cases"]
+        self.assertEqual(
+            allowed,
+            {
+                "install",
+                "configure",
+                "doctor",
+                "upgrade",
+                "repair",
+                "rollback",
+                "uninstall",
+                "read_one_paper",
+            },
+        )
+        self.assertEqual({case["expected"]["intent"] for case in cases}, allowed)
+        self.assertEqual({case["language"] for case in cases}, {"zh", "en", "mixed"})
+        selectors = {
+            case["expected"].get("selector")
+            for case in cases
+            if case["expected"]["intent"] == "read_one_paper"
+        }
+        self.assertTrue(
+            {"title", "doi", "citekey", "item_key", "current_context"}.issubset(
+                selectors
+            )
+        )
+        self.assertGreaterEqual(
+            sum(case["expected"]["decision"] == "clarify" for case in cases),
+            3,
+        )
+        self.assertIn("not a literal command", payload["purpose"])
 
     def test_install_manifest_uses_minimum_versions_and_capability_probes(self):
         manifest = json.loads((ROOT / "litanchor-install.json").read_text(encoding="utf-8"))
@@ -137,8 +181,23 @@ class RepositoryContractTests(unittest.TestCase):
         requirements = [line for line in requirements if line.strip() and not line.lstrip().startswith("#")]
         self.assertEqual(
             requirements,
-            ["pypdf>=6.0,<7.0", "PyMuPDF>=1.26,<2.0"],
+            ["PyMuPDF>=1.26"],
         )
+
+    def test_all_dependency_contracts_are_minimum_only(self):
+        for relative in (
+            "requirements.txt",
+            "requirements-mineru.txt",
+            "requirements-dev.txt",
+        ):
+            active = [
+                line.strip()
+                for line in (ROOT / relative).read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+            self.assertTrue(active, relative)
+            self.assertTrue(all(">=" in line for line in active), relative)
+            self.assertFalse(any("<" in line for line in active), relative)
 
     def test_openai_metadata_mentions_skill(self):
         text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
@@ -191,6 +250,20 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("*.pdf", text)
         self.assertIn("runtime/", text)
         self.assertRegex(text, r"(?m)^\.env$")
+
+    def test_public_issue_forms_separate_failures_and_require_privacy_review(self):
+        issue_root = ROOT / ".github" / "ISSUE_TEMPLATE"
+        forms = {
+            "installation_failure.yml": "support bundle",
+            "runtime_pdf_failure.yml": "PDF",
+            "note_quality.yml": "paper-independent",
+        }
+        for name, expected in forms.items():
+            text = (issue_root / name).read_text(encoding="utf-8")
+            self.assertIn(expected.casefold(), text.casefold())
+            self.assertIn("privacy", text.casefold())
+            self.assertIn("required: true", text)
+        self.assertFalse((issue_root / "bug_report.yml").exists())
 
 
 if __name__ == "__main__":

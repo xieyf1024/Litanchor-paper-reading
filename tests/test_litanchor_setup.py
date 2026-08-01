@@ -3,6 +3,7 @@ import json
 import tempfile
 import threading
 import unittest
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -151,6 +152,136 @@ class LitAnchorSetupTests(unittest.TestCase):
         self.assertEqual(litanchor_setup.zotero_compatibility("7.0.24")[0], "pass")
         self.assertEqual(litanchor_setup.zotero_compatibility("8.0")[0], "warning")
         self.assertEqual(litanchor_setup.zotero_compatibility("6.0.37")[0], "fail")
+
+    def test_support_bundle_uses_allowlist_and_excludes_private_values(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            secret_install = root / "Users" / "PrivateUser" / "LitAnchor"
+            secret_install.mkdir(parents=True)
+            config = secret_install / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "installation": {
+                            "version": "0.6.0-beta.1",
+                            "install_root": str(secret_install),
+                            "skill_path": str(root / "Secret Skills"),
+                            "mineru_dependency_installed": True,
+                        },
+                        "obsidian": {
+                            "vault_name": "PrivateVault",
+                            "vault_path": str(root / "PrivateVault"),
+                            "inbox_path": str(root / "PrivateVault" / "Secret Inbox"),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (secret_install / "install-state.json").write_text(
+                json.dumps(
+                    {
+                        "active_version": "0.6.0-beta.1",
+                        "active_skill_sha256": "a" * 64,
+                        "installed_versions": ["0.6.0-beta.1"],
+                        "active_skill_path": str(root / "PrivateUser" / "skill"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            report = {
+                "status": "blocked",
+                "setup_version": "0.6.0-beta.1",
+                "config_path": str(config),
+                "checks": [
+                    {
+                        "check_id": "python",
+                        "status": "pass",
+                        "observed": {
+                            "version": "3.12",
+                            "bits": 64,
+                            "detail": "verified",
+                            "executable": str(root / "PrivateUser" / "python.exe"),
+                        },
+                    },
+                    {
+                        "check_id": "obsidian_paths",
+                        "status": "fail",
+                        "observed": {
+                            "vault": str(root / "PrivateVault"),
+                            "inbox": str(root / "PrivateVault" / "Secret Inbox"),
+                        },
+                    },
+                    {
+                        "check_id": "zotero_unique_pdf",
+                        "status": "fail",
+                        "observed": {
+                            "item_key": "SECRETKEY",
+                            "pdf_path": str(root / "Private Paper.pdf"),
+                            "title": "Private Paper Title",
+                            "doi": "10.0000/private",
+                        },
+                    },
+                    {
+                        "check_id": "mineru_consent",
+                        "status": "pass",
+                        "observed": "always_for_eligible_files",
+                    },
+                    {
+                        "check_id": "dependency_mineru",
+                        "status": "pass",
+                        "observed": "1.2.3",
+                    },
+                ],
+            }
+            destination = root / "support.zip"
+            created = litanchor_setup.create_support_bundle(
+                report=report,
+                config_path=config,
+                output_path=destination,
+            )
+            self.assertEqual(created, destination.resolve())
+            with zipfile.ZipFile(created) as archive:
+                self.assertEqual(
+                    set(archive.namelist()), {"support-report.json", "summary.txt"}
+                )
+                combined = "\n".join(
+                    archive.read(name).decode("utf-8") for name in archive.namelist()
+                )
+                payload = json.loads(archive.read("support-report.json"))
+            for forbidden in (
+                "PrivateUser",
+                "PrivateVault",
+                "Secret Inbox",
+                "SECRETKEY",
+                "Private Paper Title",
+                "10.0000/private",
+                "python.exe",
+            ):
+                self.assertNotIn(forbidden, combined)
+            checks = {item["check_id"]: item for item in payload["checks"]}
+            self.assertEqual(checks["obsidian_paths"]["error_code"], "LA-DOCTOR-OBSIDIAN_PATHS")
+            self.assertNotIn("observed", checks["obsidian_paths"])
+            self.assertNotIn("observed", checks["zotero_unique_pdf"])
+            self.assertEqual(payload["mineru"]["route"], "automatic_for_eligible_files")
+            self.assertEqual(payload["install_receipt"]["active_skill_sha256"], "a" * 64)
+
+    def test_doctor_support_bundle_flag_does_not_require_an_output_path(self):
+        args = litanchor_setup.build_parser().parse_args(
+            ["doctor", "--support-bundle"]
+        )
+        self.assertEqual(args.command, "doctor")
+        self.assertEqual(args.support_bundle, "")
+
+    def test_doctor_reports_unavailable_zotero_as_stable_failed_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            report = litanchor_setup.run_doctor(
+                config_path=Path(temporary) / "missing-config.json",
+                zotero_base_url="http://127.0.0.1:1/api",
+                write_probe=False,
+            )
+            checks = {item["check_id"]: item for item in report["checks"]}
+            self.assertEqual(checks["zotero_local_api"]["status"], "fail")
+            self.assertEqual(report["status"], "blocked")
 
 
 if __name__ == "__main__":

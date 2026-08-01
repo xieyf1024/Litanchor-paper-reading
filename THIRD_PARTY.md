@@ -1,14 +1,16 @@
 # Third-party references
 
-本项目不复制、修改或打包下列设计参考项目的代码。运行依赖由用户环境按 `requirements.txt` 安装，仓库不重新分发其源码。下表记录截至 2026-08-01 的项目判断；版本、许可证和服务政策在真正升级或引入前必须重新核实。本文件不是法律意见。
+本项目不复制、修改或打包下列设计参考项目的代码。运行依赖由用户环境按对应 requirements 文件安装，仓库不重新分发其源码。下表记录截至 2026-08-01 的项目判断；版本、许可证和服务政策在真正升级或引入前必须重新核实。本文件不是法律意见。
 
 ## Runtime dependency
 
 | 项目 | 版本范围 | 许可证 | 用途 |
 |---|---|---|---|
-| [pypdf](https://github.com/py-pdf/pypdf) | `>=6.0,<7.0` | BSD-3-Clause | 单篇本地 PDF 的有效性检查、物理页文本提取与元数据读取 |
-| [PyMuPDF](https://github.com/pymupdf/PyMuPDF) | `>=1.26,<2.0`；开发环境核验版本 `1.28.0` | GNU AGPL v3 或 Artifex 商业许可的双重许可 | 原 PDF 页面渲染、文本/图像坐标、关键图像裁剪与来源核验 |
-| [MinerU Open SDK](https://github.com/opendatalab/MinerU-Ecosystem) | 可选依赖 `>=0.2.5,<0.3`；开发环境核验版本 `0.2.5` | Apache-2.0（官方生态仓库） | 经用户明确同意后调用无需 Token 的 Flash/Quick Parse 云端接口，辅助恢复标题、阅读顺序和图题 |
+| [PyMuPDF](https://github.com/pymupdf/PyMuPDF) | `>=1.26`；开发环境核验版本 `1.28.0` | GNU AGPL v3 或 Artifex 商业许可的双重许可 | 本地 PDF 预检、物理页文本/坐标、页面渲染、关键图裁剪、页面子集与最终证据核验 |
+| [MinerU Open SDK](https://github.com/opendatalab/MinerU-Ecosystem) | 可选依赖 `>=0.2.5`；开发环境核验版本 `0.2.5` | Apache-2.0（官方生态仓库） | 按本地持久授权自动调用无需 Token 的 Flash/Quick Parse 云端接口，辅助恢复标题、阅读顺序和图题 |
+| [PyYAML](https://github.com/yaml/pyyaml) | 开发依赖 `>=6.0` | MIT | 在 CI 和发布审计中验证 Skill YAML；不进入默认运行环境 |
+
+三类依赖文件有意分开：`requirements.txt` 只含核心本地依赖，`requirements-mineru.txt` 只在用户启用 MinerU 时安装，`requirements-dev.txt` 仅供测试与发布验证。所有依赖采用最低版本、不设置人为最高版本；CI、`doctor` 与升级流程负责发现新版本兼容性问题。
 
 开发环境中 PyMuPDF `COPYING` 文件的首行许可声明已人工核对。LitAnchor 当前以 `AGPL-3.0-only` 发布，并把 PyMuPDF 作为未修改的 Python 依赖使用。不能或不愿遵守 AGPL 的使用者应自行评估 Artifex 商业许可。
 

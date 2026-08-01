@@ -33,7 +33,7 @@ Do not commit a complete paper, long copyrighted excerpts, private Zotero annota
 
 ## Current verification
 
-`v0.6.0-beta.1` includes frozen holdout evaluation, pathological PDF/failure
+`v0.6.0-beta.2` retains the frozen holdout evaluation, pathological PDF/failure
 coverage, MinerU component A/B evidence and deterministic repository tests.
 Start with:
 
@@ -45,3 +45,11 @@ Start with:
 Development cases can shape general rules. Frozen holdouts cannot. If a frozen
 case causes a change, reclassify it as development and replace it before making
 a release claim.
+
+## Agent intent regression
+
+`cases/v0.6-intent-regression.json` and
+`rubrics/v0.6-intent-routing.md` define the public two-intent and lifecycle
+routing evaluation. These utterances are evaluation prompts, not production
+trigger strings. Evaluate semantic decisions through an Agent and keep the
+runtime Skill free of keyword or exact-sentence routing tables.

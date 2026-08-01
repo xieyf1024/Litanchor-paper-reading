@@ -14,17 +14,17 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
 
 
-@unittest.skipUnless(importlib.util.find_spec("pypdf"), "pypdf is not installed")
+@unittest.skipUnless(importlib.util.find_spec("pymupdf"), "PyMuPDF is not installed")
 class MinerUAdapterTests(unittest.TestCase):
     def make_pdf_and_bundle(self, root: Path, page_count: int = 2):
-        from pypdf import PdfWriter
+        import pymupdf
 
         pdf = root / "paper.pdf"
-        writer = PdfWriter()
+        document = pymupdf.open()
         for _ in range(page_count):
-            writer.add_blank_page(width=612, height=792)
-        with pdf.open("wb") as handle:
-            writer.write(handle)
+            document.new_page(width=612, height=792)
+        document.save(pdf)
+        document.close()
         pages = [
             {
                 "page_index": page,

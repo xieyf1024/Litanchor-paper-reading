@@ -193,6 +193,85 @@ class LitAnchorManagerTests(unittest.TestCase):
             self.assertTrue(result["changed"])
             self.assertTrue((active / "SKILL.md").is_file())
 
+    def test_repair_recovers_interrupted_activation_artifacts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            install_root = root / "本地 数据" / "LitAnchor"
+            skills_root = root / "Agent Skills" / "skills"
+            config = install_root / "config.json"
+            manager.install(
+                source_root=ROOT,
+                install_root=install_root,
+                skills_root=skills_root,
+                config_path=config,
+                include_mineru=False,
+                skip_dependencies=True,
+            )
+            active = skills_root / "litanchor-paper-reading"
+            backup = active.parent / ".litanchor-paper-reading.litanchor-previous"
+            staging = active.parent / ".litanchor-paper-reading.litanchor-next"
+            shutil.copytree(active, backup)
+            staging.mkdir()
+            (staging / "partial.txt").write_text("interrupted", encoding="utf-8")
+            result = manager.repair(
+                install_root=install_root,
+                skills_root=skills_root,
+                config_path=config,
+                skip_dependencies=True,
+            )
+            self.assertTrue(result["changed"])
+            self.assertTrue((active / "SKILL.md").is_file())
+            self.assertFalse(backup.exists())
+            self.assertFalse(staging.exists())
+
+    def test_upgrade_and_uninstall_preserve_vault_and_user_configuration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            release_one = self._minimal_release(root / "releases", "0.6.0-a", "first")
+            release_two = self._minimal_release(root / "releases", "0.6.0-b", "second")
+            install_root = root / "Local App Data" / "LitAnchor"
+            skills_root = root / "Codex Home" / "skills"
+            config = install_root / "config.json"
+            vault = root / "研究 Vault"
+            note = vault / "LitAnchor" / "00_Inbox" / "user-note.md"
+            note.parent.mkdir(parents=True)
+            note.write_text("user-owned note", encoding="utf-8")
+            manager.install(
+                source_root=release_one,
+                install_root=install_root,
+                skills_root=skills_root,
+                config_path=config,
+                include_mineru=False,
+                skip_dependencies=True,
+            )
+            payload = json.loads(config.read_text(encoding="utf-8"))
+            payload["obsidian"] = {
+                "vault_name": vault.name,
+                "vault_path": str(vault),
+                "inbox_path": str(note.parent),
+            }
+            config.write_text(json.dumps(payload), encoding="utf-8")
+            manager.install(
+                source_root=release_two,
+                install_root=install_root,
+                skills_root=skills_root,
+                config_path=config,
+                include_mineru=False,
+                skip_dependencies=True,
+                action="upgrade",
+            )
+            upgraded = json.loads(config.read_text(encoding="utf-8"))
+            self.assertEqual(upgraded["obsidian"]["vault_name"], vault.name)
+            manager.uninstall(
+                install_root=install_root,
+                skills_root=skills_root,
+                config_path=config,
+                confirm=True,
+                remove_config=False,
+            )
+            self.assertEqual(note.read_text(encoding="utf-8"), "user-owned note")
+            self.assertTrue(config.is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

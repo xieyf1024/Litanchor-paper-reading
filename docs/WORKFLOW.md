@@ -3,29 +3,59 @@
 ## State model
 
 ```mermaid
-flowchart TD
-    A[Parse request] --> B[Resolve one source]
-    B --> C[Build SourceBundle]
-    C --> D[PDF preflight]
-    D -->|BLOCKED| X[Failure report]
-    D -->|FALLBACK_REQUIRED| Y[Ask for approved fallback]
-    D -->|PASS or warning| E[Page-level extraction]
-    E --> F[Paper profile and structure]
-    F --> G[Specialised reading passes]
-    G --> H[Evidence ledger]
-    H --> I[Figure table equation records]
-    I --> J[Rich Claim ledger]
-    J --> K[Deep completeness gate]
-    K --> Q[Final-template composition]
-    Q --> R[Deterministic validation]
-    R -->|fail| X
-    R --> L[Fidelity review]
-    L -->|fail| X
-    L --> T[Recall review]
-    T -->|fail| X
-    T --> M[Preview]
-    M -->|authorized| N[Safe Obsidian export]
-    M -->|not authorized| O[Return local artifacts]
+flowchart TB
+    subgraph sourceLane["Source grounding"]
+        direction TB
+        request["Interpret user intent"] --> resolve["Resolve one paper"] --> bundle["Create SourceBundle"]
+    end
+
+    subgraph parseLane["Document understanding"]
+        direction TB
+        preflight{"PDF preflight"} -->|pass or warning| pages["PyMuPDF page baseline"]
+        pages -.-> mineru["MinerU structure hints"]
+        pages --> profile["Paper profile and section map"]
+        mineru -.-> profile
+        preflight -->|blocked| sourceFailure["Stop with failure report"]
+        preflight -->|fallback required| fallback["Pause for fallback approval"]
+    end
+
+    subgraph reasoningLane["Evidence-grounded reasoning"]
+        direction TB
+        passes["Specialized reading passes"] --> evidence["Evidence ledger"] --> claims["Claim ledger"]
+        claims --> sections["Section Synthesis"] --> visuals["Figure table equation records"]
+    end
+
+    subgraph qualityLane["Quality assurance"]
+        direction TB
+        completeness["Completeness gate"] --> deterministic["Deterministic validation"] --> fidelity["Fidelity review"] --> recall["Recall review"]
+        recall --> qualityDecision{"All gates pass"}
+        qualityDecision -->|no| qualityFailure["Stop with failure report"]
+    end
+
+    subgraph deliveryLane["Preview and contained export"]
+        direction TB
+        preview["Validated preview"] --> decision{"Export authorized"}
+        decision -->|yes| obsidian["Safe Obsidian export"]
+        decision -->|no| artifacts["Return local artifacts"]
+    end
+
+    bundle --> preflight
+    profile --> passes
+    visuals --> completeness
+    qualityDecision -->|yes| preview
+
+    classDef sourceLayer fill:#E8F1FF,stroke:#2563EB,stroke-width:2px,color:#172554
+    classDef assistLayer fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#3B0764
+    classDef knowledgeLayer fill:#FFF7E6,stroke:#D97706,stroke-width:2px,color:#451A03
+    classDef qualityLayer fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#064E3B
+    classDef decisionLayer fill:#FEF3C7,stroke:#B45309,stroke-width:2px,color:#451A03
+    classDef failureLayer fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#7F1D1D
+    class request,resolve,bundle,pages sourceLayer
+    class mineru assistLayer
+    class profile,passes,evidence,claims,sections,visuals knowledgeLayer
+    class completeness,deterministic,fidelity,recall,preview,obsidian,artifacts qualityLayer
+    class preflight,qualityDecision,decision decisionLayer
+    class sourceFailure,fallback,qualityFailure failureLayer
 ```
 
 ## Implemented autonomous path (v0.5 baseline, current v0.6 beta)

@@ -16,6 +16,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from pdf_reading_order import block_text as ordered_block_text  # noqa: E402
+from pdf_reading_order import order_text_blocks  # noqa: E402
 from litanchor_local import (  # noqa: E402
     PipelineError,
     atomic_write_json,
@@ -35,7 +37,7 @@ from autonomous_semantic import (  # noqa: E402
 from paper_quality_gate import PAPER_TYPE_LABELS_ZH  # noqa: E402
 
 
-AUTONOMOUS_VERSION = "0.6.0-beta.1"
+AUTONOMOUS_VERSION = "0.6.0-beta.2"
 ALLOWED_AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
 MINERU_CONSENT_MODES = {
     "always_for_eligible_files",
@@ -280,12 +282,20 @@ def extract_pymupdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
         ) from exc
     try:
         for page_index, page in enumerate(document, start=1):
-            text = page.get_text("text", sort=True).strip()
-            page_dict = page.get_text("dict", sort=True)
+            page_dict = page.get_text("dict", sort=False)
+            raw_blocks = [
+                block
+                for block in page_dict.get("blocks", [])
+                if isinstance(block, dict)
+            ]
+            ordered_text, multicolumn = order_text_blocks(
+                raw_blocks,
+                float(page.rect.width),
+            )
+            text = "\n".join(ordered_block_text(block) for block in ordered_text).strip()
+            image_blocks = [block for block in raw_blocks if block.get("type") != 0]
             text_blocks: list[dict[str, Any]] = []
-            for block_index, block in enumerate(page_dict.get("blocks", [])):
-                if not isinstance(block, dict):
-                    continue
+            for block_index, block in enumerate(ordered_text + image_blocks):
                 bbox = block.get("bbox")
                 text_blocks.append(
                     {
@@ -303,6 +313,8 @@ def extract_pymupdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
                     }
                 )
             warnings: list[str] = []
+            if multicolumn:
+                warnings.append("multicolumn_layout_detected_coordinate_order_used")
             visible = _visible_characters(text)
             if visible == 0:
                 warnings.append("empty_page_text")

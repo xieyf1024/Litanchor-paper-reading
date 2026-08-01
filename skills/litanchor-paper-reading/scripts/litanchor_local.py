@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import logging
 import os
 import re
 import sys
@@ -39,9 +38,10 @@ from paper_quality_gate import (  # noqa: E402
     validate_range_symbol_integrity,
     validate_table_sentence_rendering_integrity,
 )
+from pdf_reading_order import extract_page_text as extract_pymupdf_page_text  # noqa: E402
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.6.0-beta.1"
+SKILL_VERSION = "0.6.0-beta.2"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -163,56 +163,15 @@ def unique_run_dir(output_root: Path, digest: str) -> Path:
     return candidate
 
 
-class _ListHandler(logging.Handler):
-    def __init__(self) -> None:
-        super().__init__(level=logging.WARNING)
-        self.messages: list[str] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.messages.append(record.getMessage())
-
-
-def _warning_code(message: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")
-    return f"pypdf_warning:{normalized[:120]}"
-
-
-def _text_quality(text: str) -> int:
-    tokens = re.findall(r"\S+", text)
-    long_tokens = sum(len(token) >= 35 for token in tokens)
-    replacement_characters = text.count("\ufffd")
-    return len(tokens) - (long_tokens * 25) - (replacement_characters * 10)
-
-
 def _extract_page_text(page: Any) -> tuple[str, list[str]]:
     warnings: list[str] = []
-    logger = logging.getLogger("pypdf")
-    handler = _ListHandler()
-    logger.addHandler(handler)
     try:
-        layout_text = page.extract_text(extraction_mode="layout") or ""
-    except (TypeError, ValueError, NotImplementedError):
-        layout_text = ""
-        warnings.append("layout_extraction_unavailable")
-    except Exception as exc:  # pypdf raises parser-specific exceptions here
+        text, multicolumn = extract_pymupdf_page_text(page)
+        if multicolumn:
+            warnings.append("multicolumn_layout_detected_coordinate_order_used")
+    except Exception as exc:
         warnings.append(f"page_extraction_failed:{type(exc).__name__}")
-        layout_text = ""
-    finally:
-        logger.removeHandler(handler)
-    for message in handler.messages:
-        warnings.append(_warning_code(message))
-    try:
-        plain_text = page.extract_text() or ""
-    except Exception:
-        plain_text = ""
-    layout_column_gaps = sum(bool(re.search(r"\S {20,}\S", line)) for line in layout_text.splitlines())
-    if plain_text and layout_column_gaps >= 2:
-        text = plain_text
-        warnings.append("multicolumn_layout_detected_plain_order_used")
-    elif _text_quality(plain_text) > _text_quality(layout_text):
-        text = plain_text
-    else:
-        text = layout_text or plain_text
+        text = ""
     control_count = sum(ord(character) < 32 and character not in "\n\r\t" for character in text)
     if control_count:
         text = "".join(character for character in text if ord(character) >= 32 or character in "\n\r\t")
@@ -265,25 +224,20 @@ def prepare_pdf(
         raise PipelineError(f"Input is not a readable PDF file: {pdf_path}")
 
     try:
-        from pypdf import PdfReader
+        import pymupdf
     except ImportError as exc:
         raise PipelineError(
-            "pypdf is required. Install the repository requirements before preparing a PDF."
+            "PyMuPDF is required. Install the repository requirements before preparing a PDF."
         ) from exc
 
     digest = sha256_file(pdf_path)
-    reader_logger = logging.getLogger("pypdf")
-    reader_handler = _ListHandler()
-    reader_logger.addHandler(reader_handler)
     try:
-        reader = PdfReader(str(pdf_path), strict=False)
-        page_count = len(reader.pages)
-        _ = getattr(reader, "metadata", None)  # Force parser warnings without trusting metadata values.
+        document = pymupdf.open(pdf_path)
+        page_count = document.page_count
     except Exception as exc:
         raise PipelineError(f"PDF cannot be parsed: {type(exc).__name__}: {exc}") from exc
-    finally:
-        reader_logger.removeHandler(reader_handler)
     if page_count < 1:
+        document.close()
         raise PipelineError("PDF contains no pages")
 
     run_dir = unique_run_dir(output_root.resolve(), digest)
@@ -291,42 +245,47 @@ def prepare_pdf(
     resolved_authors = list(authors or [])
 
     pages: list[dict[str, Any]] = []
-    pdf_warnings: list[str] = [_warning_code(message) for message in reader_handler.messages]
-    if reader.is_encrypted:
-        preflight_status = "BLOCKED"
-        pdf_warnings.append("encrypted_pdf")
-    else:
-        for page_index, page in enumerate(reader.pages, start=1):
-            text, page_warnings = _extract_page_text(page)
-            pages.append(
-                {
-                    "page_index": page_index,
-                    "printed_page": None,
-                    "raw_text": text,
-                    "extraction_method": "native_text",
-                    "confidence": _page_confidence(text, page_warnings),
-                    "warnings": page_warnings,
-                }
-            )
-        readable_pages = sum(
-            len(re.sub(r"\s+", "", page["raw_text"])) >= 80 for page in pages
-        )
-        coverage = readable_pages / page_count
-        total_visible = sum(len(re.sub(r"\s+", "", page["raw_text"])) for page in pages)
-        if coverage < 0.5 or total_visible < 500:
-            preflight_status = "FALLBACK_REQUIRED"
-            pdf_warnings.append("native_text_coverage_insufficient")
-        elif coverage < 0.9 or any(page["warnings"] for page in pages):
-            preflight_status = "PASS_WITH_WARNINGS"
-            pdf_warnings.append("review_page_extraction_warnings")
+    pdf_warnings: list[str] = []
+    try:
+        if document.needs_pass or document.is_encrypted:
+            preflight_status = "BLOCKED"
+            pdf_warnings.append("encrypted_pdf")
         else:
-            preflight_status = "PASS"
-        if page_count > 60:
-            pdf_warnings.append("page_count_above_mvp_limit")
-            if preflight_status == "PASS":
+            for page_index, page in enumerate(document, start=1):
+                text, page_warnings = _extract_page_text(page)
+                pages.append(
+                    {
+                        "page_index": page_index,
+                        "printed_page": None,
+                        "raw_text": text,
+                        "extraction_method": "pymupdf_native",
+                        "confidence": _page_confidence(text, page_warnings),
+                        "warnings": page_warnings,
+                    }
+                )
+            readable_pages = sum(
+                len(re.sub(r"\s+", "", page["raw_text"])) >= 80 for page in pages
+            )
+            coverage = readable_pages / page_count
+            total_visible = sum(
+                len(re.sub(r"\s+", "", page["raw_text"])) for page in pages
+            )
+            if coverage < 0.5 or total_visible < 500:
+                preflight_status = "FALLBACK_REQUIRED"
+                pdf_warnings.append("native_text_coverage_insufficient")
+            elif coverage < 0.9 or any(page["warnings"] for page in pages):
                 preflight_status = "PASS_WITH_WARNINGS"
-        if pdf_warnings and preflight_status == "PASS":
-            preflight_status = "PASS_WITH_WARNINGS"
+                pdf_warnings.append("review_page_extraction_warnings")
+            else:
+                preflight_status = "PASS"
+            if page_count > 60:
+                pdf_warnings.append("page_count_above_mvp_limit")
+                if preflight_status == "PASS":
+                    preflight_status = "PASS_WITH_WARNINGS"
+            if pdf_warnings and preflight_status == "PASS":
+                preflight_status = "PASS_WITH_WARNINGS"
+    finally:
+        document.close()
 
     bundle: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -2057,7 +2016,7 @@ def render_deep_markdown(
             f"keywords: {yaml_scalar(keywords)}",
             f"zotero_key: {yaml_scalar(metadata.get('citekey') or source['source'].get('zotero_item_key'))}",
             f"source_pdf: {yaml_scalar(source['source'].get('query'))}",
-            'extraction_engine: "pypdf native text + PyMuPDF visual evidence"',
+            'extraction_engine: "PyMuPDF page baseline + consent-aware MinerU structure hints"',
             f"validation_status: {yaml_scalar(status)}",
             f"review_status: {yaml_scalar(review_status)}",
             f"generation_mode: {yaml_scalar(generation_mode)}",

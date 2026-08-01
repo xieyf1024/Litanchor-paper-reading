@@ -55,6 +55,14 @@ the Agent should:
    installed without changing the Vault configuration.
 8. Rerun doctor and report the receipt.
 
+When diagnosis must be shared, run `litanchor.ps1 doctor -SupportBundle` (or
+the Python entry point with `doctor --support-bundle`). The generated ZIP is
+constructed from an explicit safe-field allowlist. It includes versions,
+check statuses, stable error codes, the MinerU route and non-sensitive install
+receipt fields; it excludes paper content and identifiers, notes, usernames,
+local paths, Vault names, credentials and environment variables. Ask the user
+to review the ZIP before attaching it to a public issue.
+
 Pause for the user when Python is missing, an operating-system change or
 broader permission is required, more than one Vault matches, or a destination
 already contains an unmanaged Skill. Never copy a GitHub token into a

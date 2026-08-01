@@ -6,7 +6,7 @@ LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学�
 Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
 该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
 
-Current public release: `v0.6.0-beta.1 Zero-Config Public Beta`
+Current candidate: `v0.6.0-beta.2 Zero-Config Public Beta`
 Public status: Windows-first beta for local-capable Agents
 
 ## Product promise
@@ -68,10 +68,11 @@ The published stable path includes:
    gates;
 10. hash-verified, path-contained and non-overwriting Obsidian export.
 
-The v0.5.0 baseline was extended in v0.6.0-beta.1 with Agent-assisted install,
+The v0.5.0 baseline was extended through v0.6.0-beta.2 with Agent-assisted install,
 doctor, setup, upgrade, rollback and uninstall; Windows Python 3.10–3.14 CI;
 frozen holdout evaluation; pathological PDF/failure fixtures; MinerU component
-A/B evidence; and deterministic Release artifacts.
+A/B evidence; deterministic Release artifacts; public issue routing; redacted
+support bundles; and interrupted-lifecycle recovery.
 
 Release evidence:
 
@@ -79,7 +80,7 @@ Release evidence:
 - three extended non-autonomous renderer/quality regressions;
 - three cross-domain generalization cases;
 - one final source-closed unseen smoke test;
-- 116 repository tests plus Skill, compilation, privacy and anti-leak checks.
+- the repository test suite plus Skill, compilation, privacy and anti-leak checks.
 
 These papers are evaluation artifacts. Their titles, conclusions, values and
 paper-specific fixes do not enter the distributable Skill.

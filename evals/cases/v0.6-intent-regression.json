@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Evaluate semantic routing; examples are not a literal command contract or production keyword rules.",
+  "allowed_intents": [
+    "install",
+    "configure",
+    "doctor",
+    "upgrade",
+    "repair",
+    "rollback",
+    "uninstall",
+    "read_one_paper"
+  ],
+  "cases": [
+    {
+      "case_id": "intent-install-zh-01",
+      "utterance": "把这个 GitHub 上的 LitAnchor 给我装好，依赖也一起处理。",
+      "language": "zh",
+      "expected": {"intent": "install", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-install-en-01",
+      "utterance": "Set up LitAnchor from this release and verify the installation for me.",
+      "language": "en",
+      "expected": {"intent": "install", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-config-mixed-01",
+      "utterance": "Use 我的 Research Vault as the default destination and keep MinerU ask-each-time.",
+      "language": "mixed",
+      "expected": {"intent": "configure", "decision": "proceed", "vault": "explicit"}
+    },
+    {
+      "case_id": "intent-config-zh-ambiguity",
+      "utterance": "把默认仓库换成我的文献库。",
+      "language": "zh",
+      "expected": {"intent": "configure", "decision": "clarify", "ambiguity": "multiple_matching_vaults"}
+    },
+    {
+      "case_id": "intent-doctor-zh-01",
+      "utterance": "LitAnchor 好像连不上 Zotero，帮我检查环境并生成脱敏诊断包。",
+      "language": "zh",
+      "expected": {"intent": "doctor", "decision": "proceed", "support_bundle": true}
+    },
+    {
+      "case_id": "intent-doctor-en-01",
+      "utterance": "Can you diagnose why my local LitAnchor setup is unhealthy?",
+      "language": "en",
+      "expected": {"intent": "doctor", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-upgrade-zh-01",
+      "utterance": "有新版本的话把文锚更新一下，但保留我的本地配置。",
+      "language": "zh",
+      "expected": {"intent": "upgrade", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-upgrade-en-01",
+      "utterance": "Move my LitAnchor installation to the latest verified release.",
+      "language": "en",
+      "expected": {"intent": "upgrade", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-repair-zh-01",
+      "utterance": "安装还在，但 skill 文件坏了，按安装记录修复一下。",
+      "language": "zh",
+      "expected": {"intent": "repair", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-repair-mixed-01",
+      "utterance": "Please repair 文锚; do not reset my Vault settings.",
+      "language": "mixed",
+      "expected": {"intent": "repair", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-rollback-zh-01",
+      "utterance": "新版有问题，退回已经安装的上一个 LitAnchor 版本。",
+      "language": "zh",
+      "expected": {"intent": "rollback", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-rollback-en-ambiguity",
+      "utterance": "Roll LitAnchor back to the older one.",
+      "language": "en",
+      "expected": {"intent": "rollback", "decision": "clarify", "ambiguity": "multiple_archived_versions"}
+    },
+    {
+      "case_id": "intent-uninstall-zh-01",
+      "utterance": "卸载 LitAnchor，保留我的配置和所有 Obsidian 笔记。",
+      "language": "zh",
+      "expected": {"intent": "uninstall", "decision": "proceed", "preserve_config": true}
+    },
+    {
+      "case_id": "intent-uninstall-en-01",
+      "utterance": "Remove the managed LitAnchor installation but leave my research files alone.",
+      "language": "en",
+      "expected": {"intent": "uninstall", "decision": "proceed"}
+    },
+    {
+      "case_id": "intent-read-title-zh",
+      "utterance": "把《A General Paper Title》精读成中文笔记，放到已配置的仓库。",
+      "language": "zh",
+      "expected": {"intent": "read_one_paper", "decision": "proceed", "selector": "title", "vault": "configured_default"}
+    },
+    {
+      "case_id": "intent-read-doi-en",
+      "utterance": "Create an evidence-grounded Obsidian note for DOI 10.0000/example.2026.1.",
+      "language": "en",
+      "expected": {"intent": "read_one_paper", "decision": "proceed", "selector": "doi", "vault": "configured_default"}
+    },
+    {
+      "case_id": "intent-read-citekey-mixed",
+      "utterance": "精读 citekey Smith2026Method and save it to Research Vault.",
+      "language": "mixed",
+      "expected": {"intent": "read_one_paper", "decision": "proceed", "selector": "citekey", "vault": "explicit"}
+    },
+    {
+      "case_id": "intent-read-item-key-en",
+      "utterance": "Use LitAnchor on Zotero item ABCD1234 and write the result to my default Inbox.",
+      "language": "en",
+      "expected": {"intent": "read_one_paper", "decision": "proceed", "selector": "item_key", "vault": "configured_default"}
+    },
+    {
+      "case_id": "intent-read-current-zh",
+      "utterance": "就按刚才选中的那篇做完整精读，结果进默认 Obsidian。",
+      "language": "zh",
+      "expected": {"intent": "read_one_paper", "decision": "proceed", "selector": "current_context", "vault": "configured_default"}
+    },
+    {
+      "case_id": "intent-read-paper-ambiguity",
+      "utterance": "精读那篇 climate model 论文。",
+      "language": "mixed",
+      "expected": {"intent": "read_one_paper", "decision": "clarify", "ambiguity": "multiple_matching_papers"}
+    },
+    {
+      "case_id": "intent-read-vault-reauthorize",
+      "utterance": "Analyze DOI 10.0000/example.2026.2 and save it in a different Vault named Archive.",
+      "language": "en",
+      "expected": {"intent": "read_one_paper", "decision": "clarify", "selector": "doi", "vault": "requires_reauthorization"}
+    }
+  ]
+}

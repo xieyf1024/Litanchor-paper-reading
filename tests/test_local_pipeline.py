@@ -116,31 +116,43 @@ class LocalPipelineTests(unittest.TestCase):
             MODULE.trace_token_present("1901–2020", "within the 1901-2020 period")
         )
 
-    def test_page_extraction_prefers_less_corrupted_plain_text(self):
+    def test_page_extraction_uses_pymupdf_sorted_text(self):
         class FakePage:
-            def extract_text(self, extraction_mode=None):
-                if extraction_mode == "layout":
-                    return "Thisisaverylongtokencreatedbybrokenlayouttextwithoutspaces between words."
-                return "This is readable plain text with spaces between words and enough context."
+            def __init__(self):
+                self.calls = []
+                self.rect = type("Rect", (), {"width": 612})()
 
-        text, _warnings = MODULE._extract_page_text(FakePage())
-        self.assertIn("readable plain text", text)
+            def get_text(self, extraction_mode, *, sort=False):
+                self.calls.append((extraction_mode, sort))
+                return {
+                    "blocks": [
+                        {
+                            "type": 0,
+                            "bbox": [36, 60, 576, 100],
+                            "lines": [
+                                {
+                                    "spans": [
+                                        {
+                                            "text": "This is readable text in PyMuPDF reading order with enough context."
+                                        }
+                                    ]
+                                }
+                            ],
+                        }
+                    ]
+                }
 
-    def test_page_extraction_uses_plain_order_for_spatial_columns(self):
-        class FakePage:
-            def extract_text(self, extraction_mode=None):
-                if extraction_mode == "layout":
-                    return "left one                    right one\nleft two                    right two"
-                return "left one\nleft two\nright one\nright two"
-
-        text, warnings = MODULE._extract_page_text(FakePage())
-        self.assertLess(text.index("left two"), text.index("right one"))
-        self.assertIn("multicolumn_layout_detected_plain_order_used", warnings)
+        page = FakePage()
+        text, _warnings = MODULE._extract_page_text(page)
+        self.assertIn("PyMuPDF reading order", text)
+        self.assertEqual(page.calls, [("dict", False)])
 
     def test_page_extraction_removes_non_text_control_characters(self):
         class FakePage:
-            def extract_text(self, extraction_mode=None):
-                return "F(x)\x01 + x is the residual output with readable surrounding text."
+            rect = type("Rect", (), {"width": 612})()
+
+            def get_text(self, extraction_mode, *, sort=False):
+                return {"blocks": [{"type": 0, "bbox": [36, 60, 576, 100], "lines": [{"spans": [{"text": "F(x)\x01 + x is the residual output with readable surrounding text."}]}]}]}
 
         text, warnings = MODULE._extract_page_text(FakePage())
         self.assertNotIn("\x01", text)
@@ -148,8 +160,10 @@ class LocalPipelineTests(unittest.TestCase):
 
     def test_page_extraction_flags_broken_ligature_glyphs(self):
         class FakePage:
-            def extract_text(self, extraction_mode=None):
-                return "The model ®nds ice ¯ow under the stated boundary conditions."
+            rect = type("Rect", (), {"width": 612})()
+
+            def get_text(self, extraction_mode, *, sort=False):
+                return {"blocks": [{"type": 0, "bbox": [36, 60, 576, 100], "lines": [{"spans": [{"text": "The model ®nds ice ¯ow under the stated boundary conditions."}]}]}]}
 
         _text, warnings = MODULE._extract_page_text(FakePage())
         self.assertIn("suspicious_ligature_glyphs:2", warnings)
@@ -586,26 +600,26 @@ class LocalPipelineTests(unittest.TestCase):
             self.assertEqual(result["status"], "completed_with_warnings")
             self.assertIn("建议人工复核页：1", destination.read_text(encoding="utf-8"))
 
-    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "pypdf is not installed")
+    @unittest.skipUnless(importlib.util.find_spec("pymupdf"), "PyMuPDF is not installed")
     def test_blank_pdf_requires_fallback(self):
-        from pypdf import PdfWriter
+        import pymupdf
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             pdf = root / "blank.pdf"
-            writer = PdfWriter()
-            writer.add_blank_page(width=612, height=792)
-            writer.add_blank_page(width=612, height=792)
-            writer.add_metadata({"/Author": "Unverified PDF uploader"})
-            with pdf.open("wb") as handle:
-                writer.write(handle)
+            document = pymupdf.open()
+            document.new_page(width=612, height=792)
+            document.new_page(width=612, height=792)
+            document.set_metadata({"author": "Unverified PDF uploader"})
+            document.save(pdf)
+            document.close()
             run_dir, bundle = MODULE.prepare_pdf(pdf, root / "runs", reading_mode="skim")
             self.assertEqual(bundle["pdf"]["preflight_status"], "FALLBACK_REQUIRED")
             self.assertEqual(len(bundle["pages"]), 2)
             self.assertEqual(bundle["metadata"]["authors"], [])
             self.assertTrue((run_dir / "source-bundle.json").is_file())
 
-    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "pypdf is not installed")
+    @unittest.skipUnless(importlib.util.find_spec("pymupdf"), "PyMuPDF is not installed")
     def test_corrupt_pdf_is_blocked_before_run_creation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

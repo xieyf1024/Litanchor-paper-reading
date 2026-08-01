@@ -90,3 +90,18 @@ Date: 2026-07-29
       `v0.6.0-beta.1`.
 - [x] Merge PR #4, tag the merge commit and publish the verified ZIP, checksum
       and package manifest as a GitHub Pre-release.
+
+## v0.6.0-beta.2 Public Beta stabilization
+
+- [x] Preserve the frozen v0.6 evaluation manifests and paper-content boundary.
+- [x] Add separate public issue forms for installation, runtime/PDF and note-quality failures.
+- [x] Add an allowlist-based redacted doctor support bundle.
+- [x] Add semantic intent-regression cases without production phrase matching.
+- [x] Add lifecycle interruption, preservation and Vault non-interference tests.
+- [x] Add the release-time Skill compaction audit.
+- [x] Remove the redundant pypdf runtime and unify PDF preparation on PyMuPDF.
+- [x] Keep core, optional MinerU and development dependencies separate with minimum-only constraints.
+- [x] Replace the clipped single-row Mermaid flow with centered staged diagrams.
+- [x] Complete the 158-test local gate, Skill validation, compilation, link/privacy audits, release build and one real isolated Windows lifecycle smoke run.
+- [ ] Complete GitHub Actions on the exact candidate commit.
+- [x] Select defect-driven `v0.6.0-beta.2`: repair now clears a stale activation backup after an interrupted update, with a regression test.

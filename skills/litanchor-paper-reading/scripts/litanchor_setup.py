@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import importlib.metadata
 import importlib.util
 import json
@@ -14,6 +15,7 @@ import shutil
 import socket
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +31,7 @@ from litanchor_local import SKILL_VERSION  # noqa: E402
 from zotero_local import DEFAULT_BASE_URL, ZoteroLocalClient  # noqa: E402
 
 
-SETUP_VERSION = "0.6.0-beta.1"
+SETUP_VERSION = "0.6.0-beta.2"
 CONFIG_SCHEMA_VERSION = "0.2"
 DEFAULT_INBOX = Path("LitAnchor") / "00_Inbox"
 MINIMUM_PYTHON = (3, 10)
@@ -43,6 +45,7 @@ TESTED_PYTHON_VERSIONS = {
 MINIMUM_ZOTERO_MAJOR = 7
 TESTED_ZOTERO_MAJORS = {7}
 REQUIRED_ZOTERO_API_VERSION = "3"
+SUPPORT_BUNDLE_SCHEMA_VERSION = "1.0"
 
 
 class SetupError(RuntimeError):
@@ -271,6 +274,196 @@ def zotero_compatibility(version: str | None) -> tuple[str, str]:
     )
 
 
+def _support_error_code(check_id: str, status: str) -> str | None:
+    if status in {"pass", "skipped"}:
+        return None
+    normalized = re.sub(r"[^A-Z0-9]+", "_", check_id.upper()).strip("_")
+    return f"LA-DOCTOR-{normalized}"
+
+
+def _safe_support_observed(check_id: str, observed: Any) -> Any:
+    """Return only explicitly allowlisted, path-free diagnostic details."""
+    if check_id == "platform" and isinstance(observed, str):
+        return observed
+    if check_id == "python_environment" and isinstance(observed, dict):
+        return {
+            "virtual_environment": bool(observed.get("virtual_environment")),
+            "pip": observed.get("pip"),
+            "venv_module": bool(observed.get("venv_module")),
+        }
+    if check_id == "runtime_version" and isinstance(observed, dict):
+        return {key: observed.get(key) for key in ("skill", "setup")}
+    if check_id == "python" and isinstance(observed, dict):
+        return {key: observed.get(key) for key in ("version", "bits", "detail")}
+    if check_id in {
+        "dependency_pymupdf",
+        "zotero_api_version",
+        "dependency_mineru",
+        "mineru_consent",
+        "disk_space",
+    } and isinstance(observed, (str, int, float, bool, type(None))):
+        return observed
+    if check_id == "zotero_version" and isinstance(observed, dict):
+        return {key: observed.get(key) for key in ("version", "detail")}
+    if check_id == "windows_path_shape" and isinstance(observed, dict):
+        return {
+            "longest_path_characters": observed.get("longest_path_characters"),
+            "contains_non_ascii": bool(observed.get("contains_non_ascii")),
+        }
+    return None
+
+
+def _safe_install_receipt(config: dict[str, Any]) -> dict[str, Any]:
+    installation = config.get("installation")
+    if not isinstance(installation, dict):
+        return {"available": False}
+    safe: dict[str, Any] = {
+        "available": True,
+        "version": installation.get("version"),
+        "mineru_dependency_installed": bool(
+            installation.get("mineru_dependency_installed")
+        ),
+    }
+    install_root = installation.get("install_root")
+    if not isinstance(install_root, str) or not install_root:
+        return safe
+    state_path = Path(install_root).expanduser() / "install-state.json"
+    if not state_path.is_file():
+        return safe
+    try:
+        state = _load_json_object(state_path)
+    except SetupError:
+        return safe
+    safe.update(
+        {
+            "active_version": state.get("active_version"),
+            "active_skill_sha256": state.get("active_skill_sha256"),
+            "installed_versions": [
+                item
+                for item in state.get("installed_versions", [])
+                if isinstance(item, str)
+            ],
+        }
+    )
+    return safe
+
+
+def create_support_bundle(
+    *,
+    report: dict[str, Any],
+    config_path: Path | None = None,
+    output_path: Path | None = None,
+) -> Path:
+    """Create an allowlist-based diagnostic ZIP with no paper or local paths."""
+    resolved_config = (
+        config_path or default_litanchor_config_path()
+    ).expanduser().resolve()
+    try:
+        config = load_config(resolved_config)
+    except SetupError:
+        config = {}
+    checks: list[dict[str, Any]] = []
+    for raw in report.get("checks", []):
+        if not isinstance(raw, dict):
+            continue
+        check_id = str(raw.get("check_id") or "unknown")
+        status = str(raw.get("status") or "unknown")
+        record: dict[str, Any] = {
+            "check_id": check_id,
+            "status": status,
+            "error_code": _support_error_code(check_id, status),
+        }
+        observed = _safe_support_observed(check_id, raw.get("observed"))
+        if observed is not None:
+            record["observed"] = observed
+        checks.append(record)
+
+    consent = next(
+        (
+            item.get("observed")
+            for item in checks
+            if item.get("check_id") == "mineru_consent"
+        ),
+        None,
+    )
+    route = {
+        "always_for_eligible_files": "automatic_for_eligible_files",
+        "ask_each_time": "ask_before_external_upload",
+        "never": "local_pymupdf_only",
+    }.get(consent, "not_configured")
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    payload = {
+        "schema_version": SUPPORT_BUNDLE_SCHEMA_VERSION,
+        "generated_at_utc": generated_at,
+        "litanchor_version": report.get("setup_version") or SETUP_VERSION,
+        "doctor_status": report.get("status"),
+        "checks": checks,
+        "mineru": {
+            "route": route,
+            "dependency_status": next(
+                (
+                    item.get("status")
+                    for item in checks
+                    if item.get("check_id") == "dependency_mineru"
+                ),
+                "not_checked",
+            ),
+            "network_status": next(
+                (
+                    item.get("status")
+                    for item in checks
+                    if item.get("check_id") == "mineru_network"
+                ),
+                "not_checked",
+            ),
+        },
+        "install_receipt": _safe_install_receipt(config),
+        "privacy": {
+            "construction": "allowlist_only",
+            "excluded": [
+                "PDF or extracted paper text",
+                "generated notes and evidence excerpts",
+                "paper title, DOI, citekey and Zotero item keys",
+                "usernames and local paths",
+                "Vault names and contents",
+                "tokens, cookies and environment variables",
+            ],
+        },
+    }
+    if output_path is None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        destination = resolved_config.parent / "support" / f"litanchor-support-{stamp}.zip"
+    else:
+        destination = output_path.expanduser().resolve()
+    if destination.exists():
+        raise SetupError(f"Refusing to overwrite an existing support bundle: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    summary_lines = [
+        f"LitAnchor support bundle {payload['litanchor_version']}",
+        f"Doctor status: {payload['doctor_status']}",
+        f"MinerU route: {payload['mineru']['route']}",
+        "",
+        "Checks:",
+    ]
+    summary_lines.extend(
+        f"- {item['check_id']}: {item['status']}"
+        + (f" ({item['error_code']})" if item.get("error_code") else "")
+        for item in checks
+    )
+    try:
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(
+                "support-report.json",
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            )
+            archive.writestr("summary.txt", "\n".join(summary_lines) + "\n")
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
+
+
 def _write_probe(directory: Path) -> tuple[bool, str]:
     probe: Path | None = None
     try:
@@ -374,7 +567,7 @@ def run_doctor(
             ),
         )
     )
-    for distribution, import_label in (("pypdf", "pypdf"), ("PyMuPDF", "PyMuPDF")):
+    for distribution, import_label in (("PyMuPDF", "PyMuPDF"),):
         observed = _distribution_version(distribution)
         checks.append(
             _check(
@@ -713,6 +906,13 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--skip-write-probe", action="store_true")
     doctor.add_argument("--check-mineru-network", action="store_true")
     doctor.add_argument("--format", choices=("json", "human"), default="json")
+    doctor.add_argument(
+        "--support-bundle",
+        nargs="?",
+        const="",
+        metavar="OUTPUT",
+        help="create a redacted diagnostic ZIP; optionally choose its path",
+    )
 
     plan = subparsers.add_parser("run-plan")
     plan.add_argument("--paper", required=True)
@@ -746,8 +946,20 @@ def main(argv: list[str] | None = None) -> int:
                 write_probe=not args.skip_write_probe,
                 check_mineru_network=args.check_mineru_network,
             )
+            if args.support_bundle is not None:
+                bundle = create_support_bundle(
+                    report=result,
+                    config_path=args.config_path,
+                    output_path=(Path(args.support_bundle) if args.support_bundle else None),
+                )
+                result["support_bundle"] = {
+                    "status": "created",
+                    "path": str(bundle),
+                }
             if args.format == "human":
                 _print_human_doctor(result)
+                if result.get("support_bundle"):
+                    print(f"Support bundle: {result['support_bundle']['path']}")
                 return 0 if result["status"] != "blocked" else 2
         else:
             result = build_run_plan(

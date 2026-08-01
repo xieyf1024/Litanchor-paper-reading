@@ -17,7 +17,9 @@ param(
     [string]$Selector = "title",
     [ValidateSet("json", "human")]
     [string]$Format = "json",
-    [switch]$CheckMinerUNetwork
+    [switch]$CheckMinerUNetwork,
+    [switch]$SupportBundle,
+    [string]$SupportBundlePath
 )
 
 $ErrorActionPreference = "Stop"
@@ -75,6 +77,11 @@ if ($Command -eq "discover-vaults") {
     $arguments += @("--format", $Format)
     if ($Paper) { $arguments += @("--paper-title", $Paper) }
     if ($CheckMinerUNetwork) { $arguments += "--check-mineru-network" }
+    if ($SupportBundlePath) {
+        $arguments += @("--support-bundle", $SupportBundlePath)
+    } elseif ($SupportBundle) {
+        $arguments += "--support-bundle"
+    }
 } else {
     if (-not $Paper) {
         throw "Run-plan requires -Paper."

@@ -11,7 +11,7 @@
 
 LitAnchor 是一个面向研究生和科研工作者的轻量化、证据优先型学术精读 Skill。它从 Zotero 获取指定的单篇论文，只依据论文原文生成中文 Obsidian 笔记，并将重要主张锚定到 PDF 物理页、原文证据和 Zotero 跳转链接。
 
-当前版本：**v0.6.0-beta.1 Zero-Config Public Beta**。它面向 Windows 上具备本地 Shell、文件和网络权限的 Agent；还不是支持所有 PDF 和所有聊天客户端的无人审核产品。
+当前候选版本：**v0.6.0-beta.2 Zero-Config Public Beta**。它面向 Windows 上具备本地 Shell、文件和网络权限的 Agent；还不是支持所有 PDF 和所有聊天客户端的无人审核产品。
 
 ## 两步使用
 
@@ -41,13 +41,41 @@ LitAnchor 是一个面向研究生和科研工作者的轻量化、证据优先�
 ## 工作流
 
 ```mermaid
-flowchart LR
-    A["Zotero / PDF"] --> B["PyMuPDF 原文基线"]
-    B --> C["MinerU 条件结构增强"]
-    C --> D["六遍全文精读"]
-    D --> E["Evidence → Claim → SectionSynthesis"]
-    E --> F["图表与双重审查"]
-    F --> G["Obsidian 授权 Inbox"]
+flowchart TB
+    subgraph grounding["来源与页面基线"]
+        direction LR
+        source["Zotero 或本地 PDF"] --> pages["PyMuPDF 物理页基线"]
+        pages -.-> mineru["MinerU 结构提示"]
+    end
+
+    subgraph reading["结构化全文精读"]
+        direction LR
+        profile["论文类型与章节地图"] --> passes["六遍专项阅读"] --> evidence["Evidence 证据账本"]
+    end
+
+    subgraph synthesis["证据约束的综合"]
+        direction LR
+        claims["Claim 主张账本"] --> sections["Section Synthesis 章节综合"] --> visuals["关键图表分析"]
+    end
+
+    subgraph delivery["质量门与交付"]
+        direction LR
+        review["忠实度与召回审查"] --> compose["Final 模板编排"] --> obsidian["授权的 Obsidian Inbox"]
+    end
+
+    pages --> profile
+    mineru -.-> profile
+    evidence --> claims
+    visuals --> review
+
+    classDef sourceLayer fill:#E8F1FF,stroke:#2563EB,stroke-width:2px,color:#172554
+    classDef assistLayer fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#3B0764
+    classDef knowledgeLayer fill:#FFF7E6,stroke:#D97706,stroke-width:2px,color:#451A03
+    classDef qualityLayer fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#064E3B
+    class source,pages sourceLayer
+    class mineru assistLayer
+    class profile,passes,evidence,claims,sections,visuals knowledgeLayer
+    class review,compose,obsidian qualityLayer
 ```
 
 PyMuPDF 始终负责物理页码、原文引文、坐标和图片来源。MinerU 负责改善章节层级、阅读顺序、图题及复杂结构候选；它的内容只有重新对齐原始 PDF 页面后才能进入正式证据。
@@ -79,11 +107,14 @@ Python 和 Zotero 只设最低版本，不设武断的最高版本；未覆盖�
 ```powershell
 .\install.ps1 -Action Install
 .\litanchor.ps1 doctor
+.\litanchor.ps1 doctor -SupportBundle
 .\litanchor.ps1 setup -Vault "Vault 名称" -Inbox "LitAnchor\00_Inbox" -MinerUConsent ask_each_time -CreateInbox
 .\litanchor.ps1 run-plan -Paper "论文标题" -Vault "Vault 名称"
 ```
 
 这些是 Agent 执行接口，不是要求普通用户手动完成的步骤。安装器只管理安装收据确认属于 LitAnchor 的文件，并支持修复、升级、回滚和确认式卸载。
+
+公开反馈分为安装/生命周期、运行/PDF 和笔记质量三类。需要共享诊断时优先使用 `doctor -SupportBundle` 生成的脱敏 ZIP，并在上传前人工复核；不要附带论文、完整笔记、Zotero 数据或本机路径。
 
 ## 输出内容
 
@@ -100,7 +131,7 @@ Python 和 Zotero 只设最低版本，不设武断的最高版本；未覆盖�
 
 ## 当前评测状态
 
-v0.6.0-beta.1 已完成 Windows Python 3.10–3.14 CI、冻结留出评测、病理 PDF/失败路径、MinerU 融合对比、隐私审计和 Release 构建。评测论文只用于学习可复用的失败类型与工作流规则，不得把论文答案写入可分发 Skill。
+v0.6.0-beta.2 候选版在 beta.1 的 Windows Python 3.10–3.14 CI、冻结留出评测、病理 PDF/失败路径、MinerU 融合对比、隐私审计和 Release 构建基础上，增加公开反馈、脱敏支持包、生命周期恢复、语义意图回归与依赖收敛。评测论文只用于学习可复用的失败类型与工作流规则，不得把论文答案写入可分发 Skill。
 
 - [v0.6 Public Beta 验证](evals/reports/v0.6-public-beta-validation.md)
 - [MinerU 组件 A/B](evals/reports/v0.6-mineru-ab.md)

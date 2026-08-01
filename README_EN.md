@@ -11,7 +11,7 @@
 
 LitAnchor is a lightweight, evidence-first academic close-reading skill for graduate students and researchers. It resolves a single paper from Zotero, treats that paper as the only factual source, and writes a Chinese Obsidian note whose important claims remain traceable to physical PDF pages, source evidence, and Zotero links.
 
-Current release: **v0.6.0-beta.1 Zero-Config Public Beta**. It targets local-capable agents on Windows. It is not yet an unattended product for every PDF or browser-only chat client.
+Current candidate: **v0.6.0-beta.2 Zero-Config Public Beta**. It targets local-capable agents on Windows. It is not yet an unattended product for every PDF or browser-only chat client.
 
 ## Two-step experience
 
@@ -41,13 +41,41 @@ First-run setup may confirm only the Obsidian Vault, Literature Inbox, and Miner
 ## Pipeline
 
 ```mermaid
-flowchart LR
-    A["Zotero / PDF"] --> B["PyMuPDF source baseline"]
-    B --> C["Consent-controlled MinerU"]
-    C --> D["Six-pass full-text reading"]
-    D --> E["Evidence → Claim → SectionSynthesis"]
-    E --> F["Visual and dual review"]
-    F --> G["Authorized Obsidian Inbox"]
+flowchart TB
+    subgraph grounding["Source and page baseline"]
+        direction LR
+        source["Zotero or local PDF"] --> pages["PyMuPDF physical pages"]
+        pages -.-> mineru["MinerU structure hints"]
+    end
+
+    subgraph reading["Structured full-paper reading"]
+        direction LR
+        profile["Paper profile and section map"] --> passes["Six focused reading passes"] --> evidence["Evidence ledger"]
+    end
+
+    subgraph synthesis["Evidence-grounded synthesis"]
+        direction LR
+        claims["Claim ledger"] --> sections["Section Synthesis"] --> visuals["Key visual analysis"]
+    end
+
+    subgraph delivery["Quality gates and delivery"]
+        direction LR
+        review["Fidelity and recall review"] --> compose["Final-template composition"] --> obsidian["Authorized Obsidian Inbox"]
+    end
+
+    pages --> profile
+    mineru -.-> profile
+    evidence --> claims
+    visuals --> review
+
+    classDef sourceLayer fill:#E8F1FF,stroke:#2563EB,stroke-width:2px,color:#172554
+    classDef assistLayer fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#3B0764
+    classDef knowledgeLayer fill:#FFF7E6,stroke:#D97706,stroke-width:2px,color:#451A03
+    classDef qualityLayer fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#064E3B
+    class source,pages sourceLayer
+    class mineru assistLayer
+    class profile,passes,evidence,claims,sections,visuals knowledgeLayer
+    class review,compose,obsidian qualityLayer
 ```
 
 PyMuPDF remains authoritative for physical pages, quotations, coordinates, and visual provenance. MinerU can improve headings, reading order, captions, and complex-layout candidates, but its output must align back to the original PDF before it can support formal evidence.
@@ -79,11 +107,14 @@ End users should prefer natural-language installation and reading requests. Agen
 ```powershell
 .\install.ps1 -Action Install
 .\litanchor.ps1 doctor
+.\litanchor.ps1 doctor -SupportBundle
 .\litanchor.ps1 setup -Vault "Vault name" -Inbox "LitAnchor\00_Inbox" -MinerUConsent ask_each_time -CreateInbox
 .\litanchor.ps1 run-plan -Paper "Paper title" -Vault "Vault name"
 ```
 
 These are agent-facing execution interfaces, not manual steps required from every user. The installer manages only receipt-owned LitAnchor files and supports repair, upgrade, rollback, and confirmation-gated uninstall.
+
+Public reports are split into installation/lifecycle, runtime/PDF, and note-quality forms. When diagnostics are needed, prefer the redacted ZIP from `doctor -SupportBundle` and review it before upload; never attach a paper, complete note, Zotero data, or local paths.
 
 ## Output
 
@@ -91,7 +122,7 @@ These are agent-facing execution interfaces, not manual steps required from ever
 
 ## Public-beta evidence
 
-v0.6.0-beta.1 passes Windows Python 3.10–3.14 CI, frozen holdout evaluation, pathological PDF/failure tests, MinerU component comparison, privacy checks, and deterministic release builds. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill.
+The v0.6.0-beta.2 candidate extends beta.1's Windows Python 3.10–3.14 CI, frozen holdout evaluation, pathological PDF/failure tests, MinerU comparison, privacy checks, and deterministic release builds with public feedback forms, redacted support bundles, lifecycle recovery, semantic intent regression, and a smaller dependency surface. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill.
 
 - [v0.6 Public Beta validation](evals/reports/v0.6-public-beta-validation.md)
 - [MinerU component A/B](evals/reports/v0.6-mineru-ab.md)
