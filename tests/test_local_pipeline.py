@@ -170,10 +170,40 @@ class LocalPipelineTests(unittest.TestCase):
 
     def test_note_frontmatter_keeps_only_first_author(self):
         self.assertEqual(
-            MODULE.first_author_only(["First Author", "Second Author"]),
-            ["First Author"],
+            MODULE.first_author_name(["First Author", "Second Author"]),
+            "First Author",
         )
-        self.assertEqual(MODULE.first_author_only([]), [])
+        self.assertIsNone(MODULE.first_author_name([]))
+
+    def test_note_frontmatter_uses_mode_tags_and_preserves_user_tags(self):
+        source = {
+            "metadata": {
+                "title": "Tagged Paper",
+                "authors": ["First Author", "Second Author"],
+                "year": 2026,
+                "journal": "Journal",
+                "doi": None,
+                "keywords": ["ocean", "climate", "ocean"],
+            }
+        }
+        for mode in ("skim", "deep", "internalize"):
+            frontmatter = MODULE.render_note_frontmatter(
+                source,
+                {
+                    "reading_mode": mode,
+                    "created": "2026-01-02T03:04:05+00:00",
+                    "user_tags": ["my-project", "#skim", "LitAnchor"],
+                },
+                "completed",
+                "empirical-research",
+            )
+            self.assertNotIn("reading_mode:", frontmatter)
+            self.assertIn(f'  - "{mode}"', frontmatter)
+            self.assertIn('  - "LitAnchor"', frontmatter)
+            self.assertIn('  - "my-project"', frontmatter)
+            self.assertEqual(frontmatter.count('  - "skim"'), int(mode == "skim"))
+            self.assertIn('keywords: "ocean; climate"', frontmatter)
+            self.assertIn('created: "2026-01-02"', frontmatter)
 
     def make_run(
         self,
@@ -256,10 +286,13 @@ class LocalPipelineTests(unittest.TestCase):
             markdown = destination.read_text(encoding="utf-8")
             self.assertEqual(result["status"], "completed")
             self.assertTrue(result["quality"]["format_valid"])
-            self.assertIn('authors: ["A. Author"]', markdown)
-            self.assertIn("E-001｜PDF p.1", markdown)
-            self.assertIn("[!evidence]- E-001", markdown)
-            self.assertIn("litanchor:user:start", markdown)
+            self.assertIn('first_author: "A. Author"', markdown)
+            self.assertNotIn("reading_mode:", markdown)
+            self.assertIn('  - "skim"', markdown)
+            self.assertIn("〔p.1〕", markdown)
+            self.assertNotIn("E-001", markdown)
+            self.assertNotIn("PDF p.1", markdown)
+            self.assertEqual(markdown.count("\n## "), 1)
             coverage = json.loads((run_dir / "coverage_receipt.json").read_text(encoding="utf-8"))
             self.assertEqual(coverage["coverage_status"], "complete")
             self.assertEqual(coverage["pages_used_as_evidence"], [1])
@@ -361,7 +394,7 @@ class LocalPipelineTests(unittest.TestCase):
                             "physical_pdf_page": 1,
                             "caption_original": "Figure 1. Verified method schematic.",
                             "selection_reason": "It is indispensable to the method.",
-                            "discussion_location": "PDF p.1, Methods",
+                            "discussion_location": "3.2 Methods",
                             "image_path": str(image),
                             "manifest_path": str(manifest),
                             "embed_path": "LitAnchor-Test/_assets/test/figure-1.png",
@@ -374,10 +407,8 @@ class LocalPipelineTests(unittest.TestCase):
             destination, result = MODULE.build_run(run_dir)
             markdown = destination.read_text(encoding="utf-8")
             self.assertEqual(result["statistics"]["figure_count"], 1)
-            self.assertIn(
-                "![[LitAnchor-Test/_assets/test/figure-1.png]]",
-                markdown,
-            )
+            self.assertIn("Figure 1（3.2 Methods；〔p.1〕）", markdown)
+            self.assertNotIn("![[", markdown)
 
     def test_deep_run_with_only_first_page_evidence_is_incomplete(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -446,16 +477,17 @@ class LocalPipelineTests(unittest.TestCase):
             ]
         }
 
-        coverage = MODULE.build_coverage_receipt(
-            source,
-            evidence,
-            {"run_id": "run", "reading_mode": "deep"},
-            page_classification,
-        )
+        for mode in ("deep", "internalize"):
+            coverage = MODULE.build_coverage_receipt(
+                source,
+                evidence,
+                {"run_id": "run", "reading_mode": mode},
+                page_classification,
+            )
 
-        self.assertTrue(coverage["reaches_later_half"])
-        self.assertEqual(coverage["analysis_status"], "complete")
-        self.assertEqual(coverage["coverage_status"], "complete")
+            self.assertTrue(coverage["reaches_later_half"])
+            self.assertEqual(coverage["analysis_status"], "complete")
+            self.assertEqual(coverage["coverage_status"], "complete")
 
     def test_verified_pages_render_distinct_zotero_links(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -598,7 +630,10 @@ class LocalPipelineTests(unittest.TestCase):
             write_json(source_path, source)
             destination, result = MODULE.build_run(run_dir)
             self.assertEqual(result["status"], "completed_with_warnings")
-            self.assertIn("建议人工复核页：1", destination.read_text(encoding="utf-8"))
+            self.assertIn(
+                'validation_status: "completed_with_warnings"',
+                destination.read_text(encoding="utf-8"),
+            )
 
     @unittest.skipUnless(importlib.util.find_spec("pymupdf"), "PyMuPDF is not installed")
     def test_blank_pdf_requires_fallback(self):

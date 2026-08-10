@@ -128,7 +128,14 @@ class AutonomousSemanticTests(unittest.TestCase):
 
     def test_visual_analysis_must_cover_every_selected_figure(self):
         claims = [{"claim_id": "C-001"}]
-        figures = {"selected": [{"figure_label": "Figure 1"}]}
+        figures = {
+            "selected": [
+                {
+                    "figure_label": "Figure 1",
+                    "discussion_location": "3.2 方法与研究设计",
+                }
+            ]
+        }
         valid = {
             "inventory_complete": True,
             "analyses": [
@@ -138,9 +145,9 @@ class AutonomousSemanticTests(unittest.TestCase):
                     "origin": "auto_synthesized",
                     "caption_original": "Figure 1. Complete caption.",
                     "interpretation_zh": (
-                        "该图完整展示输入、核心计算模块、信息流方向与输出之间的关系，"
-                        "并用于核对方法步骤和正文对该架构的解释是否一致；图中的连接还"
-                        "明确区分训练阶段与下游使用阶段，避免把不同阶段的组件混为一谈。"
+                        "该图完整展示输入、核心计算模块、信息流方向与输出之间的关系。"
+                        "关键连接区分训练阶段与下游使用阶段。"
+                        "作者借此说明各组件在整体方法中的作用，避免把不同阶段混为一谈。"
                     ),
                     "reading_cautions": "不能把训练阶段使用的全部组件都视为下游推理的必要组成。",
                     "supported_claim_ids": ["C-001"],
@@ -193,7 +200,9 @@ class AutonomousSemanticTests(unittest.TestCase):
         )
 
         self.assertIn("第一段综合方法逻辑。", rendered)
-        self.assertIn("E-001, E-002", rendered)
+        self.assertNotIn("E-001", rendered)
+        self.assertNotIn("PDF", rendered)
+        self.assertIn("[p.2]", rendered)
         self.assertIn("?page=2", rendered)
         self.assertIn("?page=5", rendered)
 

@@ -2,7 +2,7 @@
 
 ## 1. Parse the request
 
-Record source query, output language, reading mode, write intent and overwrite policy. Set `external_knowledge_allowed` to `false`.
+Record source query, output language, reading mode, write intent and overwrite policy. Set `external_knowledge_allowed` to `false`. Apply the mode contract in `reading-method.md`; the modes differ by analytical purpose and required content, not merely output length.
 
 ## 2. Resolve one paper
 
@@ -16,6 +16,14 @@ Keep metadata, full author list, annotations, Zotero notes, attachment key, PDF 
 
 Check PDF validity, encryption, page count, extractable-text coverage, likely scanning, corruption, column order and high-risk formula/table pages. Return `PASS`, `PASS_WITH_WARNINGS`, `FALLBACK_REQUIRED`, or `BLOCKED`.
 
+Choose exactly one locator mode after preflight:
+
+- `page-grounded`: verified physical PDF pages are available; formal note export is allowed after all gates pass.
+- `structure-grounded`: only section, figure, table or equation identifiers are reliable; return a partial report without PDF page links.
+- `source-limited`: only metadata, abstract or supplied excerpts are reliable; return only supported fields.
+
+The latter two modes never become a formal `deep`/`internalize` note and never write into the Literature Inbox.
+
 ## 5. Extract by page
 
 Save one-based physical page, printed page if known, text blocks/coordinates where available, extraction method, confidence and warnings. Never concatenate an unpaged full-text blob.
@@ -27,7 +35,9 @@ Save one-based physical page, printed page if known, text blocks/coordinates whe
 - Pass 3 — data/method: extract data/materials, preprocessing, method steps, models, equations, metrics, experiments, baselines, ablations and reproducibility details.
 - Pass 4 — results/visuals: extract independently verifiable results, numbers, conditions, figures, tables and equations that carry the core argument.
 - Pass 5 — discussion/limits: separate observation from interpretation, hypotheses, limitations, conclusions and future work.
-- Pass 6 — omission review: compare the ledger against the detected paper structure and `Paper Template - Final`; do not declare `deep` complete while a required content group is missing or represented by one unexplained sentence.
+- Pass 6 — omission review: compare the ledger against the detected paper structure and `Paper Template.md`; do not declare `deep` complete while a required content group is missing or represented by one unexplained sentence.
+
+After profiling, apply the relevant argument checklist in `paper-type-lenses.md`. Use at most one secondary lens and require it to add a distinct audit concern rather than duplicate the primary analysis.
 
 For a review paper, replace experiment-specific fields with review scope, search/selection method, synthesis method, evidence categories, agreements, disagreements and limitations. Do not force empirical fields.
 
@@ -46,9 +56,15 @@ For a selected figure, run `scripts/pdf_figures.py` against the original PDF. Ve
 
 Create EvidenceUnits first. Then create Chinese ClaimRecords from those units. Preserve author modality and distinguish results from interpretations, hypotheses and speculation. For `deep`/`internalize`, use the expanded knowledge types and fill `title_zh`, `detail_points_zh`, `conditions_zh`, `section_id` and `importance` where relevant. ClaimRecords are intermediate knowledge objects, not the final note.
 
+For each core experiment, record the tested claim, comparison and conditions, observed result, supported conclusion and unsupported stronger interpretation. For each core conclusion, create a separately labelled source-grounded conclusion boundary. Keep that Agent analysis separate from author-stated limitations.
+
+For `internalize`, create a structured research idea only after it passes `research-idea-gates.md`.
+
 ## 9. Compose
 
-Render every formal `deep`/`internalize` note from `../assets/Paper Template - Final.md`. The renderer loads the asset and fills its named slots; it must not substitute a hard-coded summary outline. `skim` remains a separate compact output. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection and `解析失败` for unreadable content. Keep user-edit markers unchanged.
+Use `../assets/Paper Template.md` as the human-readable `Paper Template v1.0` content contract. The deterministic renderer fills the named slots in the internal `../assets/Paper Template - Runtime.md`; it must not expose those slots or AI-only instructions to users. `skim` outputs Section 1 only, `deep` outputs Sections 1–6, and `internalize` outputs Sections 1–8. All three modes use the same fixed note properties and represent the mode only through the `skim`, `deep`, or `internalize` tag. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `待用户补充` for personal reflection and `解析失败` for unreadable content. A mode-excluded section is omitted rather than filled with an AI-facing placeholder. Keep Runtime user-edit markers unchanged; the display template itself stays free of renderer slots and AI instructions.
+
+The note frontmatter contains exactly `title`, `first_author`, `year`, `journal`, `doi`, `paper_type`, `keywords`, `source_coverage`, `locator_mode`, `validation_status`, `review_status`, `skill_version`, `template_version`, `created`, `updated`, and `tags`. Keep the full author list and Zotero/source identifiers in SourceBundle and sidecars, not in the displayed note. Keywords come only from the paper or Zotero and are joined by semicolons. Dates use `YYYY-MM-DD`. Never overwrite an existing note; any future update path must preserve all user-added tags.
 
 ## 10. Validate and export
 
@@ -57,6 +73,8 @@ Run deterministic schema/page/quote/numeric checks and the deep-reading gate bef
 ## 11. Record feedback
 
 Create a FeedbackEvent for user corrections. Do not mutate the formal Skill or publish a patch during the paper-reading task.
+
+Use only bundled, versioned scripts during the run. Preserve a bundled-tool failure and follow the declared fallback path; do not create a replacement parser or patch Skill files inline.
 
 ## Local PDF pipeline
 

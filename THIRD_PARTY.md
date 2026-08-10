@@ -31,7 +31,8 @@ MinerU 免费 Agent/Flash 接口的可用性、文件限制、限流和表格/�
 
 ## Project-authored source material
 
-可安装 Skill 中的 `assets/Paper Template - Final.md` 与
+可安装 Skill 中的公开内容契约 `assets/Paper Template.md`、内部渲染资产
+`assets/Paper Template - Runtime.md` 与
 `references/reading-method.md` 由项目作者整理并遵循本仓库
 AGPL-3.0-only 许可。`reading-method.md` 是可选学习方法，不构成外部权威
 或论文事实来源。

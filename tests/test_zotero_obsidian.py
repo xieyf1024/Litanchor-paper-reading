@@ -41,7 +41,7 @@ class FixtureClient(zotero_local.ZoteroLocalClient):
         raise AssertionError(path)
 
 
-def item(key="ABCD1234", title="Exact Paper", *, doi="10.1000/example", extra=""):
+def item(key="ABCD1234", title="Exact Paper", *, doi="10.1000/example", extra="", tags=None):
     return {
         "key": key,
         "data": {
@@ -49,6 +49,7 @@ def item(key="ABCD1234", title="Exact Paper", *, doi="10.1000/example", extra=""
             "title": title,
             "DOI": doi,
             "extra": extra,
+            "tags": [{"tag": value} for value in (tags or [])],
             "creators": [{"creatorType": "author", "firstName": "Ada", "lastName": "Lovelace"}],
         },
     }
@@ -101,6 +102,12 @@ class ZoteroLocalTests(unittest.TestCase):
         client = FixtureClient(candidates=[item(extra="Citation Key: Lovelace2026Exact")])
         self.assertEqual(client.resolve_item("citekey", "lovelace2026exact")["key"], "ABCD1234")
 
+    def test_keywords_use_only_explicit_zotero_tags(self):
+        self.assertEqual(
+            zotero_local._keywords(item(tags=["ocean", "climate", "ocean"])["data"]),
+            ["ocean", "climate"],
+        )
+
     def test_one_pdf_child_and_local_file_url_are_required(self):
         with tempfile.TemporaryDirectory() as temporary:
             pdf = Path(temporary) / "paper.pdf"
@@ -112,6 +119,19 @@ class ZoteroLocalTests(unittest.TestCase):
 
 
 class ObsidianExportTests(unittest.TestCase):
+    def test_note_filename_uses_safe_readable_title_and_stable_long_suffix(self):
+        self.assertEqual(
+            export_obsidian.safe_note_stem('A: Paper / With * Invalid? Chars', 'paper'),
+            'A_ Paper _ With _ Invalid_ Chars',
+        )
+        title_a = 'A very long paper title ' + ('about evidence grounded reading ' * 8)
+        title_b = title_a + 'revised'
+        stem_a = export_obsidian.safe_note_stem(title_a, 'paper')
+        stem_b = export_obsidian.safe_note_stem(title_b, 'paper')
+        self.assertLessEqual(len(stem_a), 120)
+        self.assertRegex(stem_a, r'-[0-9a-f]{8}$')
+        self.assertNotEqual(stem_a, stem_b)
+
     def test_cli_json_is_safe_for_legacy_windows_console_encoding(self):
         output_bytes = io.BytesIO()
         output = io.TextIOWrapper(output_bytes, encoding="gbk")
@@ -268,8 +288,12 @@ class ObsidianExportTests(unittest.TestCase):
             note = Path(result["note"])
             self.assertTrue(note.is_file())
             markdown = note.read_text(encoding="utf-8")
-            self.assertIn("zotero_item_key: \"ABCD1234\"", markdown)
+            self.assertNotIn("zotero_item_key:", markdown)
             self.assertIn("zotero://open-pdf/library/items/PDFD1234?page=1", markdown)
+            source_sidecar = json.loads(
+                (run_dir / "source-bundle.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(source_sidecar["source"]["zotero_item_key"], "ABCD1234")
             self.assertEqual(len(result["sidecars"]), 6)
             self.assertTrue(any(path.endswith("coverage_receipt.json") for path in result["sidecars"]))
             with self.assertRaises(litanchor_local.PipelineError):
@@ -309,6 +333,7 @@ class ObsidianExportTests(unittest.TestCase):
             ]
             write_json(run_dir / "figures.json", figures)
             run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            run["reading_mode"] = "deep"
             run["autonomous_generation"] = True
             run["review_status"] = "user_visual_review_pending"
             write_json(run_dir / "run.json", run)
@@ -350,6 +375,47 @@ class ObsidianExportTests(unittest.TestCase):
                 "user_visual_review_pending",
             )
 
+    def test_skim_export_keeps_visual_inventory_private_without_requiring_embeds(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_dir = self.make_run(root, zotero=True)
+            visual_dir = run_dir / "visuals"
+            visual_dir.mkdir()
+            image = visual_dir / "figure-1.png"
+            image.write_bytes(b"verified image bytes")
+            manifest = visual_dir / "figure-1.json"
+            write_json(manifest, {"crop_validation_status": "pass"})
+            figures = json.loads((run_dir / "figures.json").read_text(encoding="utf-8"))
+            figures["selected"] = [
+                {
+                    "figure_label": "Figure 1",
+                    "image_path": str(image),
+                    "manifest_path": str(manifest),
+                    "embed_path": "visuals/figure-1.png",
+                }
+            ]
+            write_json(run_dir / "figures.json", figures)
+            vault = root / "vault"
+            inbox = vault / "00_Inbox"
+            inbox.mkdir(parents=True)
+
+            result = export_obsidian.export_run(
+                run_dir,
+                vault,
+                inbox,
+                confirmed=True,
+                asset_slug="skim-paper",
+            )
+
+            exported = Path(result["note"])
+            self.assertTrue(exported.is_file())
+            self.assertEqual(result["assets"], [])
+            self.assertFalse((vault / "_assets" / "skim-paper").exists())
+            self.assertNotIn(
+                "![[visuals/figure-1.png]]",
+                exported.read_text(encoding="utf-8"),
+            )
+
     def test_accepted_autonomous_review_exports_as_final_note(self):
         self.assertFalse(
             export_obsidian.candidate_export_required(
@@ -389,6 +455,7 @@ class ObsidianExportTests(unittest.TestCase):
             ]
             write_json(run_dir / "figures.json", figures)
             run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            run["reading_mode"] = "deep"
             run["autonomous_generation"] = True
             run["review_status"] = "user_visual_review_pending"
             write_json(run_dir / "run.json", run)

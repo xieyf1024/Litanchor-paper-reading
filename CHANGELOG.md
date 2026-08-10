@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+## v0.6.0-beta.3 — 2026-08-10 — Note Experience & Paper Template v1.0 Freeze
+
+- Froze the reader-facing content contract as `Paper Template v1.0`, split from
+  the private slot-driven Runtime renderer and deterministic validation layer.
+- Defined mode scope: `skim` renders Section 1, `deep` Sections 1–6, and
+  `internalize` Sections 1–8; excluded sections are omitted.
+- Froze the 16-field note properties, source-only keyword handling, date format,
+  and one-mode-tag contract while keeping complete source identity in sidecars.
+- Replaced visible Evidence IDs, repeated excerpts, and the evidence index with
+  compact linked `p.x` locators; audit evidence remains private and complete.
+- Added direct key-visual embeds with source subsection, selection reason, and
+  a two-to-four-sentence interpretation.
+- Added argument-aware paper lenses, structured experiment evidence chains,
+  explicit conclusion boundaries, and visible provenance labels.
+- Added source-grounded `internalize` research-idea gates: falsifiable
+  hypothesis, delta, validation design, failure modes, and novelty status.
+- Added page-grounded, structure-grounded, and source-limited delivery
+  semantics; formal deep/internalize rendering requires the page-grounded path.
+- Removed the duplicate note H1 and added readable, stable filenames for long
+  or filesystem-unsafe paper titles.
+- Required versioned bundled tools during a paper run; failures are preserved
+  instead of being hidden by inline replacement scripts or mid-run Skill edits.
+- Kept skim visual inventories in private sidecars without requiring or copying
+  image embeds that are intentionally excluded from the Section 1-only note.
+- Removed internal HTML comments and Section 6.5 from reader-note source,
+  while keeping validation and evidence details in private sidecars.
+- Rendered supporting reproducibility records without leaking the internal
+  core-experiment completion placeholder.
+- Added adjacent-caption crop boundaries so vertically joined figures are
+  separated before PyMuPDF renders the selected visual.
+- Made text-heavy Markdown tables explicitly left-aligned without requiring
+  Vault CSS.
+
 ## v0.6.0-beta.2 — 2026-08-01 — Public Beta Stabilization
 
 - Unified manual and autonomous PDF preparation on PyMuPDF, removed the

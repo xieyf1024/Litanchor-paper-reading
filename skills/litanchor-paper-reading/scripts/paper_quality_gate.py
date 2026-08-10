@@ -3,16 +3,55 @@
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any
 
 
-FINAL_TEMPLATE_ID = "paper-template-final"
+FINAL_TEMPLATE_ID = "paper-template"
 FINAL_TEMPLATE_VERSION = "1.0"
-FINAL_TEMPLATE_NAME = "Paper Template - Final.md"
+FINAL_TEMPLATE_NAME = "Paper Template - Runtime.md"
+FINAL_TEMPLATE_CONTRACT_NAME = "Paper Template.md"
 
-FINAL_REQUIRED_HEADINGS = (
+NOTE_FRONTMATTER_FIELDS = (
+    "title",
+    "first_author",
+    "year",
+    "journal",
+    "doi",
+    "paper_type",
+    "keywords",
+    "source_coverage",
+    "locator_mode",
+    "validation_status",
+    "review_status",
+    "skill_version",
+    "template_version",
+    "created",
+    "updated",
+    "tags",
+)
+NOTE_READING_MODES = {"skim", "deep", "internalize"}
+NOTE_PAPER_TYPES = {
+    "empirical-research",
+    "method-algorithm",
+    "model-description",
+    "review",
+}
+NOTE_SOURCE_COVERAGE = {
+    "full-paper",
+    "partial-paper",
+    "abstract-only",
+    "metadata-only",
+}
+NOTE_LOCATOR_MODES = {
+    "page-grounded",
+    "structure-grounded",
+    "source-limited",
+}
+
+DEEP_REQUIRED_HEADINGS = (
     "## 1. 论文速览",
     "## 2. 背景、问题与贡献",
     "### 2.1 研究背景与前人工作",
@@ -24,16 +63,21 @@ FINAL_REQUIRED_HEADINGS = (
     "### 3.3 关键模型、算法或技术环节",
     "### 3.4 核心公式、评价指标与关键参数",
     "### 3.5 实验、比较与复现要点",
-    "## 4. 核心结果与证据",
+    "## 4. 核心结果",
     "## 5. 重要图表",
-    "## 6. 讨论、结论与限制",
+    "## 6. 讨论、结论、边界与限制",
     "### 6.1 作者如何解释结果",
     "### 6.2 核心结论",
-    "### 6.3 局限性与不确定性",
+    "### 6.3 结论边界：本文不能推出什么",
+    "### 6.4 作者明确说明的局限性与不确定性",
+)
+
+INTERNALIZE_REQUIRED_HEADINGS = (
     "## 7. 对研究与学习的价值",
+    "### 7.1 与我的研究的潜在关系",
     "### 7.2 125 提炼",
-    "## 8. 术语、原文证据与滚雪球阅读",
-    "### 8.3 值得继续追踪的参考文献",
+    "## 8. 术语与滚雪球阅读",
+    "### 8.2 值得继续追踪的参考文献",
 )
 
 DEEP_REQUIRED_GROUPS = {
@@ -60,6 +104,7 @@ DEEP_REQUIRED_GROUPS = {
     "作者解释与讨论": ({"interpretation", "discussion"}, 1),
     "局限性": ({"limitation"}, 1),
     "核心结论": ({"conclusion"}, 1),
+    "结论边界": ({"conclusion_boundary"}, 1),
 }
 
 PAPER_TYPE_ALIASES = {
@@ -112,7 +157,7 @@ PAPER_TYPE_REQUIRED_GROUPS = {
 }
 
 INTERNALIZE_REQUIRED_GROUPS = {
-    "learning_value": ({"learning_value"}, 1),
+    "research_idea": ({"research_idea"}, 1),
     "writing_expressions": ({"writing_expression"}, 5),
     "terms": ({"term"}, 1),
     "references": ({"reference"}, 1),
@@ -126,7 +171,8 @@ FINAL_SECTION_CLAIM_TYPES = {
     "3.5": {"experiment"},
     "6.1": {"interpretation", "discussion", "hypothesis"},
     "6.2": {"conclusion"},
-    "6.3": {"limitation", "future_work"},
+    "6.3": {"conclusion_boundary"},
+    "6.4": {"limitation", "future_work"},
 }
 
 DETAIL_REQUIRED_TYPES = {
@@ -139,6 +185,7 @@ DETAIL_REQUIRED_TYPES = {
     "discussion",
     "limitation",
     "conclusion",
+    "conclusion_boundary",
 }
 
 SENTENCE_BOUNDARY_EVIDENCE_TYPES = {
@@ -335,6 +382,7 @@ INFORMATIVE_HEADING_TYPES = {
     "model",
     "metric",
     "equation",
+    "parameter",
     "experiment",
     "result",
 }
@@ -448,7 +496,7 @@ def validate_duplicated_section_content(
     markdown: str,
 ) -> list[dict[str, str]]:
     """Reject verbatim substantive paragraphs repeated across rendered sections."""
-    visible = markdown.split("## 8. 术语、原文证据与滚雪球阅读", 1)[0]
+    visible = markdown.split("## 8. 术语与滚雪球阅读", 1)[0]
     paragraphs = [
         re.sub(r"\s+", "", paragraph)
         for paragraph in re.split(r"\n\s*\n", visible)
@@ -745,6 +793,9 @@ def evaluate_deep_claims(
     page_count: int,
     paper_type: Any = None,
     reading_mode: str = "deep",
+    *,
+    has_research_context: bool = False,
+    external_novelty_search_authorized: bool = False,
 ) -> list[dict[str, str]]:
     """Return blocking quality findings for a declared deep/internalize run."""
     issues: list[dict[str, str]] = []
@@ -865,6 +916,76 @@ def evaluate_deep_claims(
                 ),
             }
         )
+
+    incomplete_experiment_chains = []
+    for claim in claims:
+        if (
+            not isinstance(claim, dict)
+            or _claim_type(claim) != "experiment"
+            or claim.get("importance") != "core"
+        ):
+            continue
+        chain = claim.get("evidence_chain")
+        required_chain_fields = (
+            "tested_claim_zh",
+            "comparison_conditions_zh",
+            "observed_result_zh",
+            "supported_conclusion_zh",
+            "unsupported_stronger_interpretation_zh",
+        )
+        if not isinstance(chain, dict) or any(
+            not str(chain.get(field) or "").strip() for field in required_chain_fields
+        ):
+            incomplete_experiment_chains.append(str(claim.get("claim_id", "<unknown>")))
+    if incomplete_experiment_chains:
+        issues.append(
+            {
+                "issue_type": "experiment_evidence_chain_missing",
+                "message": (
+                    "Experiment records must state the tested claim, comparison and "
+                    "conditions, observed result, supported conclusion, and unsupported "
+                    "stronger interpretation: "
+                    + ", ".join(incomplete_experiment_chains)
+                ),
+            }
+        )
+
+    invalid_boundaries = [
+        str(claim.get("claim_id", "<unknown>"))
+        for claim in claims
+        if isinstance(claim, dict)
+        and _claim_type(claim) == "conclusion_boundary"
+        and claim.get("provenance_class") != "analysis"
+    ]
+    if invalid_boundaries:
+        issues.append(
+            {
+                "issue_type": "provenance_contract",
+                "message": (
+                    "Conclusion-boundary records must be explicitly labelled as analysis: "
+                    + ", ".join(invalid_boundaries)
+                ),
+            }
+        )
+
+    invalid_learning_provenance = [
+        str(claim.get("claim_id", "<unknown>"))
+        for claim in claims
+        if isinstance(claim, dict)
+        and _claim_type(claim) == "learning_value"
+        and claim.get("provenance_class") != "analysis"
+    ]
+    if invalid_learning_provenance:
+        issues.append(
+            {
+                "issue_type": "provenance_contract",
+                "message": (
+                    "Learning-value records must be explicitly labelled as analysis: "
+                    + ", ".join(invalid_learning_provenance)
+                ),
+            }
+        )
+
     if reading_mode == "internalize":
         missing_internalize: list[str] = []
         for label, (claim_types, minimum) in INTERNALIZE_REQUIRED_GROUPS.items():
@@ -881,13 +1002,240 @@ def evaluate_deep_claims(
                     ),
                 }
             )
+        if has_research_context and not any(
+            _claim_type(claim) == "learning_value" for claim in claims
+        ):
+            issues.append(
+                {
+                    "issue_type": "internalize_required_sections",
+                    "message": (
+                        "Internalize mode received user research context but has no "
+                        "evidence-bounded learning-value analysis."
+                    ),
+                }
+            )
+        invalid_ideas = []
+        required_idea_fields = (
+            "source_observation_zh",
+            "hypothesis_zh",
+            "delta_zh",
+            "validation_zh",
+            "novelty_status",
+        )
+        for claim in claims:
+            if not isinstance(claim, dict) or _claim_type(claim) != "research_idea":
+                continue
+            idea = claim.get("research_idea")
+            valid = (
+                claim.get("provenance_class") == "hypothesis"
+                and isinstance(idea, dict)
+                and all(str(idea.get(field) or "").strip() for field in required_idea_fields)
+                and isinstance(idea.get("failure_modes_zh"), list)
+                and len(idea["failure_modes_zh"]) >= 2
+            )
+            if not valid:
+                invalid_ideas.append(str(claim.get("claim_id", "<unknown>")))
+        if invalid_ideas:
+            issues.append(
+                {
+                    "issue_type": "research_idea_gate",
+                    "message": (
+                        "Internalize research ideas require a hypothesis provenance label, "
+                        "source observation, falsifiable hypothesis, delta, validation plan, "
+                        "two failure modes, and novelty status: "
+                        + ", ".join(invalid_ideas)
+                    ),
+                }
+            )
+        unauthorized_novelty = [
+            str(claim.get("claim_id", "<unknown>"))
+            for claim in claims
+            if isinstance(claim, dict)
+            and _claim_type(claim) == "research_idea"
+            and isinstance(claim.get("research_idea"), dict)
+            and claim["research_idea"].get("novelty_status") != "unverified"
+            and not external_novelty_search_authorized
+        ]
+        if unauthorized_novelty:
+            issues.append(
+                {
+                    "issue_type": "novelty_search_authorization",
+                    "message": (
+                        "Novelty may be marked checked only after explicit external-search "
+                        "authorization: " + ", ".join(unauthorized_novelty)
+                    ),
+                }
+            )
     return issues
 
 
-def validate_final_markdown(markdown: str) -> list[dict[str, str]]:
-    """Check the rendered deep note against the canonical Final template contract."""
+def _frontmatter_scalar(value: str) -> Any:
+    text = value.strip()
+    if not text:
+        return ""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def validate_note_frontmatter(markdown: str) -> list[dict[str, str]]:
+    """Validate the fixed user-facing Obsidian property contract."""
     issues: list[dict[str, str]] = []
-    missing = [heading for heading in FINAL_REQUIRED_HEADINGS if heading not in markdown]
+    lines = markdown.splitlines()
+    if not lines or lines[0] != "---":
+        return [
+            {
+                "issue_type": "note_frontmatter_missing",
+                "message": "Rendered note must start with YAML frontmatter.",
+            }
+        ]
+    try:
+        closing = lines.index("---", 1)
+    except ValueError:
+        return [
+            {
+                "issue_type": "note_frontmatter_unclosed",
+                "message": "Rendered note frontmatter is not closed.",
+            }
+        ]
+    fields: list[str] = []
+    scalars: dict[str, Any] = {}
+    tags: list[str] = []
+    active: str | None = None
+    for line in lines[1:closing]:
+        match = re.fullmatch(r"([a-z][a-z0-9_]*):(.*)", line)
+        if match:
+            active = match.group(1)
+            fields.append(active)
+            scalars[active] = _frontmatter_scalar(match.group(2))
+            continue
+        tag_match = re.fullmatch(r"\s+-\s+(.+)", line)
+        if active == "tags" and tag_match:
+            tags.append(str(_frontmatter_scalar(tag_match.group(1))))
+            continue
+        if line.strip():
+            issues.append(
+                {
+                    "issue_type": "note_frontmatter_invalid_line",
+                    "message": f"Unsupported frontmatter line: {line}",
+                }
+            )
+    if tuple(fields) != NOTE_FRONTMATTER_FIELDS:
+        issues.append(
+            {
+                "issue_type": "note_frontmatter_contract",
+                "message": (
+                    "Note properties must use the fixed ordered fields: "
+                    + ", ".join(NOTE_FRONTMATTER_FIELDS)
+                ),
+            }
+        )
+    if isinstance(scalars.get("first_author"), list):
+        issues.append(
+            {
+                "issue_type": "first_author_scalar_required",
+                "message": "first_author must contain one full author name, not a list.",
+            }
+        )
+    paper_type = scalars.get("paper_type")
+    if paper_type is not None and paper_type not in NOTE_PAPER_TYPES:
+        issues.append(
+            {
+                "issue_type": "paper_type_enum",
+                "message": "paper_type is outside the supported machine enum.",
+            }
+        )
+    if isinstance(scalars.get("keywords"), list):
+        issues.append(
+            {
+                "issue_type": "keywords_scalar_required",
+                "message": "keywords must be one semicolon-delimited source string.",
+            }
+        )
+    if scalars.get("source_coverage") not in NOTE_SOURCE_COVERAGE:
+        issues.append(
+            {
+                "issue_type": "source_coverage_enum",
+                "message": "source_coverage is outside the supported note enum.",
+            }
+        )
+    if scalars.get("locator_mode") not in NOTE_LOCATOR_MODES:
+        issues.append(
+            {
+                "issue_type": "locator_mode_enum",
+                "message": "locator_mode is outside the supported note enum.",
+            }
+        )
+    for field in ("created", "updated"):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(scalars.get(field) or "")):
+            issues.append(
+                {
+                    "issue_type": "note_date_format",
+                    "message": f"{field} must use YYYY-MM-DD.",
+                }
+            )
+    if scalars.get("validation_status") not in {
+        "completed",
+        "completed_with_warnings",
+        "blocked",
+    }:
+        issues.append(
+            {
+                "issue_type": "validation_status_enum",
+                "message": "validation_status is outside the supported note enum.",
+            }
+        )
+    if scalars.get("review_status") not in {
+        "unreviewed",
+        "review_pending",
+        "reviewed",
+    }:
+        issues.append(
+            {
+                "issue_type": "review_status_enum",
+                "message": "review_status is outside the supported note enum.",
+            }
+        )
+    if scalars.get("template_version") != FINAL_TEMPLATE_VERSION:
+        issues.append(
+            {
+                "issue_type": "template_version_contract",
+                "message": (
+                    "template_version must match the frozen Paper Template v1.0 contract."
+                ),
+            }
+        )
+    normalized_tags = [tag.lstrip("#") for tag in tags]
+    modes = [tag for tag in normalized_tags if tag in NOTE_READING_MODES]
+    if "LitAnchor" not in normalized_tags or len(modes) != 1:
+        issues.append(
+            {
+                "issue_type": "note_tag_contract",
+                "message": "tags must contain LitAnchor and exactly one reading-mode tag.",
+            }
+        )
+    if any(tag.startswith("#") for tag in tags):
+        issues.append(
+            {
+                "issue_type": "note_tag_hash_prefix",
+                "message": "YAML tag values must not include a literal # prefix.",
+            }
+        )
+    return issues
+
+
+def validate_final_markdown(
+    markdown: str,
+    reading_mode: str = "deep",
+) -> list[dict[str, str]]:
+    """Check a rendered note against the canonical mode-specific contract."""
+    issues: list[dict[str, str]] = []
+    issues.extend(validate_note_frontmatter(markdown))
+    required_headings = list(DEEP_REQUIRED_HEADINGS)
+    if reading_mode == "internalize":
+        required_headings.extend(INTERNALIZE_REQUIRED_HEADINGS)
+    missing = [heading for heading in required_headings if heading not in markdown]
     if missing:
         issues.append(
             {
@@ -903,12 +1251,24 @@ def validate_final_markdown(markdown: str) -> list[dict[str, str]]:
                 "message": "Rendered note contains unresolved template slots: " + ", ".join(unresolved),
             }
         )
-    for marker in ("<!-- litanchor:user:start -->", "<!-- litanchor:user:end -->"):
-        if marker not in markdown:
-            issues.append(
-                {
-                    "issue_type": "user_edit_marker_missing",
-                    "message": f"Rendered note is missing protected user marker {marker}.",
-                }
-            )
+    internalize_headings = [
+        heading for heading in INTERNALIZE_REQUIRED_HEADINGS if heading in markdown
+    ]
+    if reading_mode == "deep" and internalize_headings:
+        issues.append(
+            {
+                "issue_type": "deep_mode_scope_leak",
+                "message": (
+                    "Deep notes must end at Section 6; internalize-only headings leaked: "
+                    + "；".join(internalize_headings)
+                ),
+            }
+        )
+    if "<!--" in markdown:
+        issues.append(
+            {
+                "issue_type": "internal_html_comment_leak",
+                "message": "Formal reader notes must not contain internal HTML comments.",
+            }
+        )
     return issues

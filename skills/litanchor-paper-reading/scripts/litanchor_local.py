@@ -33,6 +33,7 @@ from paper_quality_gate import (  # noqa: E402
     validate_final_markdown,
     validate_generic_claim_headings,
     validate_metadata_consistency,
+    validate_note_frontmatter,
     validate_numeric_rendering_integrity,
     validate_page_semantic_coverage,
     validate_range_symbol_integrity,
@@ -41,7 +42,7 @@ from paper_quality_gate import (  # noqa: E402
 from pdf_reading_order import extract_page_text as extract_pymupdf_page_text  # noqa: E402
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.6.0-beta.2"
+SKILL_VERSION = "0.6.0-beta.3"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -100,8 +101,10 @@ CLAIM_TYPES = {
     "discussion",
     "limitation",
     "conclusion",
+    "conclusion_boundary",
     "future_work",
     "learning_value",
+    "research_idea",
     "term",
     "writing_expression",
     "reference",
@@ -120,6 +123,10 @@ class PipelineError(RuntimeError):
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def utc_date() -> str:
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def sha256_file(path: Path) -> str:
@@ -209,10 +216,13 @@ def prepare_pdf(
     journal: str | None = None,
     doi: str | None = None,
     citekey: str | None = None,
+    keywords: list[str] | None = None,
     acquisition_method: str = "manual_pdf",
     source_query: str | None = None,
     zotero_item_key: str | None = None,
     zotero_attachment_key: str | None = None,
+    research_context: str | None = None,
+    external_novelty_search_authorized: bool = False,
 ) -> tuple[Path, dict[str, Any]]:
     """Extract physical PDF pages into a private run directory."""
     if reading_mode not in {"skim", "deep", "internalize"}:
@@ -231,9 +241,11 @@ def prepare_pdf(
         ) from exc
 
     digest = sha256_file(pdf_path)
+    pdf_metadata: dict[str, Any] = {}
     try:
         document = pymupdf.open(pdf_path)
         page_count = document.page_count
+        pdf_metadata = document.metadata or {}
     except Exception as exc:
         raise PipelineError(f"PDF cannot be parsed: {type(exc).__name__}: {exc}") from exc
     if page_count < 1:
@@ -243,6 +255,15 @@ def prepare_pdf(
     run_dir = unique_run_dir(output_root.resolve(), digest)
     paper_id = f"pdf-{digest[:16]}"
     resolved_authors = list(authors or [])
+    resolved_keywords = [str(item).strip() for item in (keywords or []) if str(item).strip()]
+    if not resolved_keywords:
+        metadata_keywords = str(pdf_metadata.get("keywords") or "").strip()
+        if metadata_keywords:
+            resolved_keywords = [
+                item.strip()
+                for item in re.split(r"[;,]", metadata_keywords)
+                if item.strip()
+            ]
 
     pages: list[dict[str, Any]] = []
     pdf_warnings: list[str] = []
@@ -304,6 +325,7 @@ def prepare_pdf(
             "journal": journal,
             "doi": doi,
             "citekey": citekey,
+            "keywords": list(dict.fromkeys(resolved_keywords)),
         },
         "annotations": [],
         "pdf": {
@@ -321,6 +343,10 @@ def prepare_pdf(
         "paper_id": paper_id,
         "skill_version": SKILL_VERSION,
         "reading_mode": reading_mode,
+        "research_context": str(research_context or "").strip() or None,
+        "external_novelty_search_authorized": bool(
+            external_novelty_search_authorized
+        ),
         "created": utc_now(),
         "status": "blocked" if preflight_status == "BLOCKED" else "prepared",
         "artifacts": {
@@ -560,7 +586,7 @@ def build_coverage_receipt(
     )
     analysis_extent_pages = relevant_main_pages or expected_pages
     reading_mode = run_record.get("reading_mode")
-    if reading_mode == "deep":
+    if reading_mode in {"deep", "internalize"}:
         minimum_evidence_pages = min(3, page_count)
         minimum_sections = 1 if page_count == 1 else min(3, page_count)
         later_half_boundary = (
@@ -1116,6 +1142,12 @@ def validate_run(
             page_count,
             resolve_paper_type(run_dir, source),
             str(run_record.get("reading_mode") or "deep"),
+            has_research_context=bool(
+                str(run_record.get("research_context") or "").strip()
+            ),
+            external_novelty_search_authorized=(
+                run_record.get("external_novelty_search_authorized") is True
+            ),
         )
         deep_quality_findings.extend(
             evaluate_visual_result_coverage(figures, claims)
@@ -1306,11 +1338,100 @@ def evidence_quote_for_display(item: dict[str, Any]) -> str:
     return quote
 
 
-def first_author_only(authors: Any) -> list[str]:
-    """Return the first verified author for concise note frontmatter."""
+def first_author_name(authors: Any) -> str | None:
+    """Return only the first verified author's full name for note properties."""
     if not isinstance(authors, list):
-        return []
-    return [authors[0]] if authors and isinstance(authors[0], str) and authors[0].strip() else []
+        return None
+    if authors and isinstance(authors[0], str) and authors[0].strip():
+        return authors[0].strip()
+    return None
+
+
+def note_keywords(metadata: dict[str, Any]) -> str:
+    """Render only source/Zotero keywords; never synthesize new keywords."""
+    keywords = metadata.get("keywords")
+    if isinstance(keywords, list):
+        values = [str(item).strip() for item in keywords if str(item).strip()]
+        return "; ".join(dict.fromkeys(values))
+    if isinstance(keywords, str):
+        return keywords.strip()
+    return ""
+
+
+def _date_only(value: Any, *, fallback: str) -> str:
+    text = str(value or "").strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return text
+    if re.match(r"^\d{4}-\d{2}-\d{2}[T ]", text):
+        return text[:10]
+    return fallback
+
+
+def note_review_status(run_record: dict[str, Any]) -> str:
+    raw = str(run_record.get("review_status") or "").strip().casefold()
+    if raw in {
+        "reviewed",
+        "user_reviewed",
+        "user_visual_review_passed",
+        "independently_reviewed",
+    }:
+        return "reviewed"
+    if raw in {
+        "review_pending",
+        "user_visual_review_pending",
+        "pending_independent_review",
+        "evidence-checked",
+    }:
+        return "review_pending"
+    return "unreviewed"
+
+
+def note_tags(reading_mode: str, run_record: dict[str, Any]) -> list[str]:
+    """Keep structural tags and preserve explicitly supplied user tags."""
+    mode = reading_mode if reading_mode in {"skim", "deep", "internalize"} else "deep"
+    result = ["LitAnchor", mode]
+    reserved = {"litanchor", "skim", "deep", "internalize"}
+    user_tags = run_record.get("user_tags")
+    if isinstance(user_tags, list):
+        for value in user_tags:
+            tag = str(value).strip().lstrip("#")
+            if tag and tag.casefold() not in reserved and tag not in result:
+                result.append(tag)
+    return result
+
+
+def render_note_frontmatter(
+    source: dict[str, Any],
+    run_record: dict[str, Any],
+    status: str,
+    paper_type: str | None,
+) -> str:
+    metadata = source["metadata"]
+    reading_mode = str(run_record.get("reading_mode") or "deep")
+    today = utc_date()
+    created = _date_only(run_record.get("created"), fallback=today)
+    lines = [
+        "---",
+        f"title: {yaml_scalar(metadata.get('title'))}",
+        f"first_author: {yaml_scalar(first_author_name(metadata.get('authors', [])))}",
+        f"year: {yaml_scalar(metadata.get('year'))}",
+        f"journal: {yaml_scalar(metadata.get('journal'))}",
+        f"doi: {yaml_scalar(metadata.get('doi'))}",
+        f"paper_type: {yaml_scalar(paper_type)}",
+        f"keywords: {yaml_scalar(note_keywords(metadata))}",
+        f"source_coverage: {yaml_scalar(run_record.get('source_coverage') or 'full-paper')}",
+        f"locator_mode: {yaml_scalar(run_record.get('locator_mode') or 'page-grounded')}",
+        f"validation_status: {yaml_scalar(status)}",
+        f"review_status: {yaml_scalar(note_review_status(run_record))}",
+        f"skill_version: {yaml_scalar(SKILL_VERSION)}",
+        f"template_version: {yaml_scalar(FINAL_TEMPLATE_VERSION)}",
+        f"created: {yaml_scalar(created)}",
+        f"updated: {yaml_scalar(today)}",
+        "tags:",
+        *(f"  - {yaml_scalar(tag)}" for tag in note_tags(reading_mode, run_record)),
+        "---",
+    ]
+    return "\n".join(lines)
 
 
 def _escape_table(text: Any) -> str:
@@ -1345,165 +1466,56 @@ def render_skim_markdown(
     status: str,
 ) -> str:
     metadata = source["metadata"]
-    pdf = source["pdf"]
-    paper_type, paper_type_label_zh, metadata_warnings = metadata_presentation(
-        source
-    )
-    primary_paper_type = metadata.get("primary_paper_type") or paper_type
+    paper_type, paper_type_label_zh, _ = metadata_presentation(source)
     secondary_paper_types = [
         value
         for value in metadata.get("secondary_paper_types", [])
         if value in SECONDARY_PAPER_TYPE_LABELS_ZH
     ]
-    evidence_by_id = {item["evidence_id"]: item for item in evidence}
     verified_pages = {
         item["page_index"]
         for item in evidence
         if item.get("page_verified") is True
         and item.get("source_match_kind") in {"exact", "normalized"}
     }
-    sections = [
-        ("## 1. 核心科学问题", {"question"}),
-        ("## 2. 研究背景与研究空白", {"background", "gap"}),
-        ("## 3. 方法流程", {"method"}),
-        ("## 4. 核心结果", {"result"}),
-        ("## 5. 作者的解释、假设与讨论", {"interpretation", "hypothesis"}),
-        ("## 6. 局限性、不确定性与适用边界", {"limitation"}),
-        ("## 7. 结论", {"conclusion"}),
-    ]
-    review_pages = [str(page["page_index"]) for page in source["pages"] if page.get("warnings")]
-    lines = [
-        "---",
-        f"title: {yaml_scalar(metadata.get('title'))}",
-        f"authors: {yaml_scalar(first_author_only(metadata.get('authors', [])))}",
-        f"year: {yaml_scalar(metadata.get('year'))}",
-        f"journal: {yaml_scalar(metadata.get('journal'))}",
-        f"doi: {yaml_scalar(metadata.get('doi'))}",
-        f"paper_type: {yaml_scalar(paper_type)}",
-        f"primary_paper_type: {yaml_scalar(primary_paper_type)}",
-        f"secondary_paper_types: {yaml_scalar(secondary_paper_types)}",
-        f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
-        f"metadata_warning: {yaml_scalar(metadata_warnings)}",
-        f"citekey: {yaml_scalar(metadata.get('citekey'))}",
-        f"zotero_item_key: {yaml_scalar(source['source'].get('zotero_item_key'))}",
-        f"zotero_attachment_key: {yaml_scalar(source['source'].get('zotero_attachment_key'))}",
-        f"source_file: {yaml_scalar(source['source']['query'])}",
-        f"document_hash: {yaml_scalar(pdf['sha256'])}",
-        f"reading_mode: {yaml_scalar(run_record.get('reading_mode'))}",
-        f"skill_version: {yaml_scalar(SKILL_VERSION)}",
-        f"validation_status: {yaml_scalar(status)}",
-        f"created: {yaml_scalar(utc_now())}",
-        "tags: [literature-note, litanchor]",
-        "---",
-        "",
-        f"# {metadata.get('title')}",
-        "",
-        "## 0. 阅读状态",
-        "",
-        f"- 阅读模式：`{run_record.get('reading_mode')}`",
-        f"- PDF 解析状态：`{pdf.get('preflight_status')}`",
-        f"- 校验状态：`{status}`",
-        f"- PDF 物理页数：{pdf.get('page_count')}",
-        f"- 建议人工复核页：{', '.join(review_pages) if review_pages else '无'}",
-        "",
-    ]
-
-    for heading, claim_types in sections:
-        lines.extend([heading, ""])
-        selected = [claim for claim in claims if claim.get("claim_type") in claim_types]
-        if not selected:
-            lines.extend(["- 尚无已校验主张。", ""])
-            continue
-        for claim in selected:
-            evidence_ids = claim["evidence_ids"]
-            pages = sorted(set(claim["page_refs"]))
-            marker_parts = [", ".join(evidence_ids), f"PDF {', '.join(f'p.{page}' for page in pages)}"]
-            links = [
-                f"[打开 p.{page}]({link})"
-                for page in pages
-                if (
-                    link := zotero_page_link(
-                        source,
-                        page,
-                        page_verified=page in verified_pages,
-                    )
-                )
-                is not None
-            ]
-            marker_parts.extend(links)
-            marker = f"〔{'｜'.join(marker_parts)}〕"
-            lines.append(f"- {claim['claim_text_zh']} {marker}")
-            if claim.get("display_level") == "collapsed":
-                for evidence_id in evidence_ids:
-                    item = evidence_by_id[evidence_id]
-                    lines.append("")
-                    lines.append(f"> [!evidence]- {evidence_id}｜PDF p.{item['page_index']}")
-                    quote_lines = evidence_quote_for_display(item).splitlines() or [""]
-                    lines.extend(f"> {quote_line}" for quote_line in quote_lines)
-                    lines.append("")
-        lines.append("")
-
-    lines.extend(["## 8. 关键视觉证据", ""])
-    selected_figures = figures.get("selected", [])
-    if selected_figures:
-        for figure in selected_figures:
-            page_index = figure["physical_pdf_page"]
-            source_link = zotero_page_link(
+    paper_type_labels = [paper_type_label_zh] if paper_type_label_zh else []
+    if secondary_paper_types:
+        paper_type_labels.append(
+            "次级类型："
+            + "、".join(
+                SECONDARY_PAPER_TYPE_LABELS_ZH[value]
+                for value in secondary_paper_types
+            )
+        )
+    overview_rows = _build_overview_rows(
+        claims,
+        figures,
+        source,
+        verified_pages,
+        paper_type_labels,
+        reading_mode="skim",
+    )
+    return "\n".join(
+        [
+            render_note_frontmatter(source, run_record, status, paper_type),
+            "",
+            "## 1. 论文速览",
+            "",
+            "> [!abstract] 一句话概括",
+            "> " + _overview_value(
+                claims,
+                {"summary"},
                 source,
-                page_index,
-                page_verified=True,
-            )
-            lines.extend(
-                [
-                    f"### {figure['figure_label']}",
-                    "",
-                    f"![[{figure['embed_path']}]]",
-                    "",
-                    f"- 选择理由：{figure['selection_reason']}",
-                    f"- 正文讨论位置：{figure['discussion_location']}",
-                    f"- PDF 物理页码：p.{page_index}",
-                ]
-            )
-            if source_link:
-                lines.append(f"- [在 Zotero 打开原页]({source_link})")
-            lines.append("")
-    else:
-        lines.extend(
-            [
-                f"- 未嵌入图片：{figures.get('no_selection_reason')}",
-                "",
-            ]
-        )
-
-    lines.extend([
-        "## 9. 我的思考",
-        "",
-        "<!-- litanchor:user:start -->",
-        "此区域由用户编辑；自动更新不得覆盖。",
-        "<!-- litanchor:user:end -->",
-        "",
-        "## 10. 证据索引",
-        "",
-        "| Evidence ID | PDF 页 | 类型 | 原文证据 |",
-        "|---|---:|---|---|",
-    ])
-    for item in evidence:
-        lines.append(
-            f"| {_escape_table(item['evidence_id'])} | {item['page_index']} | "
-            f"{_escape_table(item['evidence_type'])} | "
-            f"{_escape_table(evidence_quote_for_display(item))} |"
-        )
-    lines.extend([
-        "",
-        "## 11. 校验信息",
-        "",
-        f"- EvidenceUnits：{len(evidence)}",
-        f"- ClaimRecords：{len(claims)}",
-        f"- 运行 ID：`{run_record.get('run_id')}`",
-        "- 事实来源：仅限本地 PDF 原文。",
-        "",
-    ])
-    return "\n".join(lines)
+                verified_pages,
+                limit=1,
+            ),
+            "",
+            "| 项目 | 内容 |",
+            "| :--- | :--- |",
+            overview_rows,
+            "",
+        ]
+    )
 
 
 def _claim_marker(
@@ -1511,7 +1523,6 @@ def _claim_marker(
     source: dict[str, Any],
     verified_pages: set[int],
 ) -> str:
-    evidence_ids = [str(item) for item in claim.get("evidence_ids", [])]
     pages = sorted(
         {
             page
@@ -1519,20 +1530,23 @@ def _claim_marker(
             if isinstance(page, int)
         }
     )
-    marker_parts = [", ".join(evidence_ids), f"PDF {', '.join(f'p.{page}' for page in pages)}"]
-    marker_parts.extend(
-        f"[打开 p.{page}]({link})"
-        for page in pages
-        if (
-            link := zotero_page_link(
-                source,
-                page,
-                page_verified=page in verified_pages,
-            )
+    return _page_locator(pages, source, verified_pages)
+
+
+def _page_locator(
+    pages: list[int],
+    source: dict[str, Any],
+    verified_pages: set[int],
+) -> str:
+    locators: list[str] = []
+    for page in sorted(set(pages)):
+        link = zotero_page_link(
+            source,
+            page,
+            page_verified=page in verified_pages,
         )
-        is not None
-    )
-    return f"〔{'｜'.join(part for part in marker_parts if part)}〕"
+        locators.append(f"[p.{page}]({link})" if link else f"p.{page}")
+    return f"〔{'、'.join(locators)}〕" if locators else ""
 
 
 def _claims_by_type(
@@ -1587,13 +1601,6 @@ def _render_section_synthesis(
         for claim_id in section.get("claim_ids", [])
         if claim_id in claim_by_id
     ]
-    evidence_ids = sorted(
-        {
-            str(evidence_id)
-            for claim in selected_claims
-            for evidence_id in claim.get("evidence_ids", [])
-        }
-    )
     pages = sorted(
         {
             int(page)
@@ -1602,21 +1609,10 @@ def _render_section_synthesis(
             if isinstance(page, int)
         }
     )
-    marker_parts = [", ".join(evidence_ids), f"PDF {', '.join(f'p.{page}' for page in pages)}"]
-    marker_parts.extend(
-        f"[打开 p.{page}]({link})"
-        for page in pages
-        if (
-            link := zotero_page_link(
-                source,
-                page,
-                page_verified=page in verified_pages,
-            )
-        )
-        is not None
-    )
-    marker = f"〔{'｜'.join(part for part in marker_parts if part)}〕"
-    return "\n\n".join([*paragraphs, f"*本节证据：{marker}*"])
+    marker = _page_locator(pages, source, verified_pages)
+    if marker:
+        paragraphs[-1] = f"{paragraphs[-1]} {marker}"
+    return "\n\n".join(paragraphs)
 
 
 def _prepend_synthesis(synthesis: str | None, details: str) -> str:
@@ -1642,16 +1638,46 @@ def _render_claim_group(
     for claim in selected:
         title = str(claim.get("title_zh") or "").strip()
         text = str(claim.get("claim_text_zh") or "").strip()
+        provenance_prefix = {
+            "analysis": "[分析] ",
+            "hypothesis": "[假设] ",
+            "user": "[用户] ",
+        }.get(str(claim.get("provenance_class") or "paper"), "")
         marker = _claim_marker(claim, source, verified_pages)
         if title and title != text:
-            lines.append(f"- **{title}**：{text} {marker}")
+            lines.append(f"- **{provenance_prefix}{title}**：{text} {marker}")
         else:
-            lines.append(f"- {text} {marker}")
+            lines.append(f"- {provenance_prefix}{text} {marker}")
         for point in claim.get("detail_points_zh", []):
             lines.append(f"  - {point}")
         conditions = str(claim.get("conditions_zh") or "").strip()
         if conditions:
             lines.append(f"  - **成立条件与边界**：{conditions}")
+    return "\n".join(lines)
+
+
+def _render_terms_table(claims: list[Any], *, empty: str) -> str:
+    terms = _claims_by_type(claims, {"term"})
+    if not terms:
+        return empty
+    lines = [
+        "| 术语 / 问题 | 通俗解释或当前理解 |",
+        "| :--- | :--- |",
+    ]
+    for claim in terms:
+        title = str(claim.get("title_zh") or claim.get("claim_text_zh") or "").strip()
+        explanation_parts = [str(claim.get("claim_text_zh") or "").strip()]
+        explanation_parts.extend(
+            str(point).strip()
+            for point in claim.get("detail_points_zh", [])
+            if str(point).strip()
+        )
+        explanation = "<br>".join(
+            _escape_table(part)
+            for part in explanation_parts
+            if part and part != title
+        ) or "原文未说明"
+        lines.append(f"| {_escape_table(title)} | {explanation} |")
     return "\n".join(lines)
 
 
@@ -1668,9 +1694,106 @@ def _overview_value(
         return "**原文未说明**"
     return "<br>".join(
         _escape_table(
+            f"{ {'analysis': '[分析] ', 'hypothesis': '[假设] ', 'user': '[用户] '}.get(str(claim.get('provenance_class') or 'paper'), '') }"
             f"{claim['claim_text_zh']} {_claim_marker(claim, source, verified_pages)}"
         )
         for claim in selected
+    )
+
+
+def _overview_visuals(
+    figures: dict[str, Any],
+    source: dict[str, Any],
+) -> str:
+    selected = [
+        item for item in figures.get("selected", []) if isinstance(item, dict)
+    ][:3]
+    if not selected:
+        return "**原文未说明**"
+    values = []
+    for item in selected:
+        label = str(item.get("figure_label") or "图表")
+        location = str(item.get("discussion_location") or "章节未说明")
+        page = item.get("physical_pdf_page")
+        page_text = (
+            _page_locator([page], source, {page})
+            if isinstance(page, int)
+            else "页码未核验"
+        )
+        values.append(f"{label}（{location}；{page_text}）")
+    return "<br>".join(_escape_table(value) for value in values)
+
+
+def _skim_recommendation(claims: list[Any]) -> str:
+    available = {
+        str(claim.get("claim_type"))
+        for claim in claims
+        if isinstance(claim, dict)
+    }
+    required = {"question", "method", "result", "conclusion"}
+    if required.issubset(available):
+        return "[分析] 值得精读：研究问题、方法、结果与结论主线均已识别；最终优先级仍应结合用户的研究目标。"
+    if {"question", "result"}.issubset(available):
+        return "[分析] 按需精读：已识别问题与结果，但方法或结论链仍需在 deep 模式中补全。"
+    return "[分析] 暂不据此判断优先级：当前 skim 证据不足，建议先回看摘要、结论和关键图表。"
+
+
+def _build_overview_rows(
+    claims: list[Any],
+    figures: dict[str, Any],
+    source: dict[str, Any],
+    verified_pages: set[int],
+    paper_type_labels: list[str],
+    *,
+    reading_mode: str,
+) -> str:
+    title_judgment = "<br>".join(
+        [
+            "研究对象："
+            + _overview_value(claims, {"data", "material", "model"}, source, verified_pages, limit=1),
+            "研究问题："
+            + _overview_value(claims, {"question"}, source, verified_pages, limit=1),
+            "研究方法："
+            + _overview_value(claims, {"method", "model"}, source, verified_pages, limit=1),
+        ]
+    )
+    abstract_four = "<br>".join(
+        [
+            "目的：" + _overview_value(claims, {"question"}, source, verified_pages, limit=1),
+            "方法：" + _overview_value(claims, {"method", "model"}, source, verified_pages, limit=1),
+            "结果：" + _overview_value(claims, {"result"}, source, verified_pages, limit=1),
+            "结论：" + _overview_value(claims, {"conclusion"}, source, verified_pages, limit=1),
+        ]
+    )
+    recommendation = _overview_value(
+        claims,
+        {"learning_value"},
+        source,
+        verified_pages,
+        limit=1,
+    )
+    if recommendation == "**原文未说明**":
+        recommendation = _skim_recommendation(claims)
+    if reading_mode != "skim" and "[分析]" not in recommendation:
+        recommendation = "[分析] " + recommendation
+    rows = [
+        ("论文类型", "；".join(paper_type_labels) if paper_type_labels else "**原文未说明**"),
+        ("标题判断", title_judgment),
+        ("摘要四要素", abstract_four),
+        ("研究背景与缺口", _overview_value(claims, {"background", "gap"}, source, verified_pages)),
+        ("研究对象 / 数据 / 模型", _overview_value(claims, {"data", "material", "model"}, source, verified_pages)),
+        ("核心研究问题", _overview_value(claims, {"question"}, source, verified_pages)),
+        ("方法路线", _overview_value(claims, {"method", "model", "experiment"}, source, verified_pages)),
+        ("主要发现", _overview_value(claims, {"result"}, source, verified_pages, limit=4)),
+        ("核心贡献", _overview_value(claims, {"contribution"}, source, verified_pages)),
+        ("结论与适用边界", _overview_value(claims, {"conclusion", "conclusion_boundary"}, source, verified_pages)),
+        ("关键限制", _overview_value(claims, {"limitation"}, source, verified_pages)),
+        ("文章结构与论证主线", "背景与缺口 → 研究问题 → 方法与证据 → 结果与解释 → 结论与边界"),
+        ("关键图表与回看位置", _overview_visuals(figures, source)),
+        ("[分析] 精读建议", recommendation),
+    ]
+    return "\n".join(
+        f"| {_escape_table(label)} | {value} |" for label, value in rows
     )
 
 
@@ -1702,8 +1825,8 @@ def _render_deep_results(
     if not results:
         return "**原文未说明**"
     lines: list[str] = []
-    for index, claim in enumerate(results, start=1):
-        title = str(claim.get("title_zh") or f"核心结果 {index}")
+    for claim in results:
+        title = str(claim.get("title_zh") or "有信息量的结果标题")
         numeric_parts = []
         for item in claim.get("numeric_items", []):
             if not isinstance(item, dict):
@@ -1729,7 +1852,7 @@ def _render_deep_results(
         }.get(str(claim.get("epistemic_status")), "状态待核验")
         lines.extend(
             [
-                f"### R{index}. {title}",
+                f"### {title}",
                 "",
                 f"- **主要发现**：{claim['claim_text_zh']} {_claim_marker(claim, source, verified_pages)}",
             ]
@@ -1741,7 +1864,7 @@ def _render_deep_results(
         lines.extend(
             [
                 f"- **关键数值、比较或不确定性**：{'；'.join(numeric_parts) if numeric_parts else '原文未说明'}",
-                f"- **证据状态**：{epistemic}",
+                f"- **表述性质**：{epistemic}",
                 f"- **成立条件与适用范围**：{claim.get('conditions_zh') or '原文未说明'}",
                 "",
             ]
@@ -1758,10 +1881,10 @@ def _render_models(
     if not models:
         return "**不适用**"
     lines: list[str] = []
-    for index, claim in enumerate(models, start=1):
+    for claim in models:
         lines.extend(
             [
-                f"#### M{index}. {claim.get('title_zh') or f'关键模型 {index}'}",
+                f"#### {claim.get('title_zh') or '模型、算法或技术名称'}",
                 "",
                 f"- **作用与核心机制**：{claim['claim_text_zh']} {_claim_marker(claim, source, verified_pages)}",
             ]
@@ -1786,16 +1909,17 @@ def _render_equations_metrics(
     if not records:
         return "**不适用**"
     lines: list[str] = []
-    for index, claim in enumerate(records, start=1):
-        prefix = {
-            "equation": "Eq.",
-            "metric": "Metric",
-            "parameter": "Parameter",
+    for claim in records:
+        record_type = {
+            "equation": "公式",
+            "metric": "评价指标",
+            "parameter": "关键参数",
         }[str(claim.get("claim_type"))]
         lines.extend(
             [
-                f"#### {prefix} {index}：{claim.get('title_zh') or '名称原文未说明'}",
+                f"#### {claim.get('title_zh') or '名称原文未说明'}",
                 "",
+                f"- **类型**：{record_type}",
                 f"- **用途与定义**：{claim['claim_text_zh']} {_claim_marker(claim, source, verified_pages)}",
             ]
         )
@@ -1818,25 +1942,107 @@ def _render_experiments(
     experiments = _claims_by_type(claims, {"experiment"})
     if not experiments:
         return "**原文未说明**"
-    lines = [
-        "| 实验 / 比较 | 设置、目的与关键结果 | 证据位置 |",
-        "| --- | --- | --- |",
-    ]
+    lines: list[str] = []
     for claim in experiments:
-        fragments = [
-            str(claim["claim_text_zh"]),
-            *(str(item) for item in claim.get("detail_points_zh", [])),
+        chain = claim.get("evidence_chain")
+        if not isinstance(chain, dict) or not chain:
+            marker = _claim_marker(claim, source, verified_pages)
+            title = str(claim.get("title_zh") or "复现信息或支持性实验记录")
+            text = str(claim.get("claim_text_zh") or "原文未说明")
+            lines.extend([f"#### {title}", "", f"- {text} {marker}"])
+            for point in claim.get("detail_points_zh", []):
+                rendered_point = str(point).strip()
+                if rendered_point:
+                    lines.append(f"  - {rendered_point}")
+            lines.extend(
+                [
+                    "- **成立条件、复现边界或缺失信息**："
+                    + str(claim.get("conditions_zh") or "原文未说明"),
+                    "",
+                ]
+            )
+            continue
+        tested_claim = str(
+            chain.get("tested_claim_zh") or claim.get("claim_text_zh") or ""
+        )
+        comparison = str(
+            chain.get("comparison_conditions_zh")
+            or claim.get("conditions_zh")
+            or "原文未说明"
+        )
+        observed = str(
+            chain.get("observed_result_zh")
+            or "；".join(
+                str(item).strip().rstrip("。；！？!?")
+                for item in claim.get("detail_points_zh", [])
+                if str(item).strip().rstrip("。；！？!?")
+            )
+            or claim.get("claim_text_zh")
+            or "原文未说明"
+        )
+        supported = str(
+            chain.get("supported_conclusion_zh")
+            or claim.get("claim_text_zh")
+            or "原文未说明"
+        )
+        unsupported = str(
+            chain.get("unsupported_stronger_interpretation_zh")
+            or "原文未说明"
+        )
+        lines.extend(
+            [
+                f"#### {claim.get('title_zh') or '实验或比较名称'}",
+                "",
+                f"- **检验的主张**：{tested_claim}",
+                f"- **比较对象、基线、对照与条件**：{comparison}",
+                f"- **观察结果**：{observed} {_claim_marker(claim, source, verified_pages)}",
+                f"- **证据可以支持的结论**：{supported}",
+                f"- **证据不能支持的更强结论**：{unsupported}",
+                "",
+            ]
+        )
+    return "\n".join(lines).rstrip()
+
+
+def _render_research_idea(
+    claims: list[Any],
+    source: dict[str, Any],
+    verified_pages: set[int],
+    *,
+    empty: str,
+    novelty_search_authorized: bool = False,
+) -> str:
+    ideas = _claims_by_type(claims, {"research_idea"})
+    if not ideas:
+        return empty
+    claim = ideas[0]
+    idea = claim.get("research_idea")
+    if not isinstance(idea, dict):
+        return "**解析失败：研究思路缺少结构化字段**"
+    novelty_label = "未检索"
+    if novelty_search_authorized:
+        novelty_label = {
+            "unverified": "未检索",
+            "partially_checked": "初步核查",
+            "prior_art_checked": "已核查",
+        }.get(str(idea.get("novelty_status")), "状态未知")
+    lines = [
+        f"> [!idea] [假设] {claim.get('title_zh') or '可检验的后续研究思路'}",
+        f"> - **来源观察**：{idea.get('source_observation_zh') or '解析失败'}",
+        f"> - **可证伪假设**：{idea.get('hypothesis_zh') or '解析失败'}",
+        f"> - **相对原文的增量**：{idea.get('delta_zh') or '解析失败'}",
+        f"> - **验证设计**：{idea.get('validation_zh') or '解析失败'}",
+        "> - **可能失败的原因**：",
+    ]
+    lines.extend(
+        f">   - {item}" for item in idea.get("failure_modes_zh", [])
+    )
+    lines.extend(
+        [
+            f"> - **新颖性核查状态**：{novelty_label}",
+            f"> - **原文起点**：{_claim_marker(claim, source, verified_pages)}",
         ]
-        text = "；".join(
-            fragment.strip().rstrip("。；！？!?")
-            for fragment in fragments
-            if fragment.strip().rstrip("。；！？!?")
-        )
-        lines.append(
-            f"| {_escape_table(claim.get('title_zh') or '实验')} | "
-            f"{_escape_table(text)} | "
-            f"{_escape_table(_claim_marker(claim, source, verified_pages))} |"
-        )
+    )
     return "\n".join(lines)
 
 
@@ -1844,12 +2050,11 @@ def _render_visuals(
     figures: dict[str, Any],
     source: dict[str, Any],
     visual_analysis: dict[str, Any] | None = None,
-) -> tuple[str, str]:
+) -> str:
     selected = figures.get("selected", [])
     if not selected:
         reason = figures.get("no_selection_reason") or "原文未说明"
-        return f"| 不适用 | { _escape_table(reason) } | 不适用 | 不适用 | 不适用 | 未嵌入 |", f"- **未嵌入图片**：{reason}"
-    rows: list[str] = []
+        return f"- **未嵌入图表**：{reason}"
     details: list[str] = []
     analysis_by_label = {
         str(item.get("figure_label")): item
@@ -1863,79 +2068,41 @@ def _render_visuals(
     for figure in selected:
         analysis = analysis_by_label.get(str(figure.get("figure_label")), {})
         page = figure["physical_pdf_page"]
-        link = zotero_page_link(source, page, page_verified=True)
-        page_cell = f"[PDF p.{page}]({link})" if link else f"PDF p.{page}"
-        visual_role = {
-            "method": "核心方法图",
-            "result": "核心结果图",
-            "both": "方法与结果图",
-            "context": "背景图",
-        }.get(str(figure.get("visual_role") or ""), "关键图")
-        rows.append(
-            f"| {_escape_table(figure['figure_label'])} | "
-            f"{_escape_table(figure['selection_reason'])} | "
-            f"{_escape_table(analysis.get('interpretation_zh') or figure['caption_original'])} | "
-            f"{_escape_table(visual_role)} | "
-            f"{_escape_table(page_cell)} | 已查看原 PDF 裁图 |"
-        )
+        page_locator = _page_locator([page], source, {page})
+        discussion_location = str(
+            figure.get("discussion_location") or "解析失败"
+        ).strip()
         details.extend(
             [
                 f"### {figure['figure_label']}",
                 "",
                 f"![[{figure['embed_path']}]]",
                 "",
+                f"- **正文位置**：{discussion_location}；{page_locator}",
                 f"- **选择理由**：{figure['selection_reason']}",
-                f"- **正文讨论位置**：{figure['discussion_location']}",
-                f"- **视觉解读**：{analysis.get('interpretation_zh') or '解析失败'}",
-                f"- **读图注意事项**：{analysis.get('reading_cautions') or figure.get('reading_cautions') or '解析失败'}",
+                f"- **图像解读**：{analysis.get('interpretation_zh') or '解析失败'}",
             ]
         )
-        if link:
-            details.append(f"- [在 Zotero 打开原页]({link})")
         details.append("")
-    return "\n".join(rows), "\n".join(details).rstrip()
+    return "\n".join(details).rstrip()
 
 
-def _render_evidence_quotes(
-    evidence: list[Any],
-    claims: list[Any],
-) -> str:
-    core_types = {
-        "question",
-        "gap",
-        "contribution",
-        "method",
-        "model",
-        "experiment",
-        "result",
-        "limitation",
-        "conclusion",
-    }
-    support_map: dict[str, list[str]] = {}
-    for claim in _claims_by_type(claims, core_types):
-        for evidence_id in claim.get("evidence_ids", []):
-            support_map.setdefault(str(evidence_id), []).append(str(claim["claim_id"]))
-    selected = [
-        item
-        for item in evidence
-        if isinstance(item, dict) and item.get("evidence_id") in support_map
-    ][:16]
-    if not selected:
-        return "**原文未说明**"
-    lines = [
-        "| ID | 原文 | 页码 / 章节 | 支撑内容 |",
-        "| --- | --- | --- | --- |",
-    ]
-    for item in selected:
-        evidence_id = str(item["evidence_id"])
-        location = f"PDF p.{item['page_index']} / {item.get('section') or 'Section 未说明'}"
-        lines.append(
-            f"| {_escape_table(evidence_id)} | "
-            f"{_escape_table(evidence_quote_for_display(item))} | "
-            f"{_escape_table(location)} | "
-            f"{_escape_table(', '.join(support_map[evidence_id]))} |"
+def _apply_runtime_mode(rendered: str, reading_mode: str) -> str:
+    """Keep Runtime sections for the declared mode and remove internal markers."""
+    if reading_mode == "deep":
+        rendered = re.sub(
+            r"<!-- litanchor:mode:internalize:start.*?-->.*?"
+            r"<!-- litanchor:mode:internalize:end -->",
+            "",
+            rendered,
+            flags=re.DOTALL,
         )
-    return "\n".join(lines)
+    return re.sub(
+        r"<!-- litanchor:mode:(?:skim|deep|internalize):(?:start|end).*?-->",
+        "",
+        rendered,
+        flags=re.DOTALL,
+    )
 
 
 def render_deep_markdown(
@@ -1952,15 +2119,12 @@ def render_deep_markdown(
     try:
         template = template_path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
-        raise PipelineError(f"Canonical deep-note template is missing: {template_path}") from exc
+        raise PipelineError(f"Runtime deep-note template is missing: {template_path}") from exc
 
     metadata = source["metadata"]
     pdf = source["pdf"]
-    machine_paper_type, paper_type_label_zh, metadata_warnings = (
+    machine_paper_type, paper_type_label_zh, _ = (
         metadata_presentation(source)
-    )
-    primary_paper_type = (
-        metadata.get("primary_paper_type") or machine_paper_type
     )
     secondary_paper_types = [
         value
@@ -1968,18 +2132,16 @@ def render_deep_markdown(
         if value in SECONDARY_PAPER_TYPE_LABELS_ZH
     ]
     reading_mode = str(run_record.get("reading_mode") or "deep")
-    autonomous_generation = bool(run_record.get("autonomous_generation", False))
-    review_status = run_record.get("review_status") or (
-        "evidence-checked" if status == "completed" else "draft"
-    )
-    generation_mode = run_record.get("generation_mode") or (
-        "autonomous" if autonomous_generation else "structured_ledger"
-    )
-    optional_learning_placeholder = (
-        "**原文未说明**"
-        if reading_mode == "internalize"
-        else "**本模式未生成（仅 internalize 模式要求）**"
-    )
+    source_coverage = str(run_record.get("source_coverage") or "full-paper")
+    locator_mode = str(run_record.get("locator_mode") or "page-grounded")
+    if reading_mode in {"deep", "internalize"} and (
+        source_coverage != "full-paper" or locator_mode != "page-grounded"
+    ):
+        raise PipelineError(
+            "Formal deep/internalize rendering requires full-paper coverage and "
+            "page-grounded locators; return a partial report instead."
+        )
+    optional_learning_placeholder = "**原文未说明**"
     verified_pages = {
         item["page_index"]
         for item in evidence
@@ -1999,54 +2161,21 @@ def render_deep_markdown(
                 for value in secondary_paper_types
             )
         )
-    keywords = metadata.get("keywords") if isinstance(metadata.get("keywords"), list) else []
-    frontmatter = "\n".join(
-        [
-            "---",
-            f"title: {yaml_scalar(metadata.get('title'))}",
-            f"authors: {yaml_scalar(first_author_only(metadata.get('authors', [])))}",
-            f"year: {yaml_scalar(metadata.get('year'))}",
-            f"journal: {yaml_scalar(metadata.get('journal'))}",
-            f"doi: {yaml_scalar(metadata.get('doi'))}",
-            f"paper_type: {yaml_scalar(machine_paper_type)}",
-            f"primary_paper_type: {yaml_scalar(primary_paper_type)}",
-            f"secondary_paper_types: {yaml_scalar(secondary_paper_types)}",
-            f"paper_type_label_zh: {yaml_scalar(paper_type_label_zh)}",
-            f"metadata_warning: {yaml_scalar(metadata_warnings)}",
-            f"keywords: {yaml_scalar(keywords)}",
-            f"zotero_key: {yaml_scalar(metadata.get('citekey') or source['source'].get('zotero_item_key'))}",
-            f"source_pdf: {yaml_scalar(source['source'].get('query'))}",
-            'extraction_engine: "PyMuPDF page baseline + consent-aware MinerU structure hints"',
-            f"validation_status: {yaml_scalar(status)}",
-            f"review_status: {yaml_scalar(review_status)}",
-            f"generation_mode: {yaml_scalar(generation_mode)}",
-            f"autonomous_generation: {yaml_scalar(autonomous_generation)}",
-            "tags: [literature-note, deep-reading, litanchor]",
-            f"created: {yaml_scalar(utc_now())}",
-            "---",
-        ]
+    frontmatter = render_note_frontmatter(
+        source,
+        run_record,
+        status,
+        machine_paper_type,
     )
-    summary_claims = _claims_by_type(claims, {"summary"})
-    abstract = (
-        f"{summary_claims[0]['claim_text_zh']} "
-        f"{_claim_marker(summary_claims[0], source, verified_pages)}"
-        if summary_claims
-        else "**原文未说明**"
+    overview_rows = _build_overview_rows(
+        claims,
+        figures,
+        source,
+        verified_pages,
+        paper_type_labels,
+        reading_mode=reading_mode,
     )
-    overview_rows = "\n".join(
-        [
-            f"| 论文类型 | {_escape_table('；'.join(paper_type_labels) if paper_type_labels else '原文未说明')} |",
-            f"| 研究对象 / 数据 / 模型 | {_overview_value(claims, {'data', 'material', 'model'}, source, verified_pages)} |",
-            f"| 核心问题 | {_overview_value(claims, {'question'}, source, verified_pages)} |",
-            f"| 方法路线 | {_overview_value(claims, {'method', 'model'}, source, verified_pages)} |",
-            f"| 主要发现 | {_overview_value(claims, {'result'}, source, verified_pages)} |",
-            f"| 核心贡献 | {_overview_value(claims, {'contribution'}, source, verified_pages)} |",
-            f"| 关键限制 | {_overview_value(claims, {'limitation'}, source, verified_pages)} |",
-            "| 论证主线 | 背景与缺口 → 研究问题 → 方法与证据 → 结果与解释 → 结论与边界 |",
-        ]
-    )
-    visual_rows, visual_details = _render_visuals(figures, source, visual_analysis)
-    learning_claims = _claims_by_type(claims, {"learning_value"})
+    visual_details = _render_visuals(figures, source, visual_analysis)
     expressions = _render_claim_group(
         claims,
         {"writing_expression"},
@@ -2062,12 +2191,17 @@ def render_deep_markdown(
             source,
             verified_pages,
         )
-        for target in ("2.1", "2.2", "2.3", "3.1", "3.2", "3.3", "3.4", "3.5", "4", "6.1", "6.2", "6.3")
+        for target in ("2.1", "2.2", "2.3", "3.1", "3.2", "3.3", "3.4", "3.5", "4", "6.1", "6.2", "6.3", "6.4")
     }
     context = {
         "frontmatter": frontmatter,
-        "title": str(metadata.get("title") or "Untitled paper"),
-        "abstract": abstract,
+        "summary": _overview_value(
+            claims,
+            {"summary"},
+            source,
+            verified_pages,
+            limit=1,
+        ),
         "overview_rows": overview_rows,
         "background_prior": _prepend_synthesis(
             synthesis["2.1"],
@@ -2109,7 +2243,6 @@ def render_deep_markdown(
             synthesis["4"],
             _render_deep_results(claims, source, verified_pages),
         ),
-        "visual_table_rows": visual_rows,
         "visual_details": visual_details,
         "discussion": _prepend_synthesis(
             synthesis["6.1"],
@@ -2124,40 +2257,54 @@ def render_deep_markdown(
             synthesis["6.2"],
             _render_claim_group(claims, {"conclusion"}, source, verified_pages),
         ),
-        "limitations": _prepend_synthesis(
+        "conclusion_boundaries": _prepend_synthesis(
             synthesis["6.3"],
+            _render_claim_group(
+                claims,
+                {"conclusion_boundary"},
+                source,
+                verified_pages,
+                empty="**解析失败：未生成结论边界分析**",
+            ),
+        ),
+        "limitations": _prepend_synthesis(
+            synthesis["6.4"],
             _render_claim_group(claims, {"limitation", "future_work"}, source, verified_pages),
         ),
-        "research_value": _render_claim_group(
-            claims,
-            {"learning_value"},
-            source,
-            verified_pages,
-            empty="**待用户补充**",
+        "research_context": (
+            f"- **[用户] 我的研究背景**：{str(run_record.get('research_context')).strip()}"
+            if str(run_record.get("research_context") or "").strip()
+            else "- **[用户] 我的研究背景**：待用户补充"
         ),
-        "idea_125": (
+        "research_value": (
             _render_claim_group(
-                [learning_claims[0]],
+                claims,
                 {"learning_value"},
                 source,
                 verified_pages,
+                empty="**待用户补充**",
             )
-            if learning_claims
-            else optional_learning_placeholder
+            if str(run_record.get("research_context") or "").strip()
+            else "**待用户补充**"
+        ),
+        "idea_125": _render_research_idea(
+            claims,
+            source,
+            verified_pages,
+            empty=optional_learning_placeholder,
+            novelty_search_authorized=(
+                run_record.get("external_novelty_search_authorized") is True
+            ),
         ),
         "visuals_125": "\n".join(
             f"{index}. **{figure['figure_label']}**：{figure['selection_reason']}"
             for index, figure in enumerate(figures.get("selected", [])[:2], start=1)
         ) or "**不适用**",
         "expressions": expressions,
-        "terms": _render_claim_group(
+        "terms": _render_terms_table(
             claims,
-            {"term"},
-            source,
-            verified_pages,
             empty=optional_learning_placeholder,
         ),
-        "evidence_quotes": _render_evidence_quotes(evidence, claims),
         "references": _render_claim_group(
             claims,
             {"reference"},
@@ -2165,16 +2312,11 @@ def render_deep_markdown(
             verified_pages,
             empty=optional_learning_placeholder,
         ),
-        "validation_comment": (
-            f"<!-- litanchor:validation template={FINAL_TEMPLATE_ID}@{FINAL_TEMPLATE_VERSION}; "
-            f"run={run_record.get('run_id')}; evidence={len(evidence)}; claims={len(claims)}; "
-            f"status={status}; pdf_sha256={pdf.get('sha256')} -->"
-        ),
     }
     rendered = template
     for key, value in context.items():
         rendered = rendered.replace(f"{{{{{key}}}}}", str(value))
-    return rendered.rstrip() + "\n"
+    return _apply_runtime_mode(rendered, reading_mode).rstrip() + "\n"
 
 
 def render_markdown(
@@ -2238,17 +2380,23 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
         section_synthesis,
         visual_analysis,
     )
-    required_markers = ("---\n", "<!-- litanchor:user:start -->", "<!-- litanchor:user:end -->")
+    required_markers = ("---\n",)
     format_findings: list[dict[str, str]] = []
     if not all(marker in markdown for marker in required_markers):
         format_findings.append(
             {
                 "issue_type": "markdown_contract_failed",
-                "message": "Generated Markdown is missing frontmatter or protected user markers.",
+                "message": "Generated Markdown is missing required frontmatter.",
             }
         )
+    format_findings.extend(validate_note_frontmatter(markdown))
     if run_record.get("reading_mode") in {"deep", "internalize"}:
-        format_findings.extend(validate_final_markdown(markdown))
+        format_findings.extend(
+            validate_final_markdown(
+                markdown,
+                str(run_record.get("reading_mode") or "deep"),
+            )
+        )
         format_findings.extend(
             validate_cross_section_consistency(
                 markdown,
@@ -2306,6 +2454,9 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--year", type=int)
     prepare.add_argument("--journal")
     prepare.add_argument("--doi")
+    prepare.add_argument("--keyword", action="append", default=[])
+    prepare.add_argument("--research-context")
+    prepare.add_argument("--allow-external-novelty-search", action="store_true")
     build = subparsers.add_parser("build", help="validate ledgers and render a Markdown preview")
     build.add_argument("run_dir", type=Path)
     build.add_argument("--output", type=Path)
@@ -2325,6 +2476,9 @@ def main(argv: list[str] | None = None) -> int:
                 year=args.year,
                 journal=args.journal,
                 doi=args.doi,
+                keywords=args.keyword,
+                research_context=args.research_context,
+                external_novelty_search_authorized=args.allow_external_novelty_search,
             )
             print(json.dumps({"run_dir": str(run_dir), "preflight_status": bundle["pdf"]["preflight_status"]}, ensure_ascii=False))
             return 0 if bundle["pdf"]["preflight_status"] in {"PASS", "PASS_WITH_WARNINGS"} else 2

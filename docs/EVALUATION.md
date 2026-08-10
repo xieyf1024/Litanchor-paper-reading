@@ -2,11 +2,13 @@
 
 ## Current phase
 
-`v0.6.0-beta.2` is the current Zero-Config Public Beta. It retains the v0.5.0
+`v0.6.0-beta.3` is the current Note Experience & Paper Template v1.0 beta. It
+retains the v0.5.0
 autonomous deep-reading baseline and adds Agent-assisted installation,
 Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure cases,
 MinerU component comparison, lifecycle recovery, semantic intent regression,
-redacted support bundles and deterministic Release packaging.
+redacted support bundles, deterministic Release packaging, mode-specific note
+rendering and deterministic frontmatter/content-contract gates.
 
 Release evidence:
 

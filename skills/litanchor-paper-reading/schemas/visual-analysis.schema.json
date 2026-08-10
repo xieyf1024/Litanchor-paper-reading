@@ -36,7 +36,11 @@
           "caption_original": {"type": "string", "minLength": 1},
           "context_original": {"type": "string", "minLength": 1},
           "selection_reason": {"type": "string", "minLength": 1},
-          "interpretation_zh": {"type": "string", "minLength": 1},
+          "interpretation_zh": {
+            "type": "string",
+            "minLength": 60,
+            "description": "Two to four sentences covering structure, key flow/trend/comparison, and the author's intended takeaway."
+          },
           "reading_cautions": {"type": "string", "minLength": 1},
           "supported_claim_ids": {
             "type": "array",

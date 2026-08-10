@@ -7,6 +7,17 @@
 - Treat reference-list statements and cited prior work as other authors' views unless the paper explicitly adopts them.
 - Keep optional learning questions separate from formal paper claims; do not answer them with external knowledge in the same note.
 
+Use provenance classes when content is not a direct paper claim:
+
+- `[原文]`: the paper explicitly reports or claims the content.
+- `[分析]`: a source-grounded boundary or interpretation produced by the Agent.
+- `[假设]`: a testable but unverified explanation or research direction.
+- `[用户]`: a connection or judgment supplied by the user.
+
+Do not label Agent analysis as `[原文]` or write it in the user's voice. Omit the
+`[原文]` prefix in ordinary prose to keep the note readable; show the other
+labels whenever those classes appear.
+
 ## Evidence contract
 
 - Store the shortest sufficient verbatim excerpt in the original language.
@@ -27,17 +38,20 @@ Use these ordered labels:
 
 Never strengthen certainty. Preserve markers such as `may`, `might`, `could`, `suggest`, `likely`, `potentially`, and `we hypothesize` with appropriately cautious Chinese wording. Never change correlation into causation or a local result into a universal rule.
 
+For every core conclusion, state the strongest interpretation supported by the
+design and at least one plausible stronger interpretation that the evidence does
+not establish. Keep this source-grounded conclusion-boundary analysis separate
+from limitations explicitly acknowledged by the authors.
+
 ## Numeric and equation fidelity
 
 Check signs, decimals, orders of magnitude, percentages, intervals, uncertainty, sample size, units, superscripts/subscripts, time/space scales and applicable conditions. If a symbol or formula is incomplete, preserve an image/page pointer and mark parsing partial or failed; do not reconstruct it from domain convention.
 
-## Evidence display levels
+## Evidence display boundary
 
-- `inline`: Evidence ID, page and optional verified Zotero link only.
-- `collapsed`: inline pointer plus a collapsed callout containing at most one or two necessary sentences.
-- `sidecar`: complete evidence retained outside the reading note.
-
-Default to `inline`. Use `collapsed` for core conclusions, key numbers, definitions, limitations and wording likely to be disputed. Use `sidecar` for long, repetitive or machine-only evidence.
+- Reader note: show only compact linked `p.x` locators. Do not expose Evidence IDs, duplicated page text, “打开” labels, or an evidence-index section.
+- Private sidecars: retain Evidence IDs, complete excerpts, Claim mappings, physical pages, coordinates, and validation state.
+- Preserve the sidecars even though they are not reader-facing; they are required for validation, regeneration, and audit.
 
 ## Validation severity
 
@@ -48,3 +62,15 @@ Default to `inline`. Use `collapsed` for core conclusions, key numbers, definiti
 
 After at most two object-scoped retries, stop and request human review. Never use fluent prose to hide insufficient evidence.
 
+## Locator and source-coverage modes
+
+- `page-grounded`: verified physical PDF pages are available. Only this mode may
+  produce a formal `deep` or `internalize` note for Obsidian export.
+- `structure-grounded`: reliable section, figure, table or equation identifiers
+  exist but physical pages cannot be verified. Return a visibly partial analysis
+  report without page links; do not export it as a formal note.
+- `source-limited`: only metadata, abstract or user-provided excerpts are
+  reliable. Return only supported fields and mark unseen content not assessable.
+
+Unknown locations never default to page 1. Downgrading the deliverable is safer
+than downgrading the evidence contract.

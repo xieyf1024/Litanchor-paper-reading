@@ -103,5 +103,56 @@ Date: 2026-07-29
 - [x] Keep core, optional MinerU and development dependencies separate with minimum-only constraints.
 - [x] Replace the clipped single-row Mermaid flow with centered staged diagrams.
 - [x] Complete the 158-test local gate, Skill validation, compilation, link/privacy audits, release build and one real isolated Windows lifecycle smoke run.
-- [ ] Complete GitHub Actions on the exact candidate commit.
+- [x] Complete GitHub Actions on the exact candidate commit.
 - [x] Select defect-driven `v0.6.0-beta.2`: repair now clears a stale activation backup after an interrupted update, with a regression test.
+
+## v0.6.0-beta.3 Note Experience & Paper Template v1.0 Freeze
+
+Date prepared: 2026-08-10
+
+### Content-contract freeze
+
+- [x] Split the public `Paper Template.md` contract from the private Runtime
+      renderer.
+- [x] Freeze mode scope: `skim` Section 1, `deep` Sections 1–6, and
+      `internalize` Sections 1–8.
+- [x] Freeze the 16-field frontmatter Schema and represent mode only through
+      one mode tag beside `LitAnchor`.
+- [x] Keep Evidence IDs and exact excerpts in private sidecars; expose only
+      compact linked `p.x` locators in the reader note.
+- [x] Add paper-type analytical lenses, experiment evidence chains,
+      conclusion boundaries, provenance labels, and internalize research-idea
+      gates without adding paper-specific rules.
+- [x] Preserve page-grounded formal export, PyMuPDF evidence authority,
+      consent-aware MinerU enhancement, contained writes, and no overwrite.
+
+### Local candidate gates
+
+- [x] Complete the 173-test repository suite on the local beta.3 candidate.
+- [x] Verify clean generated Markdown source with no internal HTML comments,
+      no Section 6.5, and no internal experiment-completion placeholder.
+- [x] Reproduce and fix vertically adjacent Figure 1/2 and Figure 8/9 crops on
+      an original PDF; the corrected Figure 2 and Figure 9 crops pass visual
+      inspection without paper-specific rules.
+- [x] Complete Skill validation, source compilation, Markdown-link, anti-leak/privacy,
+      release-package, and diff-whitespace checks.
+- [x] Verify the built package version, 57-file manifest, checksum, install
+      payload, retired-template exclusion, and deterministic two-build hash.
+- [x] Review at least one `skim`, one `deep`, and one `internalize` note in
+      Obsidian; the three notes should cover distinct paper-analysis demands.
+- [x] Sync the local Obsidian `Paper Template.md` copy to the tested Paper
+      Template v1.0 content contract after the final Section 6.5 and
+      source-comment cleanup. Obsidian may normalize table-column spacing, so
+      verify headings, fields and alignment markers rather than requiring a
+      byte-identical hash; retain the previous copy as a private rollback backup.
+
+### Publication gates
+
+- [ ] Commit and push `codex/v0.6-beta3-paper-analysis`.
+- [ ] Create a pull request and complete the Windows Python 3.10–3.14 GitHub
+      Actions matrix on the exact candidate commit.
+- [ ] Merge to `main`, tag `v0.6.0-beta.3`, and publish the verified ZIP,
+      checksum, and package manifest as a GitHub Pre-release.
+- [ ] Freeze beta.3 feedback before deciding whether the next version is a
+      narrow patch or `v1.0.0-rc1`; do not reopen the template without a
+      release-blocking defect.

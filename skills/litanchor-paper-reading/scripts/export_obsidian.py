@@ -59,8 +59,17 @@ def _existing_directory(path: Path, label: str) -> Path:
 
 
 def safe_note_stem(title: str, fallback: str) -> str:
-    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", title).strip().rstrip(". ")
-    stem = re.sub(r"\s+", " ", stem)[:120].rstrip(". ") or fallback
+    original = str(title or "").strip()
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", original).strip().rstrip(". ")
+    stem = re.sub(r"\s+", " ", stem) or fallback
+    if len(stem) > 120:
+        suffix = hashlib.sha256(original.encode("utf-8")).hexdigest()[:8]
+        prefix = stem[:111].rstrip(" ._-—–")
+        if " " in prefix:
+            word_prefix = prefix.rsplit(" ", 1)[0].rstrip(" ._-—–")
+            if len(word_prefix) >= 72:
+                prefix = word_prefix
+        stem = f"{prefix}-{suffix}"
     if stem.upper() in WINDOWS_RESERVED:
         stem = f"_{stem}"
     return stem
@@ -124,17 +133,19 @@ def export_run(
     if preview.suffix.casefold() != ".md" or not _inside(preview, run_dir):
         raise PipelineError("Validated Markdown preview must be inside the run directory")
     markdown = preview.read_text(encoding="utf-8")
+    run_record = load_json(run_dir / "run.json")
     digest = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     if quality.get("markdown_sha256") != digest:
         raise PipelineError("Markdown preview changed after validation")
-    if not markdown.startswith("---\n") or "<!-- litanchor:user:start -->" not in markdown or "<!-- litanchor:user:end -->" not in markdown:
-        raise PipelineError("Markdown preview is missing required Obsidian note markers")
+    if not markdown.startswith("---\n"):
+        raise PipelineError("Markdown preview is missing required Obsidian frontmatter")
+    if "<!--" in markdown:
+        raise PipelineError("Markdown preview contains internal HTML comments")
 
     paper_id = str(source.get("paper_id", "")).strip()
     if not re.fullmatch(r"[A-Za-z0-9._-]+", paper_id):
         raise PipelineError("SourceBundle contains an unsafe paper_id")
     title = str(source.get("metadata", {}).get("title", "")).strip()
-    run_record = load_json(run_dir / "run.json")
     run_id = str(run_record.get("run_id") or run_dir.name).strip()
     if not re.fullmatch(r"[A-Za-z0-9._-]+", run_id):
         raise PipelineError("Run record contains an unsafe run_id")
@@ -183,12 +194,16 @@ def export_run(
 
     figures = load_json(run_dir / "figures.json")
     selected = figures.get("selected", []) if isinstance(figures, dict) else []
+    # Skim notes intentionally render Section 1 only.  Keep the complete visual
+    # inventory in the private sidecar, but do not require or publish crops that
+    # the reader-facing note does not embed.
+    selected_for_export = [] if run_record.get("reading_mode") == "skim" else selected
     slug = safe_asset_slug(asset_slug or title, paper_id.casefold())
     asset_dir = allowed_root / "_assets" / slug
     visual_sources: list[tuple[Path, Path]] = []
     replacements: dict[str, str] = {}
     manifest_sources: list[Path] = []
-    for visual in selected:
+    for visual in selected_for_export:
         if not isinstance(visual, dict):
             raise PipelineError("Selected visual must be an object")
         try:

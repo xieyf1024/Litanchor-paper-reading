@@ -11,10 +11,12 @@ description: Installs, configures, diagnoses, upgrades, or runs LitAnchor and cr
 - Bind every factual claim to verified original-language evidence and a one-based physical PDF page.
 - Preserve numbers, units, variables, ranges, subjects, conditions, causality, scope, attribution, and author modality.
 - Keep observations, author interpretations, hypotheses, speculation, limitations, and external learning separate.
-- Distinguish `原文未说明`, `不适用`, `本模式未生成`, `待用户补充`, and `解析失败`.
+- Distinguish `原文未说明`, `不适用`, `待用户补充`, and `解析失败`. Omit sections excluded by the selected reading mode instead of displaying an AI-facing mode placeholder.
 - Block formal export on extraction, evidence, content, format, permission, or collision errors.
 - Keep Zotero read-only and never overwrite an existing Obsidian note.
 - Use evaluation papers only to discover general failure classes; never encode their answers or paper-specific corrections in the Skill.
+- Run only versioned bundled scripts during a paper task. Record a failure instead of creating an inline replacement parser or patching the formal Skill mid-run.
+- Keep the user-facing note properties fixed to `schemas/note-frontmatter.schema.json`. Represent the reading mode only with exactly one `skim`, `deep`, or `internalize` tag alongside `LitAnchor`; never emit a `reading_mode` property.
 
 Read `references/reliability-rules.md` and `references/workflow.md` completely for every paper.
 
@@ -22,6 +24,8 @@ Read `references/reliability-rules.md` and `references/workflow.md` completely f
 
 - Zotero acquisition, Obsidian export, or visual assets: read `references/integrations.md`.
 - `internalize` mode or adaptation to the user's study method: read `references/reading-method.md`.
+- Paper profiling, a secondary analytical lens, or clinical/materials/resource/discovery checks: read `references/paper-type-lenses.md`.
+- A testable research idea in `internalize`: read `references/research-idea-gates.md`.
 - Autonomous full-paper execution: read `references/autonomous-deep-reading.md`.
 - Feedback-driven Skill changes: read `references/controlled-evolution.md`.
 - Installation, setup, doctor, Vault-name resolution, or the two-intent public flow: read `references/zero-config.md`.
@@ -34,10 +38,10 @@ Keep detailed rules in `references/`, deterministic behavior in `scripts/`, outp
 2. Record source identity, metadata, file hash, physical page count, write intent, and `external_knowledge_allowed=false`.
 3. Preflight and extract the complete PDF by physical page. Stop on unreadable required pages.
 4. Map paper type and structure, then read all relevant pages in separate structure, method, result/visual, discussion/limit, and omission-review passes.
-5. Build EvidenceUnits before ClaimRecords. Never use retrieval snippets or one short claim as a substitute for reading a required section.
+5. Build EvidenceUnits before ClaimRecords. For each core experiment, state the tested claim, comparison and conditions, observed result, supported conclusion, and unsupported stronger interpretation. Never use retrieval snippets or one short claim as a substitute for reading a required section.
 6. For `deep` and `internalize`, evaluate the complete visual inventory and select zero to three indispensable method or result visuals. Record a reason when none qualifies.
-7. Compose from `assets/Paper Template - Final.md`; use a separate compact structure for `skim`.
-8. Run deterministic schema, page, quotation, numeric, symbol, content-recall, visual, Markdown, filename, and collision checks, followed by independent fidelity and recall review where required.
+7. Use the versioned user-facing content contract in `assets/Paper Template.md`, then render validated structured data through the internal slot asset `assets/Paper Template - Runtime.md`. `skim` renders Section 1 only; `deep` renders Sections 1–6; `internalize` renders Sections 1–8. Never expose runtime slots or AI-only instructions as the user template. Keep Evidence IDs and exact quotations in private sidecars; show only compact linked `p.x` locators in the reader note.
+8. Audit conclusion boundaries separately from author-stated limitations. Run deterministic schema, page, quotation, numeric, symbol, content-recall, visual, Markdown, filename, and collision checks, followed by independent fidelity and recall review where required.
 9. Show the preview, warnings, failed pages, and intended paths. Write only after explicit authorization.
 
 Use the bundled scripts rather than reimplementing their behavior:

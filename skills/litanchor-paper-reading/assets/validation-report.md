@@ -1,5 +1,9 @@
 # LitAnchor 校验报告
 
+- 来源覆盖：{{source_coverage}}
+- 定位模式：{{locator_mode}}
+- 交付类型：{{deliverable_type}}
+
 - 论文：
 - 运行 ID：
 - Skill 版本：
@@ -33,4 +37,3 @@
 - Claims：
 - Validation：
 - Run record：
-

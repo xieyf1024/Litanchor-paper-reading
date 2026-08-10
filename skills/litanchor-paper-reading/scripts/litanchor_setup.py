@@ -31,7 +31,7 @@ from litanchor_local import SKILL_VERSION  # noqa: E402
 from zotero_local import DEFAULT_BASE_URL, ZoteroLocalClient  # noqa: E402
 
 
-SETUP_VERSION = "0.6.0-beta.2"
+SETUP_VERSION = "0.6.0-beta.3"
 CONFIG_SCHEMA_VERSION = "0.2"
 DEFAULT_INBOX = Path("LitAnchor") / "00_Inbox"
 MINIMUM_PYTHON = (3, 10)

@@ -74,7 +74,7 @@ Zotero Local API GET or manual PDF
 → all-figure inventory and 0–3 original-PDF key-figure crops
 → independent fidelity and recall reviews
 → required-content, depth, visual and evidence-quality gates
-→ Paper Template - Final composition
+→ Paper Template v1.0 composition
 → deterministic page/quote/numeric/symbol/template checks
 → non-overwriting Markdown preview
 → hash-verified, path-contained, non-overwriting Obsidian export
@@ -86,7 +86,7 @@ Zotero Local API GET or manual PDF
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 - `scripts/autonomous_deep_reading.py` reads a local three-mode upload-consent policy and automatically calls the token-free MinerU Flash service for eligible whole papers or page-preserving subsets. `scripts/mineru_adapter.py` enforces 10 MiB/20-page limits and records `exact`/`fuzzy`/`unmatched` alignment without promoting any block to formal evidence.
-- `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the canonical Final-template heading/slot contract.
+- `scripts/paper_quality_gate.py` blocks sparse or shallow deep ledgers and validates the shared heading contract plus unresolved internal runtime slots.
 - `scripts/autonomous_deep_reading.py` creates the PyMuPDF-authoritative page
   baseline, classifies the paper, materializes six reading-pass work packets,
   fuses aligned MinerU headings, enforces autonomous origins and requires
@@ -110,20 +110,22 @@ empty, visual analysis is pending or either independent review is incomplete.
 1. **Parse request.** Resolve `skim`, `deep`, or `internalize`; set `external_knowledge_allowed=false`; default to `deep` only for an explicit close-reading request.
 2. **Resolve source.** Prefer one exact Item Key, citekey, DOI, or title match. Present ambiguous candidates instead of silently selecting the first result. Fall back to a user-provided PDF when Zotero access is unavailable.
 3. **Build SourceBundle.** Preserve original metadata, the full author list, annotations, attachment key, PDF hash and acquisition method. Do not summarize during acquisition. Store only the first verified author in human-note frontmatter.
-4. **Preflight PDF.** Check file validity, encryption, page count, text coverage, likely scanning, extraction corruption and layout warnings. Return `PASS`, `PASS_WITH_WARNINGS`, `FALLBACK_REQUIRED`, or `BLOCKED`.
+4. **Preflight PDF.** Check file validity, encryption, page count, text coverage, likely scanning, extraction corruption and layout warnings. Return `PASS`, `PASS_WITH_WARNINGS`, `FALLBACK_REQUIRED`, or `BLOCKED`. Record `page-grounded`, `structure-grounded`, or `source-limited`; only `page-grounded` can become a formal deep/internalize note.
 5. **Extract by page.** Preserve PDF physical page boundaries, text blocks and warnings. Never flatten the entire paper into an unpaged string.
-6. **Profile and map structure.** Distinguish empirical, method, model and review papers; map section boundaries without inventing missing sections.
-7. **Run specialised reading passes.** Separately cover background/question/contribution; data/method/model/equation/metric/experiment; results/visuals; discussion/limits/conclusions; then compare the ledger with the detected paper structure.
+6. **Profile and map structure.** Distinguish empirical, method, model and review papers; map section boundaries without inventing missing sections. Then load at most one secondary analytical lens from `references/paper-type-lenses.md`; the lens changes questions and completeness checks, not the stable primary type or Final-template structure.
+7. **Run specialised reading passes.** Separately cover background/question/contribution; data/method/model/equation/metric/experiment; results/visuals; discussion/limits/conclusions; then compare the ledger with the detected paper structure. For each core experiment, record the tested claim, comparison and conditions, observation, supported conclusion and unsupported stronger interpretation.
 8. **Build evidence ledger.** Extract the smallest sufficient original-language evidence units with page references, section, quote, numbers, units and epistemic markers.
 9. **Run the Visual Selection Pass.** Every `deep`/`internalize` run must evaluate key visuals and select at most 1–3 objects that are indispensable to the method or main result. Crop from the original PDF, retain the manifest and verified Zotero page link, then pass edge/provenance checks. If none qualifies, record the reason. A failed or contaminated crop is rejected rather than embedded.
-10. **Build rich claim ledger.** Generate intermediate knowledge objects only from evidence units; add explanatory detail, conditions, importance and Final-template section identity. Preserve scope, subject, causality and modality.
-11. **Apply deep quality gate.** Require all core content groups, adequate claim/detail density and explanatory depth. Page dispersion alone is insufficient.
-12. **Compose note.** Load `assets/Paper Template - Final.md` for `deep`/`internalize`; keep `skim` separate. Render only validated structured data.
+10. **Build rich claim ledger.** Generate intermediate knowledge objects only from evidence units; add explanatory detail, conditions, importance and Final-template section identity. Preserve scope, subject, causality and modality. Assign `paper`, `analysis`, `hypothesis`, or `user` provenance; non-paper content must display its label.
+11. **Apply deep quality gate.** Require all core content groups, adequate claim/detail density and explanatory depth. Audit the strongest supported conclusion and at least one stronger interpretation the evidence does not establish, separately from author-stated limitations. In `internalize`, require a source observation, falsifiable hypothesis, delta, validation plan, two failure modes and novelty-check status. Page dispersion alone is insufficient.
+12. **Compose note.** Treat `assets/Paper Template.md` as the human-readable `Paper Template v1.0` content contract and render through the internal slot asset `assets/Paper Template - Runtime.md`. `skim` contains Section 1 only, `deep` contains Sections 1–6, and `internalize` contains Sections 1–8. All modes use the fixed note-frontmatter Schema and place the mode only in tags. Never present runtime slots or AI-only instructions as the user template.
 13. **Validate.** Run deterministic checks, Final-template checks, independent
     fidelity review and paper-structure/content recall review. A blocker or
     error prevents formal export.
 14. **Preview and export.** Show the note, warnings, failed pages and output paths. Write only to an explicitly authorized directory; never overwrite an existing note automatically.
 15. **Record feedback.** Store feedback as a FeedbackEvent. Do not edit the formal Skill during a paper-reading run.
+
+All runtime stages must use versioned bundled scripts. If a parser, validator or renderer fails, preserve the trace and stop or downgrade; do not create an inline replacement script or patch the formal Skill during the paper task.
 
 ## Prompt-layer contracts
 
@@ -142,16 +144,16 @@ Retries are object-scoped and limited to two attempts. After two failures, mark 
 
 ## Evidence display
 
-- General claims: show Evidence ID, PDF page and optional Zotero link inline.
-- Core conclusions, key numbers, definitions and disputed wording: additionally show a collapsed Obsidian evidence callout.
-- Repeated or long supporting excerpts: keep only in the evidence sidecar.
-- Default quote limit: one sentence; use at most two when one sentence is insufficient.
+- The reader note shows only compact linked `p.x` locators.
+- Evidence IDs, exact excerpts, coordinates, Claim mappings, and validation state stay in private sidecars.
+- Do not add a reader-facing evidence index or duplicate a page as both plain text and a link.
+- Sidecars remain mandatory because fidelity validation, regeneration, and audit depend on them.
 
 ## Failure semantics
 
 - `原文未说明` means the information is absent from the paper.
 - `不适用` means the field does not apply to this paper type.
-- `本模式未生成` means the optional learning layer was not generated in `deep`; `internalize` must generate it.
+- Mode-excluded sections are omitted: `skim` stops after Section 1 and `deep` stops after Section 6.
 - `待用户补充` means the field depends on the user's own research context.
 - `解析失败` means the information may exist but could not be read reliably.
 
