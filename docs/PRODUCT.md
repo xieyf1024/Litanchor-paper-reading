@@ -6,7 +6,7 @@ LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学�
 Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
 该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
 
-Current version: `v0.6.0-beta.2 Zero-Config Public Beta`
+Current version: `v0.6.0-beta.3 Note Experience & Paper Template v1.0 Freeze`
 Public status: Windows-first beta for local-capable Agents
 
 ## Product promise
@@ -47,9 +47,9 @@ Supported baseline:
 
 | 模式 | 目的 | 必须覆盖 |
 |---|---|---|
-| `skim` | 判断论文主题、方法与是否值得精读 | 骨架、问题、方法概览、主要结果与结论 |
-| `deep` | 默认的研究生级精读 | 背景、空白、数据、方法、指标、关键公式与图表、结果、讨论、局限性、结论 |
-| `internalize` | 在 `deep` 结果上支持学习迁移 | 125 学习法、写作表达、可追踪参考文献、待研究问题；所有启发与原文事实分层 |
+| `skim` | 快速判断论文讲什么、是否值得继续读 | 只生成模板第 1 节：一句话摘要、类型、结构、问题、方法骨架、主要结果、结论边界和必要定位 |
+| `deep` | 默认的研究生级精读 | 生成模板第 1–6 节；内部保留 Evidence/Claim，正文覆盖方法/公式/参数、实验证据链、结果、直接嵌入的关键图表、作者解释、结论边界和作者局限 |
+| `internalize` | 在 `deep` 结果上形成可检验的研究行动 | 生成完整第 1–8 节：deep 全部内容；研究联系、可证伪假设、相对原文增量、验证方案、至少两个失败条件、新颖性核查状态、术语/表达/追踪文献；所有启发与原文事实分层 |
 
 ## Autonomous deep-reading baseline
 
@@ -63,16 +63,18 @@ The published stable path includes:
 5. EvidenceUnit, ClaimRecord and SectionSynthesis materialization;
 6. complete figure inventory and zero to three selected method/result visuals;
 7. independent fidelity and recall review;
-8. `Paper Template - Final` composition;
+8. `Paper Template v1.0` composition through the private Runtime template;
 9. deterministic page, quote, number, symbol, depth, Markdown and collision
    gates;
 10. hash-verified, path-contained and non-overwriting Obsidian export.
 
-The v0.5.0 baseline was extended through v0.6.0-beta.2 with Agent-assisted install,
+The v0.5.0 baseline was extended through v0.6.0-beta.3 with Agent-assisted install,
 doctor, setup, upgrade, rollback and uninstall; Windows Python 3.10–3.14 CI;
 frozen holdout evaluation; pathological PDF/failure fixtures; MinerU component
 A/B evidence; deterministic Release artifacts; public issue routing; redacted
-support bundles; and interrupted-lifecycle recovery.
+support bundles; interrupted-lifecycle recovery; and the frozen Paper Template
+v1.0 reader contract with mode-specific output, compact page locators, explicit
+provenance, conclusion boundaries and structured experiment chains.
 
 Release evidence:
 

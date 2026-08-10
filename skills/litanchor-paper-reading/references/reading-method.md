@@ -7,9 +7,18 @@ authority or reliability rule.
 
 ## Select depth
 
-- Use `skim` to understand the title, abstract, structure, question, method overview, main result and conclusion, or to decide whether deeper reading is worthwhile.
-- Use `deep` for papers central to the user's topic, recommended by an adviser, or needed for method/result understanding.
-- Use `internalize` when the user explicitly wants reusable research design, visualization, writing and follow-up questions.
+- Use `skim` to decide relevance quickly. Cover the title, abstract, structure,
+  question, method overview, main result, bounded conclusion and whether deeper
+  reading is worthwhile. Render only template Section 1.
+- Use `deep` for a research-grade understanding of one paper. Cover the complete
+  argument, data/materials, methods, equations/metrics, core experiments,
+  experiment-to-claim evidence chains, results, selected visuals, author
+  interpretation, conclusion boundaries and author-stated limitations. Render
+  template Sections 1–6 and omit the learning layer.
+- Use `internalize` when the user wants to transfer the paper into research
+  practice. Include everything in `deep`, then add source-labelled learning,
+  writing, visualization, knowledge-connection and testable research-idea work
+  in template Sections 7–8.
 
 ## Three passes
 
@@ -30,11 +39,14 @@ authority or reliability rule.
 
 For `internalize`, add:
 
-- one research/method/project idea for the user to consider;
+- one research/method/project idea that passes `research-idea-gates.md`;
 - two figures worth studying for communication design;
 - five English expressions or writing patterns from the paper.
 
-Label the entire layer: `以下属于学习启发，不是作者原文结论。` Do not present a suggested idea as an author claim. Preserve exact evidence for quoted expressions.
+Label the entire layer: `以下属于学习启发，不是作者原文结论。` Mark
+source-grounded interpretation as `[分析]`, the research idea as `[假设]`, and
+user-supplied connections as `[用户]`. Do not present a suggested idea as an
+author claim. Preserve exact evidence for quoted expressions.
 
 ## Questions and snowballing
 

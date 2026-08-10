@@ -92,9 +92,25 @@ experimental conditions, or result aspects must cite every EvidenceUnit needed
 to support the combined wording. Verify ambiguous superscripts, range symbols,
 and units against the rendered original page before materialization.
 
+For each core experiment, populate its structured evidence chain: tested claim,
+comparison and conditions, observed result, supported conclusion, and an
+unsupported stronger interpretation. For each core conclusion, create a
+source-grounded `conclusion_boundary` record with `provenance_class=analysis`.
+Keep these boundaries separate from author-stated limitations.
+
+For `internalize`, create at least one `research_idea` record with
+`provenance_class=hypothesis` and the required source observation, hypothesis,
+delta, validation, failure modes and novelty status. Do not generate a vague
+idea merely to satisfy the template.
+
 MinerU may improve structure, reading order, captions, tables, equations, and
 OCR candidates. Accept a MinerU block only after aligning it to an original
 PyMuPDF physical page. Unmatched blocks are not evidence.
+
+Use only the bundled, versioned scripts in this directory during a reading run.
+If a bundled parser or auditor fails, preserve its error and follow the declared
+fallback state. Do not create an inline replacement script or patch `SKILL.md`,
+references, schemas or scripts while processing the paper.
 
 Materialize a semantic draft only after all reading passes:
 

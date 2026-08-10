@@ -53,6 +53,8 @@ class RepositoryContractTests(unittest.TestCase):
             "skills/litanchor-paper-reading/scripts/mineru_adapter.py",
             "skills/litanchor-paper-reading/scripts/paper_quality_gate.py",
             "skills/litanchor-paper-reading/scripts/litanchor_setup.py",
+            "skills/litanchor-paper-reading/assets/Paper Template.md",
+            "skills/litanchor-paper-reading/assets/Paper Template - Runtime.md",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
@@ -211,7 +213,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_json_schemas_parse_and_use_expected_draft(self):
         schema_dir = SKILL / "schemas"
         schemas = sorted(schema_dir.glob("*.schema.json"))
-        self.assertEqual(len(schemas), 14)
+        self.assertEqual(len(schemas), 15)
         for path in schemas:
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["$schema"], "https://json-schema.org/draft/2020-12/schema")
@@ -229,12 +231,75 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("source_match_kind", evidence["required"])
 
     def test_note_template_protects_user_content_and_limits_evidence(self):
-        text = (SKILL / "assets" / "Paper Template - Final.md").read_text(encoding="utf-8")
-        self.assertIn("<!-- litanchor:user:start -->", text)
-        self.assertIn("<!-- litanchor:user:end -->", text)
-        self.assertIn("以下属于学习启发，不是作者原文结论", text)
-        self.assertIn("## 4. 核心结果与证据", text)
-        self.assertIn("{{evidence_quotes}}", text)
+        text = (SKILL / "assets" / "Paper Template.md").read_text(encoding="utf-8")
+        runtime = (SKILL / "assets" / "Paper Template - Runtime.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("<!--", text)
+        self.assertEqual(text.count("> [!abstract]"), 1)
+        self.assertIn("## 4. 核心结果", text)
+        self.assertNotIn("{{", text)
+        self.assertIn("证据不能支持的更强说法", text)
+        self.assertIn("*原文图表*", text)
+        self.assertNotIn("图表文件.png", text)
+        self.assertNotIn("{{evidence_quotes}}", runtime)
+        self.assertIn("{{visual_details}}", runtime)
+        self.assertNotIn("{{evidence_limits}}", runtime)
+        self.assertIn("{{conclusion_boundaries}}", runtime)
+        self.assertIn("{{experiments}}", runtime)
+        self.assertIn("litanchor:mode:skim:start", runtime)
+        self.assertIn("litanchor:mode:deep:start", runtime)
+        self.assertIn("litanchor:mode:internalize:start", runtime)
+        self.assertNotIn("<!-- litanchor:user:start -->", runtime)
+        self.assertNotIn("<!-- litanchor:user:end -->", runtime)
+        self.assertNotIn("### 6.5 信息缺失与当前核验状态", text)
+        self.assertNotIn("### 6.5 信息缺失与当前核验状态", runtime)
+        self.assertIn("| :--- | :--- |", text)
+
+    def test_user_template_has_fixed_frontmatter_contract(self):
+        text = (SKILL / "assets" / "Paper Template.md").read_text(encoding="utf-8")
+        frontmatter = text.split("---", 2)[1].strip().splitlines()
+        fields = [
+            line.split(":", 1)[0]
+            for line in frontmatter
+            if line and not line.startswith("  - ")
+        ]
+        self.assertEqual(
+            fields,
+            [
+                "title", "first_author", "year", "journal", "doi",
+                "paper_type", "keywords", "source_coverage", "locator_mode",
+                "validation_status", "review_status", "skill_version",
+                "template_version", "created", "updated", "tags",
+            ],
+        )
+        self.assertIn("  - LitAnchor", frontmatter)
+        self.assertIn("  - deep", frontmatter)
+        self.assertIn('template_version: "1.0"', frontmatter)
+        self.assertNotIn("reading_mode:", text)
+        self.assertIn("| 术语 / 问题 | 通俗解释或当前理解 |", text)
+        self.assertNotIn("| 类型 | 术语 / 问题", text)
+        self.assertNotIn("| 定位 | 状态 |", text)
+
+    def test_beta3_analysis_contracts_are_discoverable(self):
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        reliability = (SKILL / "references" / "reliability-rules.md").read_text(
+            encoding="utf-8"
+        )
+        workflow = (SKILL / "references" / "workflow.md").read_text(
+            encoding="utf-8"
+        )
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("references/paper-type-lenses.md", skill)
+        self.assertIn("references/research-idea-gates.md", skill)
+        self.assertIn("versioned bundled scripts", skill)
+        for marker in ("[原文]", "[分析]", "[假设]", "[用户]"):
+            self.assertIn(marker, reliability)
+        self.assertIn("structure-grounded", workflow)
+        self.assertIn("source-limited", workflow)
+        self.assertIn("30 秒了解 LitAnchor", readme)
+        for mode in ("`skim`（粗读）", "`deep`（精读，默认）", "`internalize`（研究型阅读）"):
+            self.assertIn(mode, readme)
 
     def test_project_license_and_notice_match_pymupdf_distribution_choice(self):
         license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")

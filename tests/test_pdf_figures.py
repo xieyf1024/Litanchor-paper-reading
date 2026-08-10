@@ -75,6 +75,39 @@ class FigureCropTests(unittest.TestCase):
             self.assertLess(result["clip_bbox"][1], title["bbox"][1])
             self.assertGreater(result["clip_bbox"][3], 225)
 
+    def test_adjacent_previous_figure_is_excluded_by_caption_boundary(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "adjacent.pdf"
+            image = root / "figure-2.png"
+            document = pymupdf.open()
+            page = document.new_page(width=300, height=500)
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 100, 80), False)
+            pixmap.clear_with(0x88CCFF)
+            page.insert_image(pymupdf.Rect(70, 40, 230, 140), pixmap=pixmap)
+            page.insert_text((45, 175), "Figure 1: Previous complete result figure and caption.")
+            page.insert_image(pymupdf.Rect(70, 230, 230, 330), pixmap=pixmap)
+            page.insert_text((45, 365), "Figure 2: Target complete result figure and caption.")
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 2",
+                output_path=image,
+                dpi=144,
+            )
+
+            self.assertEqual(len(result["candidate_image_rects"]), 1)
+            self.assertGreater(result["clip_bbox"][1], 200)
+            self.assertEqual(
+                result["preceding_figure_caption"]["label"],
+                "Figure 1",
+            )
+
     def test_refuses_missing_caption_and_overwrite(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

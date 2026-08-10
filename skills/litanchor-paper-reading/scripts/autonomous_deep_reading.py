@@ -37,7 +37,7 @@ from autonomous_semantic import (  # noqa: E402
 from paper_quality_gate import PAPER_TYPE_LABELS_ZH  # noqa: E402
 
 
-AUTONOMOUS_VERSION = "0.6.0-beta.2"
+AUTONOMOUS_VERSION = "0.6.0-beta.3"
 ALLOWED_AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
 MINERU_CONSENT_MODES = {
     "always_for_eligible_files",
@@ -912,7 +912,7 @@ def build_reading_passes(
         },
         {
             "pass_id": "pass-6-compose-review",
-            "purpose": "compose Paper Template - Final and run independent fidelity and recall reviews",
+            "purpose": "compose Paper Template.md through the private Runtime and run independent fidelity and recall reviews",
             "source_pages": all_pages,
             "required_outputs": [
                 "fidelity-review.json",

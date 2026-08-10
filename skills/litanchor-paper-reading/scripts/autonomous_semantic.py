@@ -395,6 +395,11 @@ def validate_visual_analysis(
         for item in analyses
         if isinstance(item, dict) and item.get("figure_label")
     }
+    selected_by_label = {
+        str(item.get("figure_label")): item
+        for item in selected
+        if isinstance(item, dict) and item.get("figure_label")
+    }
     claim_ids = {
         str(item.get("claim_id"))
         for item in claims
@@ -411,8 +416,27 @@ def validate_visual_analysis(
             issues.append(f"{label} analysis has invalid origin")
         if not str(item.get("caption_original") or "").strip():
             issues.append(f"{label} has no caption")
-        if len(str(item.get("interpretation_zh") or "").strip()) < 60:
+        interpretation = str(item.get("interpretation_zh") or "").strip()
+        sentence_count = len(
+            [
+                sentence
+                for sentence in re.split(r"(?<=[。！？!?])\s*", interpretation)
+                if sentence.strip()
+            ]
+        )
+        if len(interpretation) < 60 or sentence_count not in {2, 3, 4}:
             issues.append(f"{label} interpretation is too shallow")
+        location = str(
+            selected_by_label.get(label, {}).get("discussion_location") or ""
+        ).strip()
+        if not location or re.fullmatch(
+            r"(?:PDF\s*)?p\.?\s*\d+(?:\s*[-–—]\s*\d+)?",
+            location,
+            flags=re.IGNORECASE,
+        ):
+            issues.append(
+                f"{label} discussion location must name the source subsection"
+            )
         if len(str(item.get("reading_cautions") or "").strip()) < 20:
             issues.append(f"{label} has no substantive reading caution")
         supported_claims = item.get("supported_claim_ids")

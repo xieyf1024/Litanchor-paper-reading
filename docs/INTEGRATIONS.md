@@ -2,7 +2,7 @@
 
 ## Current implementation status
 
-The current `v0.6.0-beta.2` path connects to Zotero 7 or newer through the
+The current `v0.6.0-beta.3` path connects to Zotero 7 or newer through the
 loopback-only Local API, builds a PyMuPDF-authoritative page baseline, applies
 the user’s local MinerU consent policy and exports a reviewed note only to an
 explicitly authorized Obsidian Vault subdirectory.
@@ -104,6 +104,9 @@ Every `deep` or `internalize` note must complete a Visual Selection Pass:
 5. render or crop with `scripts/pdf_figures.py`;
 6. verify source hash, page, caption, crop geometry, edges and output hash;
 7. embed the accepted PNG with a Vault-relative Obsidian wikilink.
+8. show it directly under `Figure/Table x`, followed by the source subsection
+   number/title with a linked `p.x`, the selection reason, and a two-to-four-
+   sentence interpretation.
 
 Ambiguous, clipped or contaminated crops remain review items and cannot enter
 the final note.
@@ -113,6 +116,10 @@ the final note.
 - Resolve one explicit Vault root and one allowed child directory.
 - Validate Markdown, frontmatter, evidence references, image targets and
   filename before writing.
+- Derive the note filename from the paper title. Replace filesystem-invalid
+  characters; for a title longer than 120 characters, keep a readable prefix
+  and append a stable eight-character content hash. Preserve the full title in
+  frontmatter and never add a duplicate H1 heading.
 - Verify the candidate Markdown SHA-256 immediately before export.
 - Run all collision checks before creating any final file.
 - Write temporary files in the destination and promote them atomically.

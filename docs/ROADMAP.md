@@ -1,6 +1,6 @@
 # Roadmap to a stable public release
 
-Current version: `v0.6.0-beta.2 Zero-Config Public Beta`.
+Current version: `v0.6.0-beta.3 Note Experience & Paper Template v1.0 Freeze`.
 
 The next milestone is not a larger feature set. It is a stable, understandable and recoverable two-intent experience for users running a local-capable Agent on Windows:
 

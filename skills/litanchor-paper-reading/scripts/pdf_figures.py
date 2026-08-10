@@ -74,6 +74,44 @@ def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]
     return matches
 
 
+def _preceding_figure_caption(
+    page: Any,
+    target_caption_rect: Any,
+    pymupdf: Any,
+) -> dict[str, Any] | None:
+    """Return the closest earlier figure caption as a vertical crop boundary."""
+    generic_pattern = re.compile(
+        r"f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*(\d+[A-Za-z]?)"
+        r"(?:\s*[:.]|\s+)",
+        re.IGNORECASE,
+    )
+    candidates: list[dict[str, Any]] = []
+    for block in page.get_text("blocks"):
+        rectangle = pymupdf.Rect(block[:4])
+        if rectangle.y1 > target_caption_rect.y0 + 1.0:
+            continue
+        text = " ".join(str(block[4]).split())
+        match = generic_pattern.search(text)
+        if match is None:
+            continue
+        prefix = text[: match.start()].strip()
+        suffix = text[match.end() :].strip()
+        if len(prefix) > 24 or len(suffix) < 20:
+            continue
+        candidates.append(
+            {
+                "label": f"Figure {match.group(1)}",
+                "text": text,
+                "bbox": [round(value, 3) for value in rectangle],
+                "_rect": rectangle,
+            }
+        )
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item["_rect"].y1, item["_rect"].x0))
+    return candidates[-1]
+
+
 def _image_rectangles(page: Any) -> list[Any]:
     rectangles: list[Any] = []
     seen: set[tuple[float, float, float, float]] = set()
@@ -180,10 +218,12 @@ def _render_with_quality_gate(
     dpi: int,
     expansion_step: float,
     preserve_initial_on_failure: bool = False,
+    expansion_bounds: Any | None = None,
 ) -> tuple[Any, Any, str, float, bool, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
     current = pymupdf.Rect(clip)
     initial = pymupdf.Rect(clip)
+    bounds = pymupdf.Rect(expansion_bounds or page.rect)
     threshold = 0.01
     for attempt_number in range(1, 4):
         pixmap = page.get_pixmap(dpi=dpi, clip=current, alpha=False)
@@ -208,21 +248,27 @@ def _render_with_quality_gate(
                 }
             )
             return pixmap, initial, "needs_human_review", 0.7, True, attempts
-        expanded = _expand_rect(pymupdf, current, page.rect, expansion_step)
+        expanded = _expand_rect(pymupdf, current, bounds, expansion_step)
         if expanded == current:
             break
         current = expanded
 
-    full_page = page.get_pixmap(dpi=dpi, alpha=False)
+    bounded_region = page.get_pixmap(dpi=dpi, clip=bounds, alpha=False)
+    bounded_edge_ratios = _edge_ink_ratios(bounded_region)
+    bounded_touches = [
+        edge for edge, ratio in bounded_edge_ratios.items() if ratio > threshold
+    ]
     attempts.append(
         {
-            "attempt": "full_page_fallback",
-            "clip_bbox": [round(value, 3) for value in page.rect],
-            "edge_ink_ratios": _edge_ink_ratios(full_page),
-            "touching_edges": [],
+            "attempt": "bounded_region_fallback",
+            "clip_bbox": [round(value, 3) for value in bounds],
+            "edge_ink_ratios": bounded_edge_ratios,
+            "touching_edges": bounded_touches,
         }
     )
-    return full_page, pymupdf.Rect(page.rect), "needs_human_review", 0.4, True, attempts
+    if not bounded_touches:
+        return bounded_region, bounds, "pass", 0.9, False, attempts
+    return bounded_region, bounds, "needs_human_review", 0.6, True, attempts
 
 
 def _parse_bbox(value: str | None, pymupdf: Any, page_rect: Any) -> Any | None:
@@ -314,12 +360,29 @@ def crop_figure(
         explicit_rect = _parse_bbox(bbox, pymupdf, page.rect)
         candidate_rects: list[Any] = []
         related_text_blocks: list[dict[str, Any]] = []
+        preceding_caption: dict[str, Any] | None = None
+        expansion_bounds = pymupdf.Rect(page.rect)
         dynamic_margin = max(margin, 12.0, min(page.rect.width, page.rect.height) * 0.025)
         if explicit_rect is None:
+            preceding_caption = _preceding_figure_caption(
+                page,
+                caption_rect,
+                pymupdf,
+            )
+            preceding_boundary = (
+                preceding_caption["_rect"].y1 if preceding_caption is not None else page.rect.y0
+            )
+            expansion_bounds = pymupdf.Rect(
+                page.rect.x0,
+                min(caption_rect.y0, preceding_boundary + (2.0 if preceding_caption else 0.0)),
+                page.rect.x1,
+                min(page.rect.y1, caption_rect.y1 + dynamic_margin),
+            )
             for rectangle in _image_rectangles(page):
                 vertical_gap = caption_rect.y0 - rectangle.y1
                 if (
                     rectangle.y0 < caption_rect.y0
+                    and rectangle.y0 >= preceding_boundary - 3.0
                     and vertical_gap >= -3
                     and vertical_gap <= page.rect.height * 0.5
                     and rectangle.get_area() >= 500
@@ -342,7 +405,7 @@ def crop_figure(
                 pymupdf,
                 [*candidate_rects, *related_rects, caption_rect],
             )
-            clip = _expand_rect(pymupdf, clip, page.rect, dynamic_margin)
+            clip = _expand_rect(pymupdf, clip, expansion_bounds, dynamic_margin)
             crop_method = "caption_plus_embedded_images"
         else:
             clip = explicit_rect
@@ -362,6 +425,7 @@ def crop_figure(
             dpi=dpi,
             expansion_step=dynamic_margin,
             preserve_initial_on_failure=explicit_rect is not None,
+            expansion_bounds=expansion_bounds,
         )
         pymupdf_version = getattr(pymupdf, "pymupdf_version", None) or getattr(
             pymupdf, "__version__", "unknown"
@@ -384,6 +448,11 @@ def crop_figure(
             {key: value for key, value in item.items() if key != "_rect"}
             for item in related_text_blocks
         ],
+        "preceding_figure_caption": (
+            {key: value for key, value in preceding_caption.items() if key != "_rect"}
+            if preceding_caption is not None
+            else None
+        ),
         "dynamic_margin_points": round(dynamic_margin, 3),
         "crop_validation_status": crop_validation_status,
         "crop_confidence": crop_confidence,

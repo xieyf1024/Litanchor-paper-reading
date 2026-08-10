@@ -19,6 +19,7 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 | VisualAnalysis | `visual-analysis.schema.json` | Caption/body/image-grounded analysis of selected visuals |
 | FidelityReview | `fidelity-review.schema.json` | Independent claim-to-evidence fidelity review for an autonomous candidate |
 | RecallReview | `recall-review.schema.json` | Independent paper-type content-recall review |
+| NoteFrontmatter | `note-frontmatter.schema.json` | Fixed user-facing Obsidian properties, status enums, dates and mode-tag contract |
 
 ## Invariants
 
@@ -32,9 +33,17 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 8. A `deep` ClaimRecord may include `title_zh`, `detail_points_zh`, `conditions_zh`, `section_id` and `importance`; one terse string is not sufficient for a core method/result/discussion object.
 9. Autonomous blind runs require `origin=auto_extracted` on EvidenceUnits and `origin=auto_synthesized` on ClaimRecords; curated/user/missing origins block completion.
 10. Autonomous completion requires independent FidelityReview and RecallReview artifacts with no unresolved blocker/error.
-11. `deep` and `internalize` must cover the required content groups before NotePackage can be completed. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `本模式未生成` for learning-layer content omitted by `deep`, `待用户补充` for personal reflection and `解析失败` for unreadable content.
+11. `deep` and `internalize` must cover the required content groups before NotePackage can be completed. Use `原文未说明` only for absent paper facts, `不适用` for inapplicable fields, `待用户补充` for personal reflection and `解析失败` for unreadable content. Mode-excluded sections are omitted rather than rendered with placeholders.
 12. A SectionSynthesis factual clause must be supported by the Evidence set declared for that section.
 13. MinerU alignment is a structure hint; formal Evidence still requires `authoritative_source=pymupdf` and a verified physical page.
+14. `provenance_class=paper` is the default for paper-grounded facts. `analysis`, `hypothesis`, and `user` must be visible in the human note and must not be rendered as author claims.
+15. Every core `experiment` ClaimRecord requires an `evidence_chain` containing the tested claim, comparison/conditions, observed result, supported conclusion, and unsupported stronger interpretation.
+16. Every `conclusion_boundary` ClaimRecord uses `provenance_class=analysis` and is kept separate from author-stated `limitation` records.
+17. An `internalize` `research_idea` uses `provenance_class=hypothesis` and records the source observation, falsifiable hypothesis, delta, validation plan, at least two failure modes, and novelty-check status.
+18. User-facing note frontmatter contains exactly 16 properties: `title`, `first_author`, `year`, `journal`, `doi`, `paper_type`, `keywords`, `source_coverage`, `locator_mode`, `validation_status`, `review_status`, `skill_version`, `template_version`, `created`, `updated`, and `tags`. The frozen reader contract is `Paper Template v1.0`, so generated notes use `template_version: "1.0"`.
+19. `first_author` is one full-name scalar. The complete author list remains in SourceBundle. `keywords` comes only from the paper or Zotero and is rendered as one semicolon-delimited string; an absent source keyword list stays empty.
+20. Reading mode is not a frontmatter property. `tags` always includes `LitAnchor` plus exactly one of `skim`, `deep`, or `internalize`; user-added tags are permitted and must never be removed by an automated update.
+21. `created` and `updated` use `YYYY-MM-DD`. `review_status` is restricted to `unreviewed`, `review_pending`, or `reviewed` in the human note even when the private run record uses more detailed workflow states.
 
 ## Local configuration
 
@@ -111,8 +120,8 @@ rendering.
 Deep mode requires Final-template content groups, sufficient claim/detail
 density, substantive analysis, complete visual selection and passing
 independent review; page dispersion alone is not completion evidence.
-SourceBundle retains all verified authors while Markdown frontmatter renders
-the configured human-facing author form. A completed preview records
+SourceBundle retains all verified authors and Zotero/source identifiers while
+Markdown frontmatter renders only the fixed NoteFrontmatter contract. A completed preview records
 `quality.markdown_sha256`; the Obsidian exporter recomputes it to reject
 post-validation changes. Runtime ledgers remain private and are excluded from
 Git.

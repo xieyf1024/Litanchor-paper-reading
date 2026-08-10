@@ -70,7 +70,11 @@
           },
           "caption_original": {"type": "string", "minLength": 1},
           "selection_reason": {"type": "string", "minLength": 1},
-          "discussion_location": {"type": "string", "minLength": 1},
+          "discussion_location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Source subsection number and title; a page-only locator is invalid."
+          },
           "image_path": {"type": "string", "minLength": 1},
           "manifest_path": {"type": "string", "minLength": 1},
           "embed_path": {"type": "string", "minLength": 1}

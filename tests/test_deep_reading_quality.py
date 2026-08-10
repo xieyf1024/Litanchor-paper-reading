@@ -276,7 +276,7 @@ class DeepReadingQualityTests(unittest.TestCase):
                 "method-algorithm",
             )
 
-    def test_internalize_requires_learning_layer_but_deep_uses_mode_placeholder(self):
+    def test_internalize_requires_learning_layer_and_deep_omits_it(self):
         claims = minimal_claims()
         findings = MODULE.evaluate_deep_claims(
             claims,
@@ -303,11 +303,170 @@ class DeepReadingQualityTests(unittest.TestCase):
             {"run_id": "run", "reading_mode": "deep"},
             "completed",
         )
-        self.assertIn(
-            "**本模式未生成（仅 internalize 模式要求）**",
-            markdown,
+        self.assertNotIn("## 7. 对研究与学习的价值", markdown)
+        self.assertNotIn("## 8. 术语与滚雪球阅读", markdown)
+
+        internalize = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            claims,
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "internalize"},
+            "completed",
         )
-        self.assertIn("**待用户补充**", markdown)
+        self.assertIn("## 7. 对研究与学习的价值", internalize)
+        self.assertIn("## 8. 术语与滚雪球阅读", internalize)
+        self.assertIn("**待用户补充**", internalize)
+
+    def test_beta3_quality_gates_require_experiment_chain_and_provenance(self):
+        experiment = minimal_claims()[0]
+        experiment["claim_id"] = "C-EXP"
+        experiment["claim_type"] = "experiment"
+        experiment["importance"] = "core"
+        boundary = minimal_claims()[0]
+        boundary["claim_id"] = "C-BOUNDARY"
+        boundary["claim_type"] = "conclusion_boundary"
+        findings = MODULE.evaluate_deep_claims(
+            [experiment, boundary],
+            page_count=1,
+            paper_type="method-algorithm",
+        )
+        issue_types = {item["issue_type"] for item in findings}
+        self.assertIn("experiment_evidence_chain_missing", issue_types)
+        self.assertIn("provenance_contract", issue_types)
+
+        experiment["evidence_chain"] = {
+            "tested_claim_zh": "检验目标主张。",
+            "comparison_conditions_zh": "在固定条件下比较基线。",
+            "observed_result_zh": "观察到目标指标改善。",
+            "supported_conclusion_zh": "支持在给定条件下有效。",
+            "unsupported_stronger_interpretation_zh": "不支持普遍有效的结论。",
+        }
+        boundary["provenance_class"] = "analysis"
+        repaired = MODULE.evaluate_deep_claims(
+            [experiment, boundary],
+            page_count=1,
+            paper_type="method-algorithm",
+        )
+        repaired_types = {item["issue_type"] for item in repaired}
+        self.assertNotIn("experiment_evidence_chain_missing", repaired_types)
+        self.assertNotIn("provenance_contract", repaired_types)
+
+    def test_formal_deep_render_rejects_non_page_grounded_source(self):
+        with self.assertRaisesRegex(MODULE.PipelineError, "page-grounded"):
+            MODULE.render_markdown(
+                minimal_source(),
+                minimal_evidence(),
+                minimal_claims(),
+                {
+                    "schema_version": "0.1",
+                    "selection_status": "completed",
+                    "selected": [],
+                    "rejected": [],
+                    "no_selection_reason": "The fixture has no figure.",
+                },
+                {
+                    "run_id": "run",
+                    "reading_mode": "deep",
+                    "source_coverage": "partial",
+                    "locator_mode": "structure-grounded",
+                },
+                "completed",
+            )
+
+    def test_internalize_research_idea_is_structured_and_source_labelled(self):
+        boundary = minimal_claims()[0]
+        boundary.update(
+            {
+                "claim_id": "C-BOUNDARY",
+                "claim_type": "conclusion_boundary",
+                "claim_text_zh": "该证据不能支持超出测试条件的普遍结论。",
+                "title_zh": "外推边界",
+                "provenance_class": "analysis",
+            }
+        )
+        idea = minimal_claims()[0]
+        idea.update(
+            {
+                "claim_id": "C-IDEA",
+                "claim_type": "research_idea",
+                "claim_text_zh": "检验该机制在新条件下是否仍成立。",
+                "title_zh": "跨条件复验",
+                "provenance_class": "hypothesis",
+                "research_idea": {
+                    "source_observation_zh": "论文只验证了一个受限条件。",
+                    "hypothesis_zh": "改变条件后效应方向仍保持。",
+                    "delta_zh": "把原论文的单一条件扩展为条件梯度。",
+                    "validation_zh": "预注册条件梯度并比较效应方向与大小。",
+                    "failure_modes_zh": [
+                        "效应只存在于原始样本。",
+                        "测量误差掩盖条件差异。",
+                    ],
+                    "novelty_status": "unverified",
+                },
+            }
+        )
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [boundary, idea],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "internalize"},
+            "completed",
+        )
+        self.assertIn("[分析] 外推边界", markdown)
+        self.assertIn("[假设] 跨条件复验", markdown)
+        self.assertIn("**可证伪假设**", markdown)
+        self.assertIn("**新颖性核查状态**：未检索", markdown)
+        self.assertNotIn("reading_mode:", markdown)
+        self.assertIn('  - "internalize"', markdown)
+        self.assertIn('locator_mode: "page-grounded"', markdown)
+
+    def test_internalize_terms_use_the_two_column_v1_table(self):
+        term = minimal_claims()[0]
+        term.update(
+            {
+                "claim_id": "C-TERM",
+                "claim_type": "term",
+                "title_zh": "掩码率",
+                "claim_text_zh": "输入图像块中被遮蔽的比例。",
+                "detail_points_zh": ["用于控制模型可见信息量。"],
+            }
+        )
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [term],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "internalize"},
+            "completed",
+        )
+        terms_section = markdown.split("### 8.1 术语与待解决问题", 1)[1].split(
+            "### 8.2", 1
+        )[0]
+        self.assertIn("| 术语 / 问题 | 通俗解释或当前理解 |", terms_section)
+        self.assertIn("| 掩码率 | 输入图像块中被遮蔽的比例。<br>用于控制模型可见信息量。 |", terms_section)
+        self.assertNotIn("| 类型 |", terms_section)
+        self.assertNotIn("| 定位 |", terms_section)
+        self.assertNotIn("| 状态 |", terms_section)
 
     def test_review_metadata_is_rendered_without_claiming_autonomy(self):
         markdown = MODULE.render_markdown(
@@ -332,9 +491,45 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
         self.assertIn('validation_status: "completed"', markdown)
         self.assertIn('review_status: "reviewed"', markdown)
-        self.assertIn('generation_mode: "human_assisted_regression"', markdown)
-        self.assertIn("autonomous_generation: false", markdown)
+        self.assertNotIn("generation_mode:", markdown)
+        self.assertNotIn("autonomous_generation:", markdown)
         self.assertNotIn("**完整图题**", markdown)
+
+    def test_note_frontmatter_rejects_values_outside_the_frozen_contract(self):
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            minimal_claims(),
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "skim"},
+            "completed",
+        )
+        invalid = (
+            markdown.replace("paper_type: null", 'paper_type: "essay"')
+            .replace('source_coverage: "full-paper"', 'source_coverage: "unknown"')
+            .replace('locator_mode: "page-grounded"', 'locator_mode: "page-ish"')
+            .replace('template_version: "1.0"', 'template_version: "draft"')
+        )
+
+        issue_types = {
+            item["issue_type"] for item in MODULE.validate_note_frontmatter(invalid)
+        }
+
+        self.assertEqual(
+            issue_types,
+            {
+                "paper_type_enum",
+                "source_coverage_enum",
+                "locator_mode_enum",
+                "template_version_contract",
+            },
+        )
 
     def test_skim_visual_does_not_repeat_caption_already_kept_in_crop(self):
         caption = "Figure 1. Complete original caption."
@@ -352,7 +547,7 @@ class DeepReadingQualityTests(unittest.TestCase):
                         "embed_path": "figures/figure-1.png",
                         "selection_reason": "核心方法图",
                         "caption_original": caption,
-                        "discussion_location": "PDF p.1",
+                        "discussion_location": "3.2 方法与研究设计",
                     }
                 ],
                 "rejected": [],
@@ -362,10 +557,48 @@ class DeepReadingQualityTests(unittest.TestCase):
             "completed",
         )
 
-        self.assertIn("![[figures/figure-1.png]]", markdown)
-        self.assertIn("选择理由：核心方法图", markdown)
+        self.assertIn("Figure 1（3.2 方法与研究设计；〔p.1〕）", markdown)
+        self.assertNotIn("![[", markdown)
         self.assertNotIn("图题：", markdown)
         self.assertNotIn(caption, markdown)
+
+    def test_skim_records_source_mode_and_labels_analysis(self):
+        summary = minimal_claims()[0]
+        summary.update(
+            {
+                "claim_id": "C-SUMMARY",
+                "claim_type": "summary",
+                "claim_text_zh": "论文提出并检验一个受限结论。",
+            }
+        )
+        boundary = minimal_claims()[0]
+        boundary.update(
+            {
+                "claim_id": "C-BOUNDARY",
+                "claim_type": "conclusion_boundary",
+                "claim_text_zh": "该结果不能外推到未测试条件。",
+                "provenance_class": "analysis",
+            }
+        )
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [summary, boundary],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "skim"},
+            "completed",
+        )
+        self.assertIn("## 1. 论文速览", markdown)
+        self.assertNotIn("## 2.", markdown)
+        self.assertIn("[分析] 该结果不能外推", markdown)
+        self.assertIn('source_coverage: "full-paper"', markdown)
+        self.assertIn('locator_mode: "page-grounded"', markdown)
 
     def test_cross_section_consistency_rejects_placeholder_for_known_metric(self):
         claims = minimal_claims()
@@ -526,11 +759,11 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
 
         self.assertIn('paper_type: "empirical-research"', markdown)
-        self.assertIn('primary_paper_type: "empirical-research"', markdown)
-        self.assertIn('secondary_paper_types: ["benchmark", "method"]', markdown)
-        self.assertIn('paper_type_label_zh: "实证研究论文"', markdown)
-        self.assertIn("metadata_warning:", markdown)
-        self.assertIn("journal 未由 Zotero 提供", markdown)
+        self.assertNotIn("primary_paper_type:", markdown)
+        self.assertNotIn("secondary_paper_types:", markdown)
+        self.assertNotIn("paper_type_label_zh:", markdown)
+        self.assertNotIn("metadata_warning:", markdown)
+        self.assertIn("实证研究论文；次级类型：基准评测、方法", markdown)
 
     def test_parameter_claim_renders_as_parameter_not_metric(self):
         source = minimal_source()
@@ -558,8 +791,9 @@ class DeepReadingQualityTests(unittest.TestCase):
         )
 
         self.assertIn("### 3.4 核心公式、评价指标与关键参数", markdown)
-        self.assertIn("#### Parameter 1：条件参数 μ", markdown)
-        self.assertNotIn("#### Metric 1：条件参数 μ", markdown)
+        self.assertIn("#### 条件参数 μ", markdown)
+        self.assertIn("- **类型**：关键参数", markdown)
+        self.assertNotIn("#### Metric 1", markdown)
 
     def test_duplicate_section_content_rejects_verbatim_reuse(self):
         sentence = (
@@ -576,8 +810,8 @@ class DeepReadingQualityTests(unittest.TestCase):
 
     def test_duplicate_section_content_ignores_repeated_source_markers(self):
         markdown = (
-            "## 2. 背景\n\n*本节证据：* 〔E-001, E-002, E-003｜PDF p.1, p.2〕\n\n"
-            "## 3. 方法\n\n*本节证据：* 〔E-004, E-005, E-006｜PDF p.3, p.4〕\n"
+            "## 2. 背景\n\n背景内容。〔[p.1](zotero://page=1)、[p.2](zotero://page=2)〕\n\n"
+            "## 3. 方法\n\n方法内容。〔[p.3](zotero://page=3)、[p.4](zotero://page=4)〕\n"
         )
 
         self.assertEqual(
@@ -608,6 +842,35 @@ class DeepReadingQualityTests(unittest.TestCase):
 
         self.assertNotIn("。；", markdown)
         self.assertFalse(MODULE.validate_table_sentence_rendering_integrity(markdown))
+
+    def test_supporting_reproducibility_record_does_not_leak_internal_placeholder(self):
+        claim = minimal_claims()[0]
+        claim["claim_type"] = "experiment"
+        claim["importance"] = "supporting"
+        claim["title_zh"] = "开放代码支持实验复现"
+        claim["claim_text_zh"] = "作者公开了代码与运行说明。"
+        claim["detail_points_zh"] = ["仓库提供了主要实验入口。"]
+        claim["conditions_zh"] = "具体依赖版本仍以原仓库为准。"
+        claim.pop("evidence_chain", None)
+
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [claim],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "deep"},
+            "completed",
+        )
+
+        self.assertIn("#### 开放代码支持实验复现", markdown)
+        self.assertIn("作者公开了代码与运行说明", markdown)
+        self.assertNotIn("正式 deep/internalize 输出必须补齐", markdown)
 
     def test_summary_completeness_requires_problem_method_and_result_evidence(self):
         evidence = [
@@ -750,14 +1013,14 @@ class DeepReadingQualityTests(unittest.TestCase):
             "## 1. 论文速览",
             "## 2. 背景、问题与贡献",
             "## 3. 数据、材料与方法",
-            "## 4. 核心结果与证据",
+            "## 4. 核心结果",
             "## 5. 重要图表",
-            "## 6. 讨论、结论与限制",
-            "## 7. 对研究与学习的价值",
-            "## 8. 术语、原文证据与滚雪球阅读",
+            "## 6. 讨论、结论、边界与限制",
         )
         for heading in required:
             self.assertIn(heading, markdown)
+        self.assertNotIn("## 7. 对研究与学习的价值", markdown)
+        self.assertNotIn("## 8. 术语与滚雪球阅读", markdown)
         self.assertNotIn("## 1. 核心科学问题", markdown)
 
     def test_rich_deep_ledger_builds_final_template_preview(self):
@@ -784,6 +1047,7 @@ class DeepReadingQualityTests(unittest.TestCase):
             "interpretation",
             "limitation",
             "conclusion",
+            "conclusion_boundary",
         )
         claims = []
         for index, claim_type in enumerate(claim_types, start=1):
@@ -803,8 +1067,7 @@ class DeepReadingQualityTests(unittest.TestCase):
                     "结果及其边界之间的明确关系。"
                 )
             )
-            claims.append(
-                {
+            claim = {
                     "claim_id": f"C-{index:03d}",
                     "claim_text_zh": claim_text,
                     "claim_type": claim_type,
@@ -827,7 +1090,17 @@ class DeepReadingQualityTests(unittest.TestCase):
                     "display_level": "inline",
                     "validation": validation,
                 }
-            )
+            if claim_type == "experiment":
+                claim["evidence_chain"] = {
+                    "tested_claim_zh": "该设计是否改善目标结果。",
+                    "comparison_conditions_zh": "在固定数据与评价条件下对照基线。",
+                    "observed_result_zh": "实验观察到目标指标改善。",
+                    "supported_conclusion_zh": "证据支持该设计在测试条件下有效。",
+                    "unsupported_stronger_interpretation_zh": "不能据此推出对所有数据和任务都有效。",
+                }
+            if claim_type == "conclusion_boundary":
+                claim["provenance_class"] = "analysis"
+            claims.append(claim)
 
         with tempfile.TemporaryDirectory() as temporary:
             run_dir = Path(temporary) / "run"
@@ -896,9 +1169,11 @@ class DeepReadingQualityTests(unittest.TestCase):
             self.assertEqual(result["quality"]["template_completeness"], 1.0)
             self.assertTrue(result["quality"]["content_recall_pass"])
             self.assertTrue(result["quality"]["section_depth_pass"])
-            self.assertIn("## 4. 核心结果与证据", markdown)
-            self.assertIn("### R1.", markdown)
-            self.assertIn("### R2.", markdown)
+            self.assertIn("## 4. 核心结果", markdown)
+            self.assertNotIn("### R1.", markdown)
+            self.assertNotIn("### R2.", markdown)
+            self.assertIn("### 主要结果的证据定位与作用", markdown)
+            self.assertIn("### 补充结果的证据定位与作用", markdown)
             self.assertNotRegex(markdown, r"\{\{[a-zA-Z0-9_ -]+\}\}")
 
     def test_claim_schema_supports_deep_reading_knowledge_types(self):
@@ -925,15 +1200,23 @@ class DeepReadingQualityTests(unittest.TestCase):
                 "term",
                 "writing_expression",
                 "reference",
+                "conclusion_boundary",
+                "research_idea",
             }.issubset(claim_types)
         )
         self.assertIn("title_zh", schema["properties"])
         self.assertIn("detail_points_zh", schema["properties"])
         self.assertIn("importance", schema["properties"])
         self.assertIn("conditions_zh", schema["properties"])
+        self.assertIn("provenance_class", schema["properties"])
+        self.assertIn("evidence_chain", schema["properties"])
+        self.assertIn("research_idea", schema["properties"])
 
-    def test_final_template_asset_is_canonical_and_slot_driven(self):
-        template = (SKILL / "assets" / "Paper Template - Final.md").read_text(
+    def test_final_template_is_human_readable_and_runtime_is_slot_driven(self):
+        template = (SKILL / "assets" / "Paper Template.md").read_text(
+            encoding="utf-8"
+        )
+        runtime = (SKILL / "assets" / "Paper Template - Runtime.md").read_text(
             encoding="utf-8"
         )
         for heading in (
@@ -941,17 +1224,48 @@ class DeepReadingQualityTests(unittest.TestCase):
             "### 2.3 贡献与创新",
             "### 3.4 核心公式、评价指标与关键参数",
             "### 3.5 实验、比较与复现要点",
-            "## 4. 核心结果与证据",
+            "## 4. 核心结果",
             "## 5. 重要图表",
-            "### 6.3 局限性与不确定性",
+            "### 6.3 结论边界：本文不能推出什么",
+            "### 6.4 作者明确说明的局限性与不确定性",
             "### 7.2 125 提炼",
-            "### 8.3 值得继续追踪的参考文献",
+            "### 8.2 值得继续追踪的参考文献",
         ):
             self.assertIn(heading, template)
-        self.assertIn("{{overview_rows}}", template)
-        self.assertIn("{{results}}", template)
-        self.assertIn("<!-- litanchor:user:start -->", template)
-        self.assertIn("<!-- litanchor:user:end -->", template)
+            self.assertIn(heading, runtime)
+        self.assertNotIn("{{", template)
+        self.assertIn("标题判断", template)
+        self.assertIn("摘要四要素", template)
+        self.assertIn("[分析] 精读建议", template)
+        self.assertIn("证据不能支持的更强说法", template)
+        self.assertIn("至少两个失败模式", template)
+        self.assertIn("{{overview_rows}}", runtime)
+        self.assertIn("{{results}}", runtime)
+        self.assertNotIn("{{evidence_limits}}", runtime)
+        self.assertIn("{{conclusion_boundaries}}", runtime)
+        self.assertNotIn("{{evidence_quotes}}", runtime)
+        self.assertNotIn("<!--", template)
+        self.assertEqual(template.count("> [!abstract]"), 1)
+        self.assertNotIn("<!-- litanchor:user:start -->", runtime)
+        self.assertNotIn("<!-- litanchor:user:end -->", runtime)
+
+        rendered = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            minimal_claims(),
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "internalize"},
+            "completed",
+        )
+        self.assertNotIn("<!--", rendered)
+        self.assertNotIn("### 6.5", rendered)
+        self.assertIn("| :--- | :--- |", rendered)
 
 
 if __name__ == "__main__":

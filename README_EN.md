@@ -11,7 +11,17 @@
 
 LitAnchor is a lightweight, evidence-first academic close-reading skill for graduate students and researchers. It resolves a single paper from Zotero, treats that paper as the only factual source, and writes a Chinese Obsidian note whose important claims remain traceable to physical PDF pages, source evidence, and Zotero links.
 
-Current version: **v0.6.0-beta.2 Zero-Config Public Beta**. It targets local-capable agents on Windows. It is not yet an unattended product for every PDF or browser-only chat client.
+Current version: **v0.6.0-beta.3 — Note Experience & Paper Template v1.0 Freeze**. It targets local-capable agents on Windows. This is the final content-contract beta before the stable-release candidate, not an unattended product for every PDF or browser-only chat client.
+
+## LitAnchor in 30 seconds
+
+| Question | Answer |
+|---|---|
+| Who is it for? | Zotero + Obsidian users who want a traceable Chinese note from one academic paper |
+| What goes in? | A Zotero title, DOI, citekey, Item Key, or local PDF, plus the target Vault |
+| What comes out? | Chinese Markdown, Evidence/Claim sidecars, a validation report, and 0–3 selected key visuals |
+| What is distinctive? | Important paper facts return to physical PDF pages; fidelity and omission are reviewed separately |
+| What is out of scope? | Full translation, batch review, external background completion, automated peer review, or silent overwrite |
 
 ## Two-step experience
 
@@ -60,7 +70,7 @@ flowchart TB
 
     subgraph delivery["Quality gates and delivery"]
         direction LR
-        review["Fidelity and recall review"] --> compose["Final-template composition"] --> obsidian["Authorized Obsidian Inbox"]
+        review["Fidelity and recall review"] --> compose["Paper Template v1.0 composition"] --> obsidian["Authorized Obsidian Inbox"]
     end
 
     pages --> profile
@@ -84,7 +94,7 @@ PyMuPDF remains authoritative for physical pages, quotations, coordinates, and v
 
 - Use only the supplied paper for formal paper facts.
 - Preserve the author's uncertainty and do not promote interpretation or speculation to fact.
-- Bind factual claims to an Evidence ID and a verified physical PDF page.
+- Bind factual claims internally to an Evidence ID and a verified physical PDF page; show readers only compact linked `p.x` locators.
 - Preserve numbers, units, variables, ranges, and conditions.
 - Report parsing failures and stop formal export on blockers.
 - Keep Zotero read-only and Obsidian writes inside an authorized directory.
@@ -118,11 +128,23 @@ Public reports are split into installation/lifecycle, runtime/PDF, and note-qual
 
 ## Output
 
-`deep` mode covers the research question, background and gap, data and preprocessing, methods and models, equations and metrics, experiments, results, author interpretation, limitations, and selected key visuals. Full evidence remains in sidecar records; the Markdown note keeps only compact locators and selected collapsed quotations.
+The three modes are different reading contracts, not merely short, medium, and long outputs:
+
+| Mode | Purpose | Formal output | Not required |
+|---|---|---|---|
+| `skim` | Decide quickly what the paper says and whether to continue | Template Section 1 only: summary, type, question, method skeleton, main results, conclusion boundary, and essential locators | Sections 2–8 |
+| `deep` (default) | Produce an auditable graduate-level close-reading note | Sections 1–6: background/gap, data, method/model, formulas/metrics/parameters, experiment chains, results, key visuals, interpretation, conclusion boundary, and author-stated limitations | Sections 7–8 research-and-learning layer |
+| `internalize` | Turn a deep reading into testable research action | Full Sections 1–8: everything in `deep`, plus research connection, falsifiable hypothesis, delta, validation design, failure modes, novelty-check status, terms, expressions, and follow-up references | Unchecked novelty claims or model-added paper facts |
+
+All modes keep the supplied paper as the only factual source. Learning-layer material is labelled `[analysis]`, `[hypothesis]`, or `[user]`; an `internalize` idea is neither an author conclusion nor automatically a novel contribution.
+
+The current reader-note contract is [**Paper Template v1.0**](skills/litanchor-paper-reading/assets/Paper%20Template.md). Note properties follow one fixed contract: title, first author, year, journal, DOI, paper type, source keywords, coverage/locator/validation/review status, Skill/template versions, dates, and tags. Reading mode is not a separate property; exactly one `skim`, `deep`, or `internalize` tag appears beside `LitAnchor`, and automated updates must preserve user-added tags.
+
+`deep` mode covers the research question, background and gap, data and preprocessing, methods and models, equations and metrics, experiment evidence chains, results, author interpretation, conclusion boundaries, author-stated limitations, and zero to three selected key visuals. Qualified visuals are embedded directly with their source subsection, selection reason, and a two-to-four-sentence interpretation; when none qualifies, the note records why. Evidence IDs, claim mappings, and exact excerpts remain in private sidecars; the Markdown note keeps only compact linked `p.x` locators.
 
 ## Public-beta evidence
 
-v0.6.0-beta.2 extends beta.1's Windows Python 3.10–3.14 CI, frozen holdout evaluation, pathological PDF/failure tests, MinerU comparison, privacy checks, and deterministic release builds with public feedback forms, redacted support bundles, lifecycle recovery, semantic intent regression, and a smaller dependency surface. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill.
+v0.6.0-beta.3 inherits the beta.1/beta.2 baseline—Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure tests, MinerU comparison, privacy checks, lifecycle recovery, and deterministic release builds—and adds automated contracts for Paper Template v1.0, mode scope, note properties, provenance labels, experiment evidence chains, and conclusion boundaries. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill. See the [release checklist](docs/release-checklist.md) for the exact beta.3 publication gates.
 
 - [v0.6 Public Beta validation](evals/reports/v0.6-public-beta-validation.md)
 - [MinerU component A/B](evals/reports/v0.6-mineru-ab.md)

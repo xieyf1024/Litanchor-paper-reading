@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://litanchor.local/schemas/note-frontmatter.schema.json",
+  "title": "LitAnchor note frontmatter",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "first_author",
+    "year",
+    "journal",
+    "doi",
+    "paper_type",
+    "keywords",
+    "source_coverage",
+    "locator_mode",
+    "validation_status",
+    "review_status",
+    "skill_version",
+    "template_version",
+    "created",
+    "updated",
+    "tags"
+  ],
+  "properties": {
+    "title": {"type": "string", "minLength": 1},
+    "first_author": {"type": ["string", "null"]},
+    "year": {"type": ["integer", "null"]},
+    "journal": {"type": ["string", "null"]},
+    "doi": {"type": ["string", "null"]},
+    "paper_type": {
+      "type": ["string", "null"],
+      "enum": ["empirical-research", "method-algorithm", "model-description", "review", null]
+    },
+    "keywords": {"type": "string"},
+    "source_coverage": {
+      "enum": ["full-paper", "partial-paper", "abstract-only", "metadata-only"]
+    },
+    "locator_mode": {
+      "enum": ["page-grounded", "structure-grounded", "source-limited"]
+    },
+    "validation_status": {
+      "enum": ["completed", "completed_with_warnings", "blocked"]
+    },
+    "review_status": {
+      "enum": ["unreviewed", "review_pending", "reviewed"]
+    },
+    "skill_version": {"type": "string", "minLength": 1},
+    "template_version": {"const": "1.0"},
+    "created": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "updated": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 2,
+      "items": {"type": "string", "minLength": 1, "pattern": "^[^#].*$"},
+      "allOf": [
+        {"contains": {"const": "LitAnchor"}, "minContains": 1, "maxContains": 1},
+        {
+          "contains": {"enum": ["skim", "deep", "internalize"]},
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  }
+}

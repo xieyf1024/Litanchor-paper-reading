@@ -49,14 +49,19 @@
         "discussion",
         "limitation",
         "conclusion",
+        "conclusion_boundary",
         "future_work",
         "learning_value",
+        "research_idea",
         "term",
         "writing_expression",
         "reference"
       ]
     },
     "title_zh": {"type": ["string", "null"]},
+    "provenance_class": {
+      "enum": ["paper", "analysis", "hypothesis", "user"]
+    },
     "detail_points_zh": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}
@@ -91,6 +96,50 @@
           "unit_original": {"type": ["string", "null"]},
           "variable": {"type": ["string", "null"]},
           "condition": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "evidence_chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tested_claim_zh",
+        "comparison_conditions_zh",
+        "observed_result_zh",
+        "supported_conclusion_zh",
+        "unsupported_stronger_interpretation_zh"
+      ],
+      "properties": {
+        "tested_claim_zh": {"type": "string", "minLength": 1},
+        "comparison_conditions_zh": {"type": "string", "minLength": 1},
+        "observed_result_zh": {"type": "string", "minLength": 1},
+        "supported_conclusion_zh": {"type": "string", "minLength": 1},
+        "unsupported_stronger_interpretation_zh": {"type": "string", "minLength": 1}
+      }
+    },
+    "research_idea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_observation_zh",
+        "hypothesis_zh",
+        "delta_zh",
+        "validation_zh",
+        "failure_modes_zh",
+        "novelty_status"
+      ],
+      "properties": {
+        "source_observation_zh": {"type": "string", "minLength": 1},
+        "hypothesis_zh": {"type": "string", "minLength": 1},
+        "delta_zh": {"type": "string", "minLength": 1},
+        "validation_zh": {"type": "string", "minLength": 1},
+        "failure_modes_zh": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "novelty_status": {
+          "enum": ["unverified", "partially_checked", "prior_art_checked"]
         }
       }
     },

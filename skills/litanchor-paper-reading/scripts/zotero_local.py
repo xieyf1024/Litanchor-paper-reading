@@ -234,6 +234,18 @@ def _authors(data: dict[str, Any]) -> list[str]:
     return authors
 
 
+def _keywords(data: dict[str, Any]) -> list[str]:
+    """Return only keywords/tags explicitly stored by Zotero."""
+    values: list[str] = []
+    for item in data.get("tags", []):
+        if not isinstance(item, dict):
+            continue
+        value = str(item.get("tag") or "").strip()
+        if value and value not in values:
+            values.append(value)
+    return values
+
+
 def prepare_zotero_item(
     client: ZoteroLocalClient,
     selector: str,
@@ -260,6 +272,7 @@ def prepare_zotero_item(
         journal=str(data.get("publicationTitle", "")).strip() or None,
         doi=str(data.get("DOI", "")).strip() or None,
         citekey=_citation_key(data),
+        keywords=_keywords(data),
         acquisition_method="zotero_local_api",
         source_query=f"{selector}:{value}",
         zotero_item_key=str(item["key"]),
