@@ -297,8 +297,10 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn(marker, reliability)
         self.assertIn("structure-grounded", workflow)
         self.assertIn("source-limited", workflow)
-        self.assertIn("30 秒了解 LitAnchor", readme)
-        for mode in ("`skim`（粗读）", "`deep`（精读，默认）", "`internalize`（研究型阅读）"):
+        self.assertIn("## 两句话开始", readme)
+        self.assertIn("LitAnchor = Literature + Anchor", readme)
+        self.assertIn("## 一眼看懂工作流", readme)
+        for mode in ("`skim` 粗读", "`deep` 精读（默认）", "`internalize` 内化"):
             self.assertIn(mode, readme)
 
     def test_project_license_and_notice_match_pymupdf_distribution_choice(self):

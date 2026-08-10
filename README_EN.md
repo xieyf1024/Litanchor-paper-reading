@@ -1,186 +1,138 @@
-# LitAnchor
+<div align="center">
+  <img src="docs/assets/litanchor-logo.png" alt="LitAnchor logo" width="112">
+  <h1>LitAnchor</h1>
+  <p><strong>Anchor every insight to the source.</strong></p>
+  <p><code>LitAnchor = Literature + Anchor</code> — every understanding of a paper stays anchored to its source.</p>
 
-> Anchor every insight to the source.
+  <p>
+    <a href="https://github.com/xieyf1024/Litanchor-paper-reading/releases"><img alt="Release" src="https://img.shields.io/github/v/release/xieyf1024/Litanchor-paper-reading?include_prereleases&label=release"></a>
+    <a href="https://github.com/xieyf1024/Litanchor-paper-reading/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/xieyf1024/Litanchor-paper-reading/actions/workflows/ci.yml/badge.svg"></a>
+    <a href="docs/INSTALLATION_REQUIREMENTS.md"><img alt="Python 3.10+" src="https://img.shields.io/badge/Python-%E2%89%A53.10-3776AB?logo=python&logoColor=white"></a>
+    <a href="https://agentskills.io"><img alt="Agent Skills" src="https://img.shields.io/badge/Agent%20Skills-compatible-6F42C1"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/xieyf1024/Litanchor-paper-reading"></a>
+  </p>
 
-[![Release](https://img.shields.io/github/v/release/xieyf1024/Litanchor-paper-reading?include_prereleases&label=release)](https://github.com/xieyf1024/Litanchor-paper-reading/releases)
-[![Windows CI](https://github.com/xieyf1024/Litanchor-paper-reading/actions/workflows/ci.yml/badge.svg)](https://github.com/xieyf1024/Litanchor-paper-reading/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/Python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)](docs/INSTALLATION_REQUIREMENTS.md)
-[![License](https://img.shields.io/github/license/xieyf1024/Litanchor-paper-reading)](LICENSE)
+  <p>
+    <a href="#start-in-two-prompts">Quick start</a> ·
+    <a href="#more-than-an-ai-summary">Why it is different</a> ·
+    <a href="#three-reading-modes">Reading modes</a> ·
+    <a href="skills/litanchor-paper-reading/assets/Paper%20Template.md">Note template</a> ·
+    <a href="docs/README.md">Docs</a> ·
+    <a href="README.md">中文</a>
+  </p>
+</div>
 
-[中文](README.md) · [Requirements](docs/INSTALLATION_REQUIREMENTS.md) · [Workflow](docs/WORKFLOW.md) · [Evaluation](docs/EVALUATION.md) · [Roadmap](docs/ROADMAP.md)
+LitAnchor is an evidence-first academic paper-reading skill for Zotero + Obsidian users. Give it one paper and it performs structured close reading, verifies important claims and page locations, and writes a traceable Chinese Markdown note to Obsidian.
 
-LitAnchor is a lightweight, evidence-first academic close-reading skill for graduate students and researchers. It resolves a single paper from Zotero, treats that paper as the only factual source, and writes a Chinese Obsidian note whose important claims remain traceable to physical PDF pages, source evidence, and Zotero links.
+## Start in two prompts
 
-Current version: **v0.6.0-beta.3 — Note Experience & Paper Template v1.0 Freeze**. It targets local-capable agents on Windows. This is the final content-contract beta before the stable-release candidate, not an unattended product for every PDF or browser-only chat client.
-
-## LitAnchor in 30 seconds
-
-| Question | Answer |
-|---|---|
-| Who is it for? | Zotero + Obsidian users who want a traceable Chinese note from one academic paper |
-| What goes in? | A Zotero title, DOI, citekey, Item Key, or local PDF, plus the target Vault |
-| What comes out? | Chinese Markdown, Evidence/Claim sidecars, a validation report, and 0–3 selected key visuals |
-| What is distinctive? | Important paper facts return to physical PDF pages; fidelity and omission are reviewed separately |
-| What is out of scope? | Full translation, batch review, external background completion, automated peer review, or silent overwrite |
-
-## Two-step experience
-
-The wording below is illustrative. Agents should route by intent, not literal commands.
+Give the repository URL to an agent that can run local commands and access files:
 
 ```text
-Install this skill for me: https://github.com/xieyf1024/Litanchor-paper-reading
+Install this Skill for me: https://github.com/xieyf1024/Litanchor-paper-reading
 ```
+
+Then ask naturally:
 
 ```text
 Deep-read “Paper title” and save the note to my Research Vault.
 ```
 
-First-run setup may confirm only the Obsidian Vault, Literature Inbox, and MinerU consent mode. The agent then manages the isolated environment, dependencies, Zotero lookup, full-paper reading, validation, and contained export.
+The wording is not literal. Agents should recognize equivalent install, skim, deep-read, internalize, and export requests. First-run setup may confirm only the Obsidian Vault, Literature Inbox, and MinerU consent policy.
 
-## Why it is not a generic AI summary
+## What you get
 
-| Generic summary behavior | LitAnchor |
-|---|---|
-| Generates fluent prose directly from the document | Builds Evidence → Claim → SectionSynthesis before composing the note |
-| Checks only what was written | Reviews both fidelity and important-content recall |
-| Emits a page link even when location is uncertain | Rejects unverified pages as formal evidence |
-| Often skips equations, metrics, and figures | Runs dedicated method, experiment, formula, and visual passes |
-| Writes directly to the destination | Restricts writes to an authorized root and refuses overwrite by default |
-| Mixes model knowledge with paper claims | Uses the supplied paper as the only factual source |
+| 📌 Traceable | 🧠 Complete | 🖼️ Visual | 🛡️ Safe |
+| :--- | :--- | :--- | :--- |
+| Important facts link to verified physical PDF pages | Methods, equations, experiments, results, discussion, and limitations stay distinct | Key method or result figures are selected and cropped from the original PDF | Writes stay inside an authorized directory and refuse overwrite by default |
 
-## Pipeline
+Reader notes stay clean: they show compact linked `p.x` Zotero locators, while Evidence, Claims, full quotations, and validation records remain in private sidecars.
+
+## More than an AI summary
+
+| Generic summary tools | LitAnchor |
+| :--- | :--- |
+| Generate fluent prose directly from the document | Build Evidence → Claims → section synthesis before composing the note |
+| Check only sentences already written | Review both factual fidelity and important-content recall |
+| Emit page links even when locations are uncertain | Reject unverified PDF pages as formal evidence |
+| Often skip equations, experiments, and figures | Run dedicated method, metric, experiment-chain, and visual passes |
+| Fill gaps with model knowledge | Use the supplied paper as the only factual source |
+
+## The workflow at a glance
 
 ```mermaid
-flowchart TB
-    subgraph grounding["Source and page baseline"]
-        direction LR
-        source["Zotero or local PDF"] --> pages["PyMuPDF physical pages"]
-        pages -.-> mineru["MinerU structure hints"]
-    end
+flowchart LR
+    source["Zotero / PDF"] --> parse["Parse and map pages<br/>PyMuPDF + optional MinerU"]
+    parse --> ground["Read and ground<br/>Evidence → Claims"]
+    ground --> review["Review twice<br/>Fidelity + recall"]
+    review --> note["Obsidian note<br/>Page links + key figures"]
 
-    subgraph reading["Structured full-paper reading"]
-        direction LR
-        profile["Paper profile and section map"] --> passes["Six focused reading passes"] --> evidence["Evidence ledger"]
-    end
-
-    subgraph synthesis["Evidence-grounded synthesis"]
-        direction LR
-        claims["Claim ledger"] --> sections["Section Synthesis"] --> visuals["Key visual analysis"]
-    end
-
-    subgraph delivery["Quality gates and delivery"]
-        direction LR
-        review["Fidelity and recall review"] --> compose["Paper Template v1.0 composition"] --> obsidian["Authorized Obsidian Inbox"]
-    end
-
-    pages --> profile
-    mineru -.-> profile
-    evidence --> claims
-    visuals --> review
-
-    classDef sourceLayer fill:#E8F1FF,stroke:#2563EB,stroke-width:2px,color:#172554
-    classDef assistLayer fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#3B0764
-    classDef knowledgeLayer fill:#FFF7E6,stroke:#D97706,stroke-width:2px,color:#451A03
-    classDef qualityLayer fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#064E3B
-    class source,pages sourceLayer
-    class mineru assistLayer
-    class profile,passes,evidence,claims,sections,visuals knowledgeLayer
-    class review,compose,obsidian qualityLayer
+    classDef sourceNode fill:#E8F1FF,stroke:#2563EB,color:#172554
+    classDef processNode fill:#FFF7E6,stroke:#D97706,color:#451A03
+    classDef outputNode fill:#ECFDF5,stroke:#059669,color:#064E3B
+    class source sourceNode
+    class parse,ground,review processNode
+    class note outputNode
 ```
 
-PyMuPDF remains authoritative for physical pages, quotations, coordinates, and visual provenance. MinerU can improve headings, reading order, captions, and complex-layout candidates, but its output must align back to the original PDF before it can support formal evidence.
+PyMuPDF remains authoritative for physical pages, quotations, coordinates, and original-image crops. For eligible files with user consent, MinerU automatically improves heading structure, reading order, captions, and complex-layout candidates. Its output must align back to the original PDF before supporting evidence.
 
-## Reliability contract
+## Three reading modes
 
-- Use only the supplied paper for formal paper facts.
-- Preserve the author's uncertainty and do not promote interpretation or speculation to fact.
-- Bind factual claims internally to an Evidence ID and a verified physical PDF page; show readers only compact linked `p.x` locators.
-- Preserve numbers, units, variables, ranges, and conditions.
-- Report parsing failures and stop formal export on blockers.
-- Keep Zotero read-only and Obsidian writes inside an authorized directory.
-- Refuse overwrite by default and require local consent before external upload.
+| Mode | Use it when | Main output |
+| :--- | :--- | :--- |
+| `skim` | You need a fast decision on what the paper says and whether to continue | One-sentence summary, question, method skeleton, main results, conclusion boundary, and essential locators |
+| `deep` (default) | You need an auditable graduate-level paper note | Background/gap, data, methods, equations, experiments, results, visuals, interpretation, limitations, and conclusions |
+| `internalize` | You want to turn reading into testable research action | Everything in deep, plus research connections, falsifiable hypotheses, validation design, failure conditions, and follow-up reading |
 
-## Requirements
+All modes share the same factual boundary. Learning-layer content in `internalize` is labelled `[analysis]`, `[hypothesis]`, or `[user]`; it never masquerades as an author conclusion. See [Paper Template v1.0](skills/litanchor-paper-reading/assets/Paper%20Template.md) for the complete structure.
+
+## Installation and requirements
+
+The current public build targets local-capable agents on Windows. The user asks for installation; the agent downloads the Release, creates an isolated environment, installs dependencies, runs `doctor`, and completes first-run setup.
+
+<details>
+<summary><strong>Environment requirements and agent entry points</strong></summary>
 
 - Windows 10/11 x64;
-- Python 3.10 or newer; CI currently covers 3.10–3.14;
+- Python 3.10 or newer;
 - Zotero 7 or newer with local application communication enabled and a local PDF attachment;
 - Obsidian Desktop with a local filesystem Vault;
-- an agent capable of running local commands, reading/writing authorized paths, and downloading dependencies.
+- an agent that can run local commands, write to authorized paths, and download dependencies.
 
-Python and Zotero have minimum versions, not arbitrary maximum versions. Newer untested versions are capability-probed by `doctor` and reported with a warning. See [installation requirements](docs/INSTALLATION_REQUIREMENTS.md).
-
-## Agent and developer entry points
-
-End users should prefer natural-language installation and reading requests. Agents and contributors can call:
+Python and Zotero use minimum versions only. Newer untested versions are capability-probed by `doctor` instead of being rejected by an arbitrary maximum.
 
 ```powershell
 .\install.ps1 -Action Install
 .\litanchor.ps1 doctor
-.\litanchor.ps1 doctor -SupportBundle
 .\litanchor.ps1 setup -Vault "Vault name" -Inbox "LitAnchor\00_Inbox" -MinerUConsent ask_each_time -CreateInbox
 .\litanchor.ps1 run-plan -Paper "Paper title" -Vault "Vault name"
 ```
 
-These are agent-facing execution interfaces, not manual steps required from every user. The installer manages only receipt-owned LitAnchor files and supports repair, upgrade, rollback, and confirmation-gated uninstall.
+These are agent and contributor interfaces, not mandatory manual steps for end users. See [installation requirements](docs/INSTALLATION_REQUIREMENTS.md) and [integrations](docs/INTEGRATIONS.md).
+</details>
 
-Public reports are split into installation/lifecycle, runtime/PDF, and note-quality forms. When diagnostics are needed, prefer the redacted ZIP from `doctor -SupportBundle` and review it before upload; never attach a paper, complete note, Zotero data, or local paths.
+## Reliability contract
 
-## Output
-
-The three modes are different reading contracts, not merely short, medium, and long outputs:
-
-| Mode | Purpose | Formal output | Not required |
-|---|---|---|---|
-| `skim` | Decide quickly what the paper says and whether to continue | Template Section 1 only: summary, type, question, method skeleton, main results, conclusion boundary, and essential locators | Sections 2–8 |
-| `deep` (default) | Produce an auditable graduate-level close-reading note | Sections 1–6: background/gap, data, method/model, formulas/metrics/parameters, experiment chains, results, key visuals, interpretation, conclusion boundary, and author-stated limitations | Sections 7–8 research-and-learning layer |
-| `internalize` | Turn a deep reading into testable research action | Full Sections 1–8: everything in `deep`, plus research connection, falsifiable hypothesis, delta, validation design, failure modes, novelty-check status, terms, expressions, and follow-up references | Unchecked novelty claims or model-added paper facts |
-
-All modes keep the supplied paper as the only factual source. Learning-layer material is labelled `[analysis]`, `[hypothesis]`, or `[user]`; an `internalize` idea is neither an author conclusion nor automatically a novel contribution.
-
-The current reader-note contract is [**Paper Template v1.0**](skills/litanchor-paper-reading/assets/Paper%20Template.md). Note properties follow one fixed contract: title, first author, year, journal, DOI, paper type, source keywords, coverage/locator/validation/review status, Skill/template versions, dates, and tags. Reading mode is not a separate property; exactly one `skim`, `deep`, or `internalize` tag appears beside `LitAnchor`, and automated updates must preserve user-added tags.
-
-`deep` mode covers the research question, background and gap, data and preprocessing, methods and models, equations and metrics, experiment evidence chains, results, author interpretation, conclusion boundaries, author-stated limitations, and zero to three selected key visuals. Qualified visuals are embedded directly with their source subsection, selection reason, and a two-to-four-sentence interpretation; when none qualifies, the note records why. Evidence IDs, claim mappings, and exact excerpts remain in private sidecars; the Markdown note keeps only compact linked `p.x` locators.
-
-## Public-beta evidence
-
-v0.6.0-beta.3 inherits the beta.1/beta.2 baseline—Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure tests, MinerU comparison, privacy checks, lifecycle recovery, and deterministic release builds—and adds automated contracts for Paper Template v1.0, mode scope, note properties, provenance labels, experiment evidence chains, and conclusion boundaries. Evaluation papers may teach reusable failure classes and workflow rules, never paper-specific answers in the distributable Skill. See the [release checklist](docs/release-checklist.md) for the exact beta.3 publication gates.
-
-- [v0.6 Public Beta validation](evals/reports/v0.6-public-beta-validation.md)
-- [MinerU component A/B](evals/reports/v0.6-mineru-ab.md)
-- [v0.6 metrics](evals/v0.6-public-beta-metrics.json)
-- [Anti-leak audit](docs/anti-leak-audit.md)
+- Use only the supplied paper for formal paper facts.
+- Preserve author uncertainty; never upgrade interpretation or speculation to fact.
+- Preserve numbers, units, variables, ranges, errors, and applicability conditions.
+- Block formal export when parsing, evidence, or important-content recall fails.
+- Keep Zotero read-only and Obsidian writes inside the authorized Inbox.
+- Require local consent for external parsing; MinerU is never an authoritative evidence source.
 
 ## Current boundaries
 
 - One paper per run; no batch review or knowledge graph.
-- Native-text PDFs are the stable path; scans and pathological layouts may degrade or block.
-- MinerU is an optional network service and never an authoritative evidence source.
-- No Zotero write-back, bidirectional sync, or silent overwrite of existing Obsidian notes.
-- Users should still review key visuals, locators, and notes intended for long-term use.
-
-## Repository layout
-
-```text
-.
-├── .github/                         # CI, dependency updates, issue forms
-├── skills/litanchor-paper-reading/  # Installable skill and runtime resources
-├── docs/                            # Product, workflow, architecture, roadmap
-├── evals/                           # v0.6 manifests, rubrics, public reports
-├── tests/                           # Automated regression tests
-├── tools/                           # Build, validation, evaluation, audit tools
-├── install.ps1                      # Windows installation lifecycle
-├── litanchor.ps1                    # doctor, setup, and run-plan
-└── litanchor-install.json           # Machine-readable installation contract
-```
-
-The installable skill contains only runtime instructions, scripts, schemas, references, and templates. Git tags, releases, and the [changelog](CHANGELOG.md) preserve project history without keeping obsolete previews in the current branch.
+- Native-text PDFs are the stable path; scanned and pathological layouts may degrade or block.
+- No Zotero write-back, bidirectional sync, or silent overwrite of existing notes.
+- Review key visuals, core numbers, and source locators before long-term use.
 
 ## Documentation and contributing
 
-Use the [documentation index](docs/README.md) to find product, workflow, schema, integration, evaluation, privacy, and roadmap documents. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a contribution.
+[Documentation](docs/README.md) · [Workflow](docs/WORKFLOW.md) · [Data Schema](docs/DATA_SCHEMA.md) · [Evaluation](docs/EVALUATION.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md)
 
-Do not submit paper PDFs, private Zotero data, Obsidian Vault contents, API keys, personal annotations, or runtime Evidence/Claim artifacts.
+Use the matching installation, PDF runtime, or note-quality Issue form. Never upload paper PDFs, private Zotero data, Obsidian Vault contents, API keys, personal annotations, or runtime Evidence/Claim artifacts.
 
 ## License
 
