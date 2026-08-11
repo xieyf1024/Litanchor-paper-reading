@@ -179,7 +179,10 @@ Date prepared: 2026-08-10
       Markdown links, privacy/anti-leak and Skill compaction audits locally.
 - [x] User-review the final unseen note and its two split-page figure crops in
       the Obsidian test Inbox.
-- [ ] Rerun CI, privacy, anti-leak, packaging, upgrade, rollback and uninstall
-      checks on the exact RC candidate commit.
+- [x] Rerun CI, privacy, anti-leak, packaging, upgrade, rollback and uninstall
+      checks on the exact RC candidate commit; PR #15 passed the complete
+      10-check GitHub Actions matrix before merge.
 - [x] Review and approve the RC release notes.
-- [ ] Tag and publish `v1.0.0-rc1` after the exact candidate CI passes.
+- [x] Tag and publish `v1.0.0-rc1` as a GitHub Pre-release after the exact
+      candidate CI passes, with the verified ZIP, checksum and package
+      manifest attached.
