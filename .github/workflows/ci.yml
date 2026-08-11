@@ -78,7 +78,7 @@ jobs:
           $env:PYTHONUTF8 = "1"
           python tools/build_release.py --output dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: LitAnchor-${{ matrix.python-version }}
           path: |
