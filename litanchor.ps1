@@ -13,8 +13,12 @@ param(
     [switch]$CreateInbox,
     [string]$RegistryPath,
     [string]$Paper,
+    [string]$PdfPath,
+    [string]$OutputNote,
     [ValidateSet("title", "doi", "citekey", "item_key")]
     [string]$Selector = "title",
+    [ValidateSet("skim", "deep", "internalize")]
+    [string]$ReadingMode = "deep",
     [ValidateSet("json", "human")]
     [string]$Format = "json",
     [switch]$CheckMinerUNetwork,
@@ -83,11 +87,16 @@ if ($Command -eq "discover-vaults") {
         $arguments += "--support-bundle"
     }
 } else {
-    if (-not $Paper) {
-        throw "Run-plan requires -Paper."
+    if ([bool]$Paper -eq [bool]$PdfPath) {
+        throw "Run-plan requires exactly one of -Paper or -PdfPath."
     }
-    $arguments += @("--paper", $Paper, "--selector", $Selector)
-    if ($Vault) { $arguments += @("--vault", $Vault) }
+    if ($PdfPath) {
+        $arguments += @("--pdf-path", $PdfPath, "--reading-mode", $ReadingMode)
+        if ($OutputNote) { $arguments += @("--output-note", $OutputNote) }
+    } else {
+        $arguments += @("--paper", $Paper, "--selector", $Selector, "--reading-mode", $ReadingMode)
+        if ($Vault) { $arguments += @("--vault", $Vault) }
+    }
 }
 & $python @arguments
 exit $LASTEXITCODE

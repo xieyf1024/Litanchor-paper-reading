@@ -148,11 +148,38 @@ Date prepared: 2026-08-10
 
 ### Publication gates
 
-- [ ] Commit and push `codex/v0.6-beta3-paper-analysis`.
-- [ ] Create a pull request and complete the Windows Python 3.10–3.14 GitHub
+- [x] Commit and push `codex/v0.6-beta3-paper-analysis`.
+- [x] Create a pull request and complete the Windows Python 3.10–3.14 GitHub
       Actions matrix on the exact candidate commit.
-- [ ] Merge to `main`, tag `v0.6.0-beta.3`, and publish the verified ZIP,
+- [x] Merge to `main`, tag `v0.6.0-beta.3`, and publish the verified ZIP,
       checksum, and package manifest as a GitHub Pre-release.
-- [ ] Freeze beta.3 feedback before deciding whether the next version is a
+- [x] Freeze beta.3 feedback before deciding whether the next version is a
       narrow patch or `v1.0.0-rc1`; do not reopen the template without a
       release-blocking defect.
+
+## v1.0.0-rc1 preparation
+
+- [x] Run all three papers named in the frozen checklist under the frozen
+      content pipeline; record them as regression cases after evaluation.
+- [x] Run one separate unseen paper without a reference note or prefilled
+      Evidence/Claim ledger.
+- [x] Reproduce a reliable blocker for captions separated from figure plates,
+      then fix it generically with explicit caption/plate provenance and retain
+      the same crop-quality gate.
+- [x] Document engineering, generalization, controlled-failure and human-review
+      evidence separately in `v1.0.0-rc1-frozen-validation.md`.
+- [x] Complete the install/read lifecycle in three isolated Windows application
+      profiles: normal English path with real core dependencies, Chinese/Vault
+      path, and interrupted-install recovery. Record that these are not three
+      independent users.
+- [x] Verify a direct local-PDF to standalone-Markdown run plan without Zotero
+      or Obsidian configuration, and prepare all 38 physical pages of the final
+      unseen PDF through that route.
+- [x] Pass 180 repository tests, Skill validation, compilation, 51 local
+      Markdown links, privacy/anti-leak and Skill compaction audits locally.
+- [x] User-review the final unseen note and its two split-page figure crops in
+      the Obsidian test Inbox.
+- [ ] Rerun CI, privacy, anti-leak, packaging, upgrade, rollback and uninstall
+      checks on the exact RC candidate commit.
+- [x] Review and approve the RC release notes.
+- [ ] Tag and publish `v1.0.0-rc1` after the exact candidate CI passes.

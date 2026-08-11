@@ -1,0 +1,51 @@
+{
+    "schema_version":  "1.0",
+    "generated_at":  "2026-08-11T09:12:20.6783998Z",
+    "status":  "pass",
+    "scope":  "isolated application profiles in one Windows user context",
+    "limitation":  "This validates lifecycle isolation and path behavior; it is not independent-user usability evidence.",
+    "profiles":  [
+                     {
+                         "profile":  "english",
+                         "path_kind":  "ascii_and_spaces",
+                         "install":  "pass",
+                         "setup":  "pass",
+                         "direct_pdf_run_plan":  "pass",
+                         "interrupted_repair":  "not_applicable",
+                         "upgrade":  "pass",
+                         "rollback":  "pass",
+                         "uninstall":  "pass",
+                         "config_preserved":  true,
+                         "vault_preserved":  true,
+                         "dependencies":  "installed_core"
+                     },
+                     {
+                         "profile":  "chinese",
+                         "path_kind":  "non_ascii_and_spaces",
+                         "install":  "pass",
+                         "setup":  "pass",
+                         "direct_pdf_run_plan":  "pass",
+                         "interrupted_repair":  "not_applicable",
+                         "upgrade":  "pass",
+                         "rollback":  "pass",
+                         "uninstall":  "pass",
+                         "config_preserved":  true,
+                         "vault_preserved":  true,
+                         "dependencies":  "skipped_lifecycle_only"
+                     },
+                     {
+                         "profile":  "interrupted",
+                         "path_kind":  "ascii_and_spaces",
+                         "install":  "pass",
+                         "setup":  "pass",
+                         "direct_pdf_run_plan":  "pass",
+                         "interrupted_repair":  "pass",
+                         "upgrade":  "pass",
+                         "rollback":  "pass",
+                         "uninstall":  "pass",
+                         "config_preserved":  true,
+                         "vault_preserved":  true,
+                         "dependencies":  "skipped_lifecycle_only"
+                     }
+                 ]
+}

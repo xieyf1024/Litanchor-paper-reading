@@ -600,6 +600,43 @@ class DeepReadingQualityTests(unittest.TestCase):
         self.assertIn('source_coverage: "full-paper"', markdown)
         self.assertIn('locator_mode: "page-grounded"', markdown)
 
+    def test_renderer_does_not_duplicate_existing_provenance_marker(self):
+        summary = minimal_claims()[0]
+        summary.update(
+            {
+                "claim_id": "C-SUMMARY",
+                "claim_type": "summary",
+                "claim_text_zh": "论文提出并检验一个受限结论。",
+            }
+        )
+        boundary = minimal_claims()[0]
+        boundary.update(
+            {
+                "claim_id": "C-BOUNDARY",
+                "claim_type": "conclusion_boundary",
+                "claim_text_zh": "[分析] 该结果不能外推到未测试条件。",
+                "provenance_class": "analysis",
+            }
+        )
+
+        markdown = MODULE.render_markdown(
+            minimal_source(),
+            minimal_evidence(),
+            [summary, boundary],
+            {
+                "schema_version": "0.1",
+                "selection_status": "completed",
+                "selected": [],
+                "rejected": [],
+                "no_selection_reason": "The fixture has no figure.",
+            },
+            {"run_id": "run", "reading_mode": "skim"},
+            "completed",
+        )
+
+        self.assertIn("[分析] 该结果不能外推", markdown)
+        self.assertNotIn("[分析] [分析]", markdown)
+
     def test_cross_section_consistency_rejects_placeholder_for_known_metric(self):
         claims = minimal_claims()
         claims[0]["claim_type"] = "metric"
@@ -662,6 +699,26 @@ class DeepReadingQualityTests(unittest.TestCase):
             {
                 **minimal_evidence()[0],
                 "quote_original": "The measured value was 12 ± 2 kg (mean ± s.d.).",
+            }
+        ]
+
+        self.assertEqual(MODULE.validate_range_symbol_integrity(evidence), [])
+
+    def test_range_symbol_integrity_accepts_unchanged_symbol_verified_on_page(self):
+        evidence = [
+            {
+                **minimal_evidence()[0],
+                "quote_original": "The mean error was 0.52 ± 0.95 °C.",
+                "symbol_verification": {
+                    "status": "verified_on_original_page",
+                    "method": "pymupdf_page_render",
+                    "corrections": [
+                        {
+                            "extracted": "0.52 ± 0.95",
+                            "verified": "0.52 ± 0.95",
+                        }
+                    ],
+                },
             }
         ]
 

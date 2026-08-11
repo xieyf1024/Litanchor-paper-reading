@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## v1.0.0-rc1 — 2026-08-11 — Public Release Candidate
+
+- Recorded the three completed frozen-checklist evaluations and completed a
+  separate unseen split-caption/figure-plate PDF after a generic crop fix for
+  `v1.0.0-rc1` preparation.
+- Prevented duplicate provenance labels when structured content already begins
+  with its declared `[分析]`, `[假设]` or `[用户]` marker.
+- Distinguished an original-page-corrected range symbol from an unchanged `±`
+  that was explicitly verified on a PyMuPDF page render.
+- Added a provenance-preserving crop route for captions separated from figure
+  plates on different physical PDF pages.
+- Added a direct local-PDF to standalone-Markdown run plan that does not
+  require Zotero or Obsidian configuration.
+- Defined `created` as the first successful note-generation date, independent
+  of Zotero-added, PDF-import, acquisition, and run-start dates.
+- Fixed Markdown as the sole formal note output and removed deferred PDF-note
+  and video-module claims from the v1 product scope.
+- Introduced `LitAnchor Notes · 文锚笔记` as the public product name while
+  retaining the compatible `litanchor-paper-reading` Skill slug and repository.
+- Recorded user acceptance of the final unseen note and both split-page figure
+  crops before freezing the RC.
+
 ## v0.6.0-beta.3 — 2026-08-10 — Note Experience & Paper Template v1.0 Freeze
 
 - Froze the reader-facing content contract as `Paper Template v1.0`, split from

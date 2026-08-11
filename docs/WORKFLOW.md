@@ -35,7 +35,7 @@ flowchart TB
     subgraph deliveryLane["Preview and contained export"]
         direction TB
         preview["Validated preview"] --> decision{"Export authorized"}
-        decision -->|yes| obsidian["Safe Obsidian export"]
+        decision -->|yes| delivery["Standalone Markdown<br/>or safe Obsidian export"]
         decision -->|no| artifacts["Return local artifacts"]
     end
 
@@ -53,7 +53,7 @@ flowchart TB
     class request,resolve,bundle,pages sourceLayer
     class mineru assistLayer
     class profile,passes,evidence,claims,sections,visuals knowledgeLayer
-    class completeness,deterministic,fidelity,recall,preview,obsidian,artifacts qualityLayer
+    class completeness,deterministic,fidelity,recall,preview,delivery,artifacts qualityLayer
     class preflight,qualityDecision,decision decisionLayer
     class sourceFailure,fallback,qualityFailure failureLayer
 ```
@@ -77,12 +77,15 @@ Zotero Local API GET or manual PDF
 → Paper Template v1.0 composition
 → deterministic page/quote/numeric/symbol/template checks
 → non-overwriting Markdown preview
-→ hash-verified, path-contained, non-overwriting Obsidian export
+→ hash-verified, non-overwriting standalone Markdown or contained Obsidian export
 ```
 
 - `scripts/zotero_local.py` restricts the base URL to loopback `/api`, sends only `GET`, requires one exact item and one PDF attachment, and then invokes the existing PDF preparation path.
 - `scripts/litanchor_local.py` performs native-text preparation, validation and
   preview rendering for the manual path.
+- `scripts/litanchor_setup.py run-plan` accepts exactly one Zotero selector or
+  one user-supplied PDF. The direct route targets a new standalone `.md` file
+  and does not require Zotero or Obsidian configuration.
 - `scripts/export_obsidian.py` requires a separately supplied authorized root and child Inbox, explicit confirmation, accepted warnings, an unchanged validated preview and zero target collisions.
 - `scripts/pdf_figures.py` renders a verified figure and caption from the original PDF, refuses overwrite and records source/image hashes, physical page and crop geometry.
 - `scripts/autonomous_deep_reading.py` reads a local three-mode upload-consent policy and automatically calls the token-free MinerU Flash service for eligible whole papers or page-preserving subsets. `scripts/mineru_adapter.py` enforces 10 MiB/20-page limits and records `exact`/`fuzzy`/`unmatched` alignment without promoting any block to formal evidence.

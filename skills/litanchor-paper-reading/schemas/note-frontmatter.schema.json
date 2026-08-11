@@ -47,8 +47,16 @@
     },
     "skill_version": {"type": "string", "minLength": 1},
     "template_version": {"const": "1.0"},
-    "created": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
-    "updated": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "created": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Date of the first successful LitAnchor note generation; never a Zotero-added, PDF-import, acquisition, or run-start date."
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Date of the current successful LitAnchor note render or update."
+    },
     "tags": {
       "type": "array",
       "uniqueItems": true,

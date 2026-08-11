@@ -207,6 +207,87 @@ class FigureCropTests(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertIn("Migration trajectories", matches[0][1])
 
+    def test_split_caption_page_renders_verified_figure_plate(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "split-caption.pdf"
+            image = root / "figure-2.png"
+            document = pymupdf.open()
+            caption_page = document.new_page(width=300, height=400)
+            caption_page.insert_text(
+                (40, 80),
+                "Figure 2: Workflow shown on the following figure plate.",
+            )
+            plate_page = document.new_page(width=300, height=400)
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 160, 180), False)
+            pixmap.clear_with(0x88CCFF)
+            plate_page.insert_image(pymupdf.Rect(50, 50, 250, 300), pixmap=pixmap)
+            plate_page.insert_text((90, 330), "Verified workflow plate")
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=2,
+                caption_page_number=1,
+                label="Figure 2",
+                output_path=image,
+                dpi=144,
+            )
+
+            self.assertEqual(result["physical_pdf_page"], 2)
+            self.assertEqual(result["caption_physical_pdf_page"], 1)
+            self.assertEqual(result["crop_method"], "split_caption_page_body")
+            self.assertIn("following figure plate", result["caption_original"])
+            self.assertEqual(result["crop_validation_status"], "pass")
+            self.assertFalse(result["needs_human_review"])
+            self.assertTrue(image.is_file())
+
+    def test_split_caption_can_span_pages_and_stops_at_next_figure(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "continued-caption.pdf"
+            image = root / "figure-3.png"
+            document = pymupdf.open()
+            first_caption = document.new_page(width=300, height=400)
+            first_caption.insert_text(
+                (40, 300),
+                "Figure 3: Long result caption begins on this page.",
+            )
+            continued_caption = document.new_page(width=300, height=400)
+            continued_caption.insert_text(
+                (40, 60),
+                "The caption continues with uncertainty and sample details.",
+            )
+            continued_caption.insert_text(
+                (40, 120),
+                "Figure 4: The next caption must not be included.",
+            )
+            plate_page = document.new_page(width=300, height=400)
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 160, 180), False)
+            pixmap.clear_with(0x88CCFF)
+            plate_page.insert_image(pymupdf.Rect(50, 50, 250, 320), pixmap=pixmap)
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=3,
+                caption_page_number=1,
+                caption_end_page_number=2,
+                label="Figure 3",
+                output_path=image,
+                dpi=144,
+            )
+
+            self.assertEqual(result["caption_physical_pdf_pages"], [1, 2])
+            self.assertIn("caption continues", result["caption_original"])
+            self.assertNotIn("next caption", result["caption_original"])
+
 
 if __name__ == "__main__":
     unittest.main()

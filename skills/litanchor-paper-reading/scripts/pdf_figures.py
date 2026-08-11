@@ -74,6 +74,50 @@ def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]
     return matches
 
 
+def _split_caption_text(
+    document: Any,
+    *,
+    start_page_number: int,
+    end_page_number: int,
+    label: str,
+    pymupdf: Any,
+) -> tuple[Any, str]:
+    """Collect an explicitly bounded caption that may continue across pages."""
+    start_page = document[start_page_number - 1]
+    matches = _caption_blocks(start_page, label, pymupdf)
+    if len(matches) != 1:
+        raise FigureCropError(
+            f"{label!r} must resolve to exactly one caption on physical PDF page "
+            f"{start_page_number}; matches found: {len(matches)}"
+        )
+    first_rect, first_text = matches[0]
+    generic_caption = re.compile(
+        r"^\s*f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*\d+[A-Za-z]?"
+        r"(?:\s*[:.]|\s+)",
+        re.IGNORECASE,
+    )
+    caption_parts = [first_text]
+    for page_number in range(start_page_number, end_page_number + 1):
+        page = document[page_number - 1]
+        blocks = sorted(page.get_text("blocks"), key=lambda block: (block[1], block[0]))
+        started = page_number > start_page_number
+        for block in blocks:
+            rectangle = pymupdf.Rect(block[:4])
+            text = " ".join(str(block[4]).split())
+            if not text or text.casefold() == "article in press":
+                continue
+            if page_number == start_page_number and not started:
+                if rectangle == first_rect:
+                    started = True
+                continue
+            if not started:
+                continue
+            if generic_caption.search(text):
+                return first_rect, " ".join(caption_parts)
+            caption_parts.append(text)
+    return first_rect, " ".join(caption_parts)
+
+
 def _preceding_figure_caption(
     page: Any,
     target_caption_rect: Any,
@@ -286,6 +330,59 @@ def _parse_bbox(value: str | None, pymupdf: Any, page_rect: Any) -> Any | None:
     return rectangle
 
 
+def _split_plate_content_rect(page: Any, pymupdf: Any) -> Any:
+    """Return auditable page-body bounds for a separately captioned figure plate."""
+    page_rect = pymupdf.Rect(page.rect)
+    header_bottom = page_rect.y0
+    text_rects: list[Any] = []
+    for block in page.get_text("blocks"):
+        rectangle = pymupdf.Rect(block[:4])
+        text = " ".join(str(block[4]).split())
+        if (
+            text.casefold() == "article in press"
+            and rectangle.y1 <= page_rect.y0 + page_rect.height * 0.12
+        ):
+            header_bottom = max(header_bottom, rectangle.y1 + 4.0)
+            continue
+        if text and not rectangle.is_empty and not rectangle.is_infinite:
+            text_rects.append(rectangle)
+
+    content_rects = [
+        rectangle
+        for rectangle in _image_rectangles(page)
+        if rectangle.y1 > header_bottom and rectangle.get_area() >= 100
+    ]
+    for drawing in page.get_drawings():
+        rectangle = pymupdf.Rect(drawing.get("rect"))
+        if (
+            not rectangle.is_empty
+            and not rectangle.is_infinite
+            and rectangle.y1 > header_bottom
+            and rectangle.get_area() >= 1
+        ):
+            content_rects.append(rectangle)
+    content_rects.extend(
+        rectangle for rectangle in text_rects if rectangle.y1 > header_bottom
+    )
+    if not content_rects:
+        raise FigureCropError(
+            "No figure-plate content was found on the separate image page."
+        )
+    content = _union_rect(pymupdf, content_rects)
+    body_bounds = pymupdf.Rect(
+        page_rect.x0,
+        header_bottom,
+        page_rect.x1,
+        page_rect.y1,
+    )
+    return _expand_rect(
+        pymupdf,
+        content,
+        body_bounds,
+        max(8.0, min(page_rect.width, page_rect.height) * 0.02),
+    )
+
+
 def _atomic_pixmap_save(pixmap: Any, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
@@ -320,6 +417,8 @@ def crop_figure(
     pdf_path: Path,
     *,
     page_number: int,
+    caption_page_number: int | None = None,
+    caption_end_page_number: int | None = None,
     label: str,
     output_path: Path,
     manifest_path: Path | None = None,
@@ -330,7 +429,7 @@ def crop_figure(
     discussion_location: str | None = None,
     zotero_page_link: str | None = None,
 ) -> dict[str, Any]:
-    """Crop one figure and its caption from the original physical PDF page."""
+    """Crop one figure plate, using a same-page or explicitly separate caption."""
     pymupdf = _load_pymupdf()
     pdf_path = pdf_path.resolve()
     output_path = output_path.resolve()
@@ -349,21 +448,52 @@ def crop_figure(
             raise FigureCropError(
                 f"Physical PDF page {page_number} is outside 1..{document.page_count}"
             )
-        page = document[page_number - 1]
-        caption_matches = _caption_blocks(page, label, pymupdf)
-        if len(caption_matches) != 1:
+        caption_page_number = caption_page_number or page_number
+        caption_end_page_number = caption_end_page_number or caption_page_number
+        if caption_page_number < 1 or caption_page_number > document.page_count:
             raise FigureCropError(
-                f"{label!r} must resolve to exactly one caption on physical PDF page "
-                f"{page_number}; matches found: {len(caption_matches)}"
+                "Caption physical PDF page "
+                f"{caption_page_number} is outside 1..{document.page_count}"
             )
-        caption_rect, caption_text = caption_matches[0]
+        if (
+            caption_end_page_number < caption_page_number
+            or caption_end_page_number > document.page_count
+        ):
+            raise FigureCropError(
+                "Caption end page must be within the document and not precede "
+                "the caption start page."
+            )
+        page = document[page_number - 1]
+        caption_page = document[caption_page_number - 1]
+        if caption_page_number != page_number:
+            caption_rect, caption_text = _split_caption_text(
+                document,
+                start_page_number=caption_page_number,
+                end_page_number=caption_end_page_number,
+                label=label,
+                pymupdf=pymupdf,
+            )
+        else:
+            caption_matches = _caption_blocks(caption_page, label, pymupdf)
+            if len(caption_matches) != 1:
+                raise FigureCropError(
+                    f"{label!r} must resolve to exactly one caption on physical PDF page "
+                    f"{caption_page_number}; matches found: {len(caption_matches)}"
+                )
+            caption_rect, caption_text = caption_matches[0]
         explicit_rect = _parse_bbox(bbox, pymupdf, page.rect)
         candidate_rects: list[Any] = []
         related_text_blocks: list[dict[str, Any]] = []
         preceding_caption: dict[str, Any] | None = None
         expansion_bounds = pymupdf.Rect(page.rect)
         dynamic_margin = max(margin, 12.0, min(page.rect.width, page.rect.height) * 0.025)
-        if explicit_rect is None:
+        plate_content_bbox: list[float] | None = None
+        if explicit_rect is None and caption_page_number != page_number:
+            clip = _split_plate_content_rect(page, pymupdf)
+            plate_content_bbox = [round(value, 3) for value in clip]
+            expansion_bounds = pymupdf.Rect(page.rect)
+            crop_method = "split_caption_page_body"
+        elif explicit_rect is None:
             preceding_caption = _preceding_figure_caption(
                 page,
                 caption_rect,
@@ -436,6 +566,10 @@ def crop_figure(
         "schema_version": "0.1",
         "figure_label": label,
         "physical_pdf_page": page_number,
+        "caption_physical_pdf_page": caption_page_number,
+        "caption_physical_pdf_pages": list(
+            range(caption_page_number, caption_end_page_number + 1)
+        ),
         "caption_original": caption_text,
         "source_pdf": str(pdf_path),
         "source_pdf_sha256": sha256_file(pdf_path),
@@ -444,6 +578,7 @@ def crop_figure(
         "candidate_image_rects": [
             [round(value, 3) for value in rectangle] for rectangle in candidate_rects
         ],
+        "plate_content_bbox": plate_content_bbox,
         "related_figure_text_blocks": [
             {key: value for key, value in item.items() if key != "_rect"}
             for item in related_text_blocks
@@ -477,6 +612,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("pdf", type=Path)
     parser.add_argument("--page", type=int, required=True, help="one-based physical PDF page")
+    parser.add_argument(
+        "--caption-page",
+        type=int,
+        help="one-based caption page when the caption and figure plate are separate",
+    )
+    parser.add_argument(
+        "--caption-end-page",
+        type=int,
+        help="last physical page when a separate caption continues across pages",
+    )
     parser.add_argument("--label", required=True, help="for example: Figure 1")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--manifest", type=Path)
@@ -495,6 +640,8 @@ def main(argv: list[str] | None = None) -> int:
         result = crop_figure(
             args.pdf,
             page_number=args.page,
+            caption_page_number=args.caption_page,
+            caption_end_page_number=args.caption_end_page,
             label=args.label,
             output_path=args.output,
             manifest_path=args.manifest,

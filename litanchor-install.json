@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
   "name": "litanchor-paper-reading",
-  "display_name": "LitAnchor 文锚",
-  "version": "0.6.0-beta.3",
-  "release_channel": "beta",
+  "display_name": "LitAnchor Notes · 文锚笔记",
+  "version": "1.0.0-rc1",
+  "release_channel": "rc",
   "supported_platforms": [
     {
       "os": "windows",

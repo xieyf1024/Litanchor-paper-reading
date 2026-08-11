@@ -191,7 +191,8 @@ class LocalPipelineTests(unittest.TestCase):
                 source,
                 {
                     "reading_mode": mode,
-                    "created": "2026-01-02T03:04:05+00:00",
+                    "created": "2020-05-06T07:08:09+00:00",
+                    "note_created_at": "2026-01-02T03:04:05+00:00",
                     "user_tags": ["my-project", "#skim", "LitAnchor"],
                 },
                 "completed",
@@ -204,6 +205,7 @@ class LocalPipelineTests(unittest.TestCase):
             self.assertEqual(frontmatter.count('  - "skim"'), int(mode == "skim"))
             self.assertIn('keywords: "ocean; climate"', frontmatter)
             self.assertIn('created: "2026-01-02"', frontmatter)
+            self.assertNotIn('created: "2020-05-06"', frontmatter)
 
     def make_run(
         self,
@@ -293,6 +295,12 @@ class LocalPipelineTests(unittest.TestCase):
             self.assertNotIn("E-001", markdown)
             self.assertNotIn("PDF p.1", markdown)
             self.assertEqual(markdown.count("\n## "), 1)
+            persisted_run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            self.assertIn("note_created_at", persisted_run)
+            self.assertIn(
+                f'created: "{persisted_run["note_created_at"][:10]}"',
+                markdown,
+            )
             coverage = json.loads((run_dir / "coverage_receipt.json").read_text(encoding="utf-8"))
             self.assertEqual(coverage["coverage_status"], "complete")
             self.assertEqual(coverage["pages_used_as_evidence"], [1])

@@ -2,12 +2,13 @@
 
 ## Summary
 
-LitAnchor（文锚）是一个面向研究生的轻量化、证据优先型学术精读
-Skill。用户指定一篇 Zotero 文献或提供单篇 PDF 后，LitAnchor 只依据
-该论文原文，生成可追溯的中文 Obsidian Markdown 笔记。
+LitAnchor Notes（文锚笔记）是证据优先型笔记品牌。当前公开模块
+`litanchor-paper-reading` 面向单篇学术论文：用户指定 Zotero 文献或
+提供 PDF 后，系统只依据原文生成可追溯的中文 Markdown 笔记；结果
+既可作为独立文件，也可安全写入 Obsidian。
 
-Current version: `v0.6.0-beta.3 Note Experience & Paper Template v1.0 Freeze`
-Public status: Windows-first beta for local-capable Agents
+Current version: `v1.0.0-rc1`
+Public status: Windows-first release candidate for local-capable Agents
 
 ## Product promise
 
@@ -31,14 +32,15 @@ Core users:
 
 - 阅读英文论文的研究生与跨专业科研学习者；
 - 使用 Zotero 管理文献、使用 Obsidian 沉淀知识的研究人员；
+- 只希望上传或指定本地 PDF 并得到 Markdown 笔记的用户；
 - 能使用具有本地执行能力的 Agent 完成安装和精读的人。
 
 Supported baseline:
 
 - Windows 10/11 x64；
 - Python 3.10 或更高版本（当前 CI 覆盖 3.10–3.14）；
-- Zotero 7 或更高版本 Desktop 与本地 PDF 附件；
-- Obsidian Desktop 和本地 Vault；
+- Zotero 7 或更高版本 Desktop 与本地 PDF 附件（集成路线）；
+- Obsidian Desktop 和本地 Vault（集成路线）；
 - 能执行本地 Shell、访问 GitHub 并写入授权目录的 Agent。
 
 完整条件见 `INSTALLATION_REQUIREMENTS.md`。
@@ -87,9 +89,20 @@ Release evidence:
 These papers are evaluation artifacts. Their titles, conclusions, values and
 paper-specific fixes do not enter the distributable Skill.
 
+## Brand and technical identity
+
+- Public product name: `LitAnchor Notes` / `文锚笔记`.
+- Compatible Skill slug and repository: `litanchor-paper-reading`.
+- Product scope: direct PDF or Zotero paper to evidence-grounded Markdown,
+  with optional Obsidian export. Markdown is the sole formal note output.
+
+The repository and Skill slug remain unchanged for v1.0 so existing Release
+URLs, installer receipts, upgrades and installed Skills keep working.
+
 ## v1 product experience
 
-The target public workflow contains two user requests:
+The public workflow starts with installation and then supports either direct
+PDF reading or the Zotero-to-Obsidian route:
 
 ```text
 帮我安装 Skill：https://github.com/xieyf1024/Litanchor-paper-reading
@@ -97,6 +110,10 @@ The target public workflow contains two user requests:
 
 ```text
 精读《论文标题》，并将笔记保存至 <Obsidian Vault 名称>。
+```
+
+```text
+精读这篇 PDF，并生成 Markdown 笔记。
 ```
 
 The Agent handles the LitAnchor virtual environment, dependencies, Skill

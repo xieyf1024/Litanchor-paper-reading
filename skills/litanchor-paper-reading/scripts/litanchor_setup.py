@@ -31,7 +31,7 @@ from litanchor_local import SKILL_VERSION  # noqa: E402
 from zotero_local import DEFAULT_BASE_URL, ZoteroLocalClient  # noqa: E402
 
 
-SETUP_VERSION = "0.6.0-beta.3"
+SETUP_VERSION = "1.0.0-rc1"
 CONFIG_SCHEMA_VERSION = "0.2"
 DEFAULT_INBOX = Path("LitAnchor") / "00_Inbox"
 MINIMUM_PYTHON = (3, 10)
@@ -800,14 +800,83 @@ def run_doctor(
 
 def build_run_plan(
     *,
-    paper: str,
-    selector: str,
-    vault_name: str | None,
+    paper: str | None = None,
+    pdf_path: Path | None = None,
+    selector: str = "title",
+    vault_name: str | None = None,
+    output_note: Path | None = None,
+    reading_mode: str = "deep",
     config_path: Path | None = None,
 ) -> dict[str, Any]:
+    if bool(paper) == bool(pdf_path):
+        raise SetupError("Run plan requires exactly one Zotero paper selector or local PDF path")
+    if reading_mode not in {"skim", "deep", "internalize"}:
+        raise SetupError(f"Unsupported reading mode: {reading_mode}")
     config = load_config(config_path)
+    mineru = config.get("mineru", {}) if isinstance(config, dict) else {}
+    consent_mode = (
+        mineru.get("consent_mode", "ask_each_time")
+        if isinstance(mineru, dict)
+        else "ask_each_time"
+    )
+    install = config.get("installation", {}) if isinstance(config, dict) else {}
+    runtime_root = (
+        Path(install.get("runtime_root"))
+        if isinstance(install, dict) and install.get("runtime_root")
+        else default_litanchor_config_path().parent / "runtime"
+    )
+    if pdf_path is not None:
+        source_pdf = pdf_path.expanduser().resolve()
+        if not source_pdf.is_file() or source_pdf.suffix.casefold() != ".pdf":
+            raise SetupError(f"Direct source must be one existing PDF file: {source_pdf}")
+        target = (
+            output_note.expanduser().resolve()
+            if output_note is not None
+            else source_pdf.with_name(f"{source_pdf.stem}.litanchor.md")
+        )
+        if target.suffix.casefold() != ".md":
+            raise SetupError("The v1.0 direct-PDF route outputs Markdown (.md) only")
+        if target.exists():
+            raise SetupError(f"Output already exists and will not be overwritten: {target}")
+        return {
+            "schema_version": "1.0",
+            "status": "ready_for_agent_execution",
+            "source": {"type": "user_pdf", "pdf_path": str(source_pdf)},
+            "destination": {
+                "type": "standalone_markdown",
+                "output_path": str(target),
+                "overwrite": False,
+            },
+            "paper_selector": None,
+            "reading_mode": reading_mode,
+            "external_knowledge_allowed": False,
+            "zotero": None,
+            "obsidian": None,
+            "mineru": {
+                "consent_mode": consent_mode,
+                "automatic_for_eligible_files": consent_mode == "always_for_eligible_files",
+            },
+            "runtime_root": str(runtime_root),
+            "stages": [
+                "validate_one_user_pdf",
+                "pymupdf_physical_page_baseline",
+                "consent_aware_mineru_structure_enhancement",
+                "six_pass_deep_reading",
+                "evidence_and_claim_ledgers",
+                "section_synthesis_and_visual_selection",
+                "fidelity_and_recall_review",
+                "final_template",
+                "safe_non_overwrite_markdown_export",
+            ],
+            "interrupt_only_for": [
+                "missing_mineru_consent",
+                "unreadable_required_page",
+                "quality_blocker",
+                "target_collision",
+            ],
+        }
     if not config:
-        raise SetupError("LitAnchor is not configured; run setup first")
+        raise SetupError("The Zotero-to-Obsidian route is not configured; run setup first")
     obsidian = config.get("obsidian")
     if not isinstance(obsidian, dict):
         raise SetupError("Configuration has no Obsidian target")
@@ -817,23 +886,11 @@ def build_run_plan(
             f"Requested Vault {vault_name!r} does not match configured Vault {configured_name!r}; "
             "run setup to authorize another target."
         )
-    mineru = config.get("mineru", {})
-    consent_mode = (
-        mineru.get("consent_mode", "ask_each_time")
-        if isinstance(mineru, dict)
-        else "ask_each_time"
-    )
-    install = config.get("installation", {})
-    runtime_root = (
-        Path(install.get("runtime_root"))
-        if isinstance(install, dict) and install.get("runtime_root")
-        else default_litanchor_config_path().parent / "runtime"
-    )
     return {
         "schema_version": "1.0",
         "status": "ready_for_agent_execution",
         "paper_selector": {"type": selector, "value": paper},
-        "reading_mode": "deep",
+        "reading_mode": reading_mode,
         "external_knowledge_allowed": False,
         "zotero": {
             "base_url": config.get("zotero", {}).get("base_url", DEFAULT_BASE_URL),
@@ -915,9 +972,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     plan = subparsers.add_parser("run-plan")
-    plan.add_argument("--paper", required=True)
+    source_group = plan.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--paper")
+    source_group.add_argument("--pdf-path", type=Path)
     plan.add_argument("--selector", choices=("title", "doi", "citekey", "item_key"), default="title")
     plan.add_argument("--vault")
+    plan.add_argument("--output-note", type=Path)
+    plan.add_argument("--reading-mode", choices=("skim", "deep", "internalize"), default="deep")
     plan.add_argument("--config-path", type=Path)
     plan.add_argument("--output", type=Path)
     return parser
@@ -964,8 +1025,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = build_run_plan(
                 paper=args.paper,
+                pdf_path=args.pdf_path,
                 selector=args.selector,
                 vault_name=args.vault,
+                output_note=args.output_note,
+                reading_mode=args.reading_mode,
                 config_path=args.config_path,
             )
             if args.output:

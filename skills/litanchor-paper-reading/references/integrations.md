@@ -1,4 +1,16 @@
-# Zotero and Obsidian integration
+# Paper sources and note destinations
+
+## Direct local PDF and standalone Markdown
+
+A user-provided local PDF may enter the same page-grounded workflow without
+Zotero. Preserve its absolute path and hash, derive metadata only from the PDF
+or user-supplied fields, and render unlinked physical-page locators when no
+verified Zotero attachment key exists.
+
+The standalone destination must be one new `.md` path explicitly supplied or
+derived beside the input PDF. Validate the candidate and refuse an existing
+target. Do not require an Obsidian Vault and do not create Obsidian sidecars or
+wikilinks for this route unless the user explicitly selects Obsidian export.
 
 ## Zotero acquisition
 

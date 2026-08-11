@@ -36,6 +36,7 @@ class RepositoryContractTests(unittest.TestCase):
             "tools/validate_skill.py",
             "tools/audit_release.py",
             "tools/check_markdown_links.py",
+            "tools/smoke_clean_profiles.ps1",
             "evals/cases/v0.6-intent-regression.json",
             "evals/rubrics/v0.6-intent-routing.md",
             "docs/README.md",
@@ -148,7 +149,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_release_version_is_consistent_across_runtime_entrypoints(self):
         manifest = json.loads((ROOT / "litanchor-install.json").read_text(encoding="utf-8"))
         version = manifest["version"]
-        self.assertEqual(manifest["release_channel"], "beta")
+        self.assertEqual(manifest["release_channel"], "rc")
         self.assertNotIn("-dev", version)
         for relative in (
             "skills/litanchor-paper-reading/scripts/litanchor_local.py",
@@ -203,7 +204,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_openai_metadata_mentions_skill(self):
         text = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
-        self.assertIn('display_name: "LitAnchor 文锚"', text)
+        self.assertIn('display_name: "LitAnchor Notes · 论文精读"', text)
         self.assertIn("$litanchor-paper-reading", text)
         match = re.search(r'short_description: "([^"]+)"', text)
         self.assertIsNotNone(match)
@@ -229,6 +230,10 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertIn("page_verified", evidence["required"])
         self.assertIn("source_match_kind", evidence["required"])
+        self.assertEqual(
+            set(evidence["properties"]["symbol_verification"]["properties"]["status"]["enum"]),
+            {"corrected_from_original_page", "verified_on_original_page"},
+        )
 
     def test_note_template_protects_user_content_and_limits_evidence(self):
         text = (SKILL / "assets" / "Paper Template.md").read_text(encoding="utf-8")
@@ -281,6 +286,30 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("| 类型 | 术语 / 问题", text)
         self.assertNotIn("| 定位 | 状态 |", text)
 
+    def test_note_dates_and_markdown_only_output_are_explicit(self):
+        schema = json.loads(
+            (SKILL / "schemas" / "note-frontmatter.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn("first successful", schema["properties"]["created"]["description"])
+        self.assertIn("current successful", schema["properties"]["updated"]["description"])
+        workflow = (SKILL / "references" / "workflow.md").read_text(encoding="utf-8")
+        self.assertIn("never comes from Zotero-added", workflow)
+        for relative in (
+            "README.md",
+            "README_EN.md",
+            "docs/PRODUCT.md",
+            "docs/INTEGRATIONS.md",
+            "docs/ROADMAP.md",
+            "docs/RELEASE_NOTES_v1.0.0-rc1.md",
+        ):
+            public_text = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertNotIn("video-to-note", public_text, relative)
+            self.assertNotIn("视频转笔记", public_text, relative)
+            self.assertNotIn("PDF-note export", public_text, relative)
+            self.assertNotIn("PDF-formatted delivery", public_text, relative)
+
     def test_beta3_analysis_contracts_are_discoverable(self):
         skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         reliability = (SKILL / "references" / "reliability-rules.md").read_text(
@@ -300,6 +329,8 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("## 两句话开始", readme)
         self.assertIn("LitAnchor = Literature + Anchor", readme)
         self.assertIn("## 一眼看懂工作流", readme)
+        self.assertIn("LitAnchor Notes · 文锚笔记", readme)
+        self.assertIn("直接 PDF 路线不要求 Zotero 或 Obsidian", readme)
         for mode in ("`skim` 粗读", "`deep` 精读（默认）", "`internalize` 内化"):
             self.assertIn(mode, readme)
 

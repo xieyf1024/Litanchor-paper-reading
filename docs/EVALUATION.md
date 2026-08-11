@@ -2,8 +2,7 @@
 
 ## Current phase
 
-`v0.6.0-beta.3` is the current Note Experience & Paper Template v1.0 beta. It
-retains the v0.5.0
+`v1.0.0-rc1` is the current public release candidate. It retains the v0.5.0
 autonomous deep-reading baseline and adds Agent-assisted installation,
 Windows Python 3.10–3.14 CI, frozen holdouts, pathological PDF/failure cases,
 MinerU component comparison, lifecycle recovery, semantic intent regression,
@@ -20,7 +19,8 @@ Release evidence:
 - one separate source-closed unseen smoke test under the frozen workflow and
   rubric;
 - the complete repository suite plus Skill validation, compilation,
-  Markdown-link, privacy and anti-leak checks for the v0.6 beta freeze.
+  Markdown-link, privacy and anti-leak checks for the RC freeze;
+- the final unseen note and its split-page figure crops accepted by the user.
 
 See `v0.5-final-validation.md`, `../evals/cross-paper-metrics.json`,
 `../evals/failure-taxonomy.md`, `../evals/v0.6-public-beta-metrics.json`,
@@ -106,7 +106,9 @@ the v0.6 release gate. Use:
 2. fresh virtual environments, temporary Agent Skills directories, temporary
    configuration and temporary Vaults;
 3. a stub loopback Zotero API plus synthetic PDFs in CI;
-4. one isolated local-profile install on the maintainer’s Windows system;
+4. three isolated local application profiles on the maintainer’s Windows
+   system, including real core dependencies, non-ASCII paths and interrupted
+   activation recovery;
 5. one live Zotero-to-Obsidian smoke run after synthetic tests pass.
 
 Cover:
@@ -120,7 +122,7 @@ Cover:
 - formula, table, multi-column and low-text extraction failure;
 - regeneration after user-owned note content exists.
 
-This proves installation independence and controlled failure behavior without
+This proves lifecycle isolation and controlled failure behavior without
 claiming that a completely new Windows user or outside beta cohort has been
 tested. Public issue reports can extend the evidence after release.
 
