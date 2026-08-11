@@ -24,6 +24,8 @@
 
 LitAnchor Notes 是证据优先型笔记品牌；当前公开模块 `litanchor-paper-reading` 专注单篇学术论文。你可以直接提供 PDF 生成独立 Markdown 笔记，也可以从 Zotero 获取论文并安全写入 Obsidian。
 
+> 当前公开候选版本：[v1.0.0-rc1](https://github.com/xieyf1024/Litanchor-paper-reading/releases/tag/v1.0.0-rc1)。它保留 Pre-release 标记，等待公开使用反馈后再晋级稳定版。
+
 ## 两句话开始
 
 把仓库链接交给具备本地文件和命令执行能力的 Agent：
@@ -138,7 +140,7 @@ Python 和 Zotero 只设置最低版本。未覆盖的新版本由 `doctor` 进�
 
 ## 文档与贡献
 
-[文档导航](docs/README.md) · [工作流](docs/WORKFLOW.md) · [数据结构](docs/DATA_SCHEMA.md) · [评测方法](docs/EVALUATION.md) · [路线图](docs/ROADMAP.md) · [贡献指南](CONTRIBUTING.md)
+[文档导航](docs/README.md) · [工作流](docs/WORKFLOW.md) · [数据结构](docs/DATA_SCHEMA.md) · [评测方法](docs/EVALUATION.md) · [路线图](docs/ROADMAP.md) · [贡献指南](CONTRIBUTING.md) · [安全报告](.github/SECURITY.md)
 
 提交问题时请使用对应的安装、PDF 运行或笔记质量 Issue 模板。不要上传论文 PDF、私人 Zotero 数据、Obsidian Vault、API 密钥、个人批注或运行时 Evidence/Claim 文件。
 

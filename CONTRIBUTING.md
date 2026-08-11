@@ -2,12 +2,19 @@
 
 Thanks for helping improve LitAnchor. Contributions should strengthen a reusable, paper-independent workflow rather than encode answers from a particular test paper.
 
+By submitting a contribution, you confirm that you have the right to provide
+it and agree that it is licensed under the repository's `AGPL-3.0-only`
+license. Do not contribute copied paper content or third-party code without a
+compatible license and clear attribution.
+
 ## Before opening an issue
 
 - Search existing issues and the current [roadmap](docs/ROADMAP.md).
 - Run `./litanchor.ps1 doctor` when the problem concerns installation, Zotero, MinerU or Obsidian.
 - Remove paper text, private annotations, local paths, usernames, API keys and Vault contents from logs.
 - Do not upload copyrighted paper PDFs unless you have the right to redistribute them.
+- Report security or privacy vulnerabilities privately through GitHub's
+  **Security → Report a vulnerability** flow; see [.github/SECURITY.md](.github/SECURITY.md).
 
 ## Development setup
 
@@ -42,4 +49,6 @@ Development cases may guide fixes. Frozen holdouts must not be inspected or used
 
 ## Security and privacy
 
-Do not include secrets or private research material in a public issue. For a suspected credential, path-containment, overwrite or unintended-upload vulnerability, open a minimal redacted report and clearly mark it as a security/privacy concern.
+Do not include secrets or private research material in a public issue. Report a
+suspected credential, path-containment, overwrite or unintended-upload
+vulnerability privately under the repository security policy.

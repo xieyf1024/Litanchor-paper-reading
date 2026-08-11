@@ -24,6 +24,8 @@
 
 LitAnchor Notes is an evidence-first note brand. Its current public module, `litanchor-paper-reading`, handles one academic paper at a time. Give it a PDF for a standalone Markdown note, or use Zotero acquisition and safe Obsidian export.
 
+> Current public candidate: [v1.0.0-rc1](https://github.com/xieyf1024/Litanchor-paper-reading/releases/tag/v1.0.0-rc1). It remains a Pre-release until public usage feedback supports promotion to the stable release.
+
 ## Start in two prompts
 
 Give the repository URL to an agent that can run local commands and access files:
@@ -138,7 +140,7 @@ These are agent and contributor interfaces, not mandatory manual steps for end u
 
 ## Documentation and contributing
 
-[Documentation](docs/README.md) · [Workflow](docs/WORKFLOW.md) · [Data Schema](docs/DATA_SCHEMA.md) · [Evaluation](docs/EVALUATION.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md)
+[Documentation](docs/README.md) · [Workflow](docs/WORKFLOW.md) · [Data Schema](docs/DATA_SCHEMA.md) · [Evaluation](docs/EVALUATION.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](.github/SECURITY.md)
 
 Use the matching installation, PDF runtime, or note-quality Issue form. Never upload paper PDFs, private Zotero data, Obsidian Vault contents, API keys, personal annotations, or runtime Evidence/Claim artifacts.
 
