@@ -37,7 +37,7 @@ from autonomous_semantic import (  # noqa: E402
 from paper_quality_gate import PAPER_TYPE_LABELS_ZH  # noqa: E402
 
 
-AUTONOMOUS_VERSION = "0.6.0-beta.3"
+AUTONOMOUS_VERSION = "1.0.0-rc1"
 ALLOWED_AUTONOMOUS_ORIGINS = {"auto_extracted", "auto_synthesized"}
 MINERU_CONSENT_MODES = {
     "always_for_eligible_files",

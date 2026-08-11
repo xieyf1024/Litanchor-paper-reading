@@ -1,9 +1,9 @@
 ---
 name: litanchor-paper-reading
-description: Installs, configures, diagnoses, upgrades, or runs LitAnchor and creates evidence-grounded Chinese close-reading notes from one academic paper with safe Zotero-to-Obsidian export. Use when the user's intent is to set up LitAnchor or to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, regardless of exact wording.
+description: Installs, configures, diagnoses, upgrades, or runs LitAnchor Notes and creates evidence-grounded Chinese close-reading notes from one academic paper as standalone Markdown or through safe Zotero-to-Obsidian export. Use when the user's intent is to set up LitAnchor or to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, regardless of exact wording.
 ---
 
-# LitAnchor Paper Reading
+# LitAnchor Notes: Paper Reading
 
 ## Enforce the permanent contract
 
@@ -28,13 +28,13 @@ Read `references/reliability-rules.md` and `references/workflow.md` completely f
 - A testable research idea in `internalize`: read `references/research-idea-gates.md`.
 - Autonomous full-paper execution: read `references/autonomous-deep-reading.md`.
 - Feedback-driven Skill changes: read `references/controlled-evolution.md`.
-- Installation, setup, doctor, Vault-name resolution, or the two-intent public flow: read `references/zero-config.md`.
+- Installation, setup, doctor, Vault-name resolution, or the public install/read flow: read `references/zero-config.md`.
 
 Keep detailed rules in `references/`, deterministic behavior in `scripts/`, output templates and reusable material in `assets/`, and machine contracts in `schemas/`.
 
 ## Execute the evidence-first workflow
 
-1. Resolve one mode (`skim`, `deep`, or `internalize`) and exactly one paper.
+1. Resolve one mode (`skim`, `deep`, or `internalize`), exactly one paper, and one destination: standalone Markdown or an authorized Obsidian Inbox.
 2. Record source identity, metadata, file hash, physical page count, write intent, and `external_knowledge_allowed=false`.
 3. Preflight and extract the complete PDF by physical page. Stop on unreadable required pages.
 4. Map paper type and structure, then read all relevant pages in separate structure, method, result/visual, discussion/limit, and omission-review passes.
@@ -42,7 +42,7 @@ Keep detailed rules in `references/`, deterministic behavior in `scripts/`, outp
 6. For `deep` and `internalize`, evaluate the complete visual inventory and select zero to three indispensable method or result visuals. Record a reason when none qualifies.
 7. Use the versioned user-facing content contract in `assets/Paper Template.md`, then render validated structured data through the internal slot asset `assets/Paper Template - Runtime.md`. `skim` renders Section 1 only; `deep` renders Sections 1–6; `internalize` renders Sections 1–8. Never expose runtime slots or AI-only instructions as the user template. Keep Evidence IDs and exact quotations in private sidecars; show only compact linked `p.x` locators in the reader note.
 8. Audit conclusion boundaries separately from author-stated limitations. Run deterministic schema, page, quotation, numeric, symbol, content-recall, visual, Markdown, filename, and collision checks, followed by independent fidelity and recall review where required.
-9. Show the preview, warnings, failed pages, and intended paths. Write only after explicit authorization.
+9. Show the preview, warnings, failed pages, and intended paths. A user-supplied PDF may export to a new standalone `.md` file without Zotero or Obsidian; Zotero acquisition and Obsidian export remain optional integrations. Write only after explicit authorization and never overwrite.
 
 Use the bundled scripts rather than reimplementing their behavior:
 

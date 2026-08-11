@@ -2,7 +2,7 @@
 
 ## Current implementation status
 
-The current `v0.6.0-beta.3` path connects to Zotero 7 or newer through the
+The current `v1.0.0-rc1` path connects to Zotero 7 or newer through the
 loopback-only Local API, builds a PyMuPDF-authoritative page baseline, applies
 the user’s local MinerU consent policy and exports a reviewed note only to an
 explicitly authorized Obsidian Vault subdirectory.
@@ -12,7 +12,23 @@ physical pages, text blocks, coordinates, Zotero page links, rendering, crops
 and page-preserving subsets. MinerU Open SDK is a conditional structure
 enhancer whose results must align back to PyMuPDF pages.
 
-## Active integration path
+## Active routes
+
+### Direct PDF to Markdown
+
+```text
+user-supplied local PDF
+→ PyMuPDF page bundle
+→ consent-aware MinerU structure candidates
+→ autonomous deep-reading ledgers and reviews
+→ new standalone Markdown note
+```
+
+This route does not require Zotero or Obsidian. It retains the same evidence,
+page, quality and no-overwrite contracts. Markdown is the sole formal note
+output; LitAnchor does not generate a separate PDF note.
+
+### Zotero to Obsidian
 
 ```text
 Zotero 7 Local API or local PDF

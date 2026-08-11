@@ -309,7 +309,10 @@ def _verified_symbol_corrections(item: dict[str, Any]) -> dict[str, str]:
     receipt = item.get("symbol_verification")
     if not isinstance(receipt, dict):
         return {}
-    if receipt.get("status") != "corrected_from_original_page":
+    if receipt.get("status") not in {
+        "corrected_from_original_page",
+        "verified_on_original_page",
+    }:
         return {}
     if receipt.get("method") != "pymupdf_page_render":
         return {}
@@ -335,6 +338,9 @@ def validate_range_symbol_integrity(
             continue
         quote = str(item.get("quote_original") or "")
         corrections = _verified_symbol_corrections(item)
+        receipt_status = str(
+            (item.get("symbol_verification") or {}).get("status") or ""
+        )
         for match in SUSPICIOUS_RANGE_PATTERN.finditer(quote):
             token = match.group(0)
             lower = float(match.group("lower").replace(",", "."))
@@ -345,14 +351,20 @@ def validate_range_symbol_integrity(
                 and bool(UNCERTAINTY_MARKERS.search(nearby))
                 and bool(re.search(r"\s±\s", token))
             )
-            verified = token in corrections and "±" not in corrections[token]
+            verified = token in corrections and (
+                receipt_status == "verified_on_original_page"
+                or "±" not in corrections[token]
+            )
             if not plausible_uncertainty and not verified:
                 suspicious.append(
                     f"{item.get('evidence_id', '<unknown>')}:{token}"
                 )
         for match in SUSPICIOUS_WORD_RANGE_PATTERN.finditer(quote):
             token = match.group(0)
-            verified = token in corrections and "±" not in corrections[token]
+            verified = token in corrections and (
+                receipt_status == "verified_on_original_page"
+                or "±" not in corrections[token]
+            )
             if not verified:
                 suspicious.append(
                     f"{item.get('evidence_id', '<unknown>')}:{token}"

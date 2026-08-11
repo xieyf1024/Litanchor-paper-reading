@@ -33,8 +33,9 @@ Do not commit a complete paper, long copyrighted excerpts, private Zotero annota
 
 ## Current verification
 
-`v0.6.0-beta.3` retains the frozen holdout evaluation, pathological PDF/failure
-coverage, MinerU component A/B evidence and deterministic repository tests.
+`v1.0.0-rc1` retains the frozen holdout evaluation, pathological PDF/failure
+coverage, MinerU component A/B evidence, final unseen-paper acceptance and
+deterministic repository tests.
 Start with:
 
 - [`v0.6-public-beta-metrics.json`](v0.6-public-beta-metrics.json);

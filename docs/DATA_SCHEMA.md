@@ -43,12 +43,13 @@ The canonical machine-readable contracts live under `skills/litanchor-paper-read
 18. User-facing note frontmatter contains exactly 16 properties: `title`, `first_author`, `year`, `journal`, `doi`, `paper_type`, `keywords`, `source_coverage`, `locator_mode`, `validation_status`, `review_status`, `skill_version`, `template_version`, `created`, `updated`, and `tags`. The frozen reader contract is `Paper Template v1.0`, so generated notes use `template_version: "1.0"`.
 19. `first_author` is one full-name scalar. The complete author list remains in SourceBundle. `keywords` comes only from the paper or Zotero and is rendered as one semicolon-delimited string; an absent source keyword list stays empty.
 20. Reading mode is not a frontmatter property. `tags` always includes `LitAnchor` plus exactly one of `skim`, `deep`, or `internalize`; user-added tags are permitted and must never be removed by an automated update.
-21. `created` and `updated` use `YYYY-MM-DD`. `review_status` is restricted to `unreviewed`, `review_pending`, or `reviewed` in the human note even when the private run record uses more detailed workflow states.
+21. `created` and `updated` use `YYYY-MM-DD`. `created` is the date of the first successful LitAnchor note generation and never the Zotero-added date, PDF-import/acquisition date, or run-start date. `updated` is the date of the current successful render or update; later updates preserve `created`. `review_status` is restricted to `unreviewed`, `review_pending`, or `reviewed` in the human note even when the private run record uses more detailed workflow states.
 
 ## Local configuration
 
-The v0.6 Agent-facing setup writes a local-only configuration validated by
-`schemas/local-config.schema.json`. It records:
+The Zotero-to-Obsidian setup writes a local-only configuration validated by
+`schemas/local-config.schema.json`. The direct PDF-to-Markdown route may run
+without this configuration. When present, it records:
 
 - the selected Vault name and absolute path;
 - one authorized child root and Literature Inbox;

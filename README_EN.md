@@ -1,8 +1,8 @@
 <div align="center">
   <img src="docs/assets/litanchor-logo.png" alt="LitAnchor logo" width="112">
-  <h1>LitAnchor</h1>
-  <p><strong>Anchor every insight to the source.</strong></p>
-  <p><code>LitAnchor = Literature + Anchor</code> — every understanding of a paper stays anchored to its source.</p>
+  <h1>LitAnchor Notes</h1>
+  <p><strong>Anchor every note to its source.</strong></p>
+  <p><code>LitAnchor = Literature + Anchor</code> — start from the literature and keep every note anchored to its source.</p>
 
   <p>
     <a href="https://github.com/xieyf1024/Litanchor-paper-reading/releases"><img alt="Release" src="https://img.shields.io/github/v/release/xieyf1024/Litanchor-paper-reading?include_prereleases&label=release"></a>
@@ -22,7 +22,7 @@
   </p>
 </div>
 
-LitAnchor is an evidence-first academic paper-reading skill for Zotero + Obsidian users. Give it one paper and it performs structured close reading, verifies important claims and page locations, and writes a traceable Chinese Markdown note to Obsidian.
+LitAnchor Notes is an evidence-first note brand. Its current public module, `litanchor-paper-reading`, handles one academic paper at a time. Give it a PDF for a standalone Markdown note, or use Zotero acquisition and safe Obsidian export.
 
 ## Start in two prompts
 
@@ -32,13 +32,19 @@ Give the repository URL to an agent that can run local commands and access files
 Install this Skill for me: https://github.com/xieyf1024/Litanchor-paper-reading
 ```
 
-Then ask naturally:
+Then provide a PDF directly:
+
+```text
+Deep-read this PDF and create a Markdown note next to it.
+```
+
+Or use the integrated Zotero → Obsidian route:
 
 ```text
 Deep-read “Paper title” and save the note to my Research Vault.
 ```
 
-The wording is not literal. Agents should recognize equivalent install, skim, deep-read, internalize, and export requests. First-run setup may confirm only the Obsidian Vault, Literature Inbox, and MinerU consent policy.
+The wording is not literal. Agents should recognize equivalent install, skim, deep-read, internalize, and export requests. The direct-PDF route needs neither Zotero nor Obsidian. The integrated route may confirm the Obsidian Vault, Literature Inbox, and MinerU consent policy on first use.
 
 ## What you get
 
@@ -62,10 +68,10 @@ Reader notes stay clean: they show compact linked `p.x` Zotero locators, while E
 
 ```mermaid
 flowchart LR
-    source["Zotero / PDF"] --> parse["Parse and map pages<br/>PyMuPDF + optional MinerU"]
+    source["PDF / Zotero"] --> parse["Parse and map pages<br/>PyMuPDF + optional MinerU"]
     parse --> ground["Read and ground<br/>Evidence → Claims"]
     ground --> review["Review twice<br/>Fidelity + recall"]
-    review --> note["Obsidian note<br/>Page links + key figures"]
+    review --> note["Markdown / Obsidian<br/>Page locators + key figures"]
 
     classDef sourceNode fill:#E8F1FF,stroke:#2563EB,color:#172554
     classDef processNode fill:#FFF7E6,stroke:#D97706,color:#451A03
@@ -96,8 +102,8 @@ The current public build targets local-capable agents on Windows. The user asks 
 
 - Windows 10/11 x64;
 - Python 3.10 or newer;
-- Zotero 7 or newer with local application communication enabled and a local PDF attachment;
-- Obsidian Desktop with a local filesystem Vault;
+- Zotero 7 or newer (only for the Zotero integration route);
+- Obsidian Desktop with a local Vault (only for Obsidian export);
 - an agent that can run local commands, write to authorized paths, and download dependencies.
 
 Python and Zotero use minimum versions only. Newer untested versions are capability-probed by `doctor` instead of being rejected by an arbitrary maximum.
@@ -107,6 +113,7 @@ Python and Zotero use minimum versions only. Newer untested versions are capabil
 .\litanchor.ps1 doctor
 .\litanchor.ps1 setup -Vault "Vault name" -Inbox "LitAnchor\00_Inbox" -MinerUConsent ask_each_time -CreateInbox
 .\litanchor.ps1 run-plan -Paper "Paper title" -Vault "Vault name"
+.\litanchor.ps1 run-plan -PdfPath "D:\Papers\paper.pdf" -OutputNote "D:\Notes\paper.md"
 ```
 
 These are agent and contributor interfaces, not mandatory manual steps for end users. See [installation requirements](docs/INSTALLATION_REQUIREMENTS.md) and [integrations](docs/INTEGRATIONS.md).
@@ -125,6 +132,7 @@ These are agent and contributor interfaces, not mandatory manual steps for end u
 
 - One paper per run; no batch review or knowledge graph.
 - Native-text PDFs are the stable path; scanned and pathological layouts may degrade or block.
+- Markdown is the sole formal note output; LitAnchor does not generate a separate PDF note.
 - No Zotero write-back, bidirectional sync, or silent overwrite of existing notes.
 - Review key visuals, core numbers, and source locators before long-term use.
 

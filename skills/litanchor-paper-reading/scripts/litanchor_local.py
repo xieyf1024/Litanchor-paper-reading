@@ -42,7 +42,7 @@ from paper_quality_gate import (  # noqa: E402
 from pdf_reading_order import extract_page_text as extract_pymupdf_page_text  # noqa: E402
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "0.6.0-beta.3"
+SKILL_VERSION = "1.0.0-rc1"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -1409,7 +1409,7 @@ def render_note_frontmatter(
     metadata = source["metadata"]
     reading_mode = str(run_record.get("reading_mode") or "deep")
     today = utc_date()
-    created = _date_only(run_record.get("created"), fallback=today)
+    created = _date_only(run_record.get("note_created_at"), fallback=today)
     lines = [
         "---",
         f"title: {yaml_scalar(metadata.get('title'))}",
@@ -1623,6 +1623,17 @@ def _prepend_synthesis(synthesis: str | None, details: str) -> str:
     return f"{synthesis}\n\n{details}"
 
 
+def _provenance_prefix(claim: dict[str, Any], text: str) -> str:
+    prefix = {
+        "analysis": "[分析] ",
+        "hypothesis": "[假设] ",
+        "user": "[用户] ",
+    }.get(str(claim.get("provenance_class") or "paper"), "")
+    if prefix and text.lstrip().startswith(prefix.strip()):
+        return ""
+    return prefix
+
+
 def _render_claim_group(
     claims: list[Any],
     claim_types: set[str],
@@ -1638,11 +1649,7 @@ def _render_claim_group(
     for claim in selected:
         title = str(claim.get("title_zh") or "").strip()
         text = str(claim.get("claim_text_zh") or "").strip()
-        provenance_prefix = {
-            "analysis": "[分析] ",
-            "hypothesis": "[假设] ",
-            "user": "[用户] ",
-        }.get(str(claim.get("provenance_class") or "paper"), "")
+        provenance_prefix = _provenance_prefix(claim, text)
         marker = _claim_marker(claim, source, verified_pages)
         if title and title != text:
             lines.append(f"- **{provenance_prefix}{title}**：{text} {marker}")
@@ -1694,7 +1701,7 @@ def _overview_value(
         return "**原文未说明**"
     return "<br>".join(
         _escape_table(
-            f"{ {'analysis': '[分析] ', 'hypothesis': '[假设] ', 'user': '[用户] '}.get(str(claim.get('provenance_class') or 'paper'), '') }"
+            f"{_provenance_prefix(claim, str(claim['claim_text_zh']))}"
             f"{claim['claim_text_zh']} {_claim_marker(claim, source, verified_pages)}"
         )
         for claim in selected
@@ -2358,6 +2365,8 @@ def build_run(run_dir: Path, output_path: Path | None = None) -> tuple[Path, dic
     destination = (output_path or (run_dir / "preview.md")).resolve()
     if destination.exists():
         raise PipelineError(f"Refusing to overwrite existing note: {destination}")
+    if not _date_only(run_record.get("note_created_at"), fallback=""):
+        run_record["note_created_at"] = utc_now()
     section_synthesis_path = run_dir / "section-synthesis.json"
     section_synthesis = (
         load_json(section_synthesis_path)

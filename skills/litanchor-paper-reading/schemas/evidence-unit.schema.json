@@ -103,7 +103,12 @@
       "additionalProperties": false,
       "required": ["status", "method", "corrections"],
       "properties": {
-        "status": {"const": "corrected_from_original_page"},
+        "status": {
+          "enum": [
+            "corrected_from_original_page",
+            "verified_on_original_page"
+          ]
+        },
         "method": {"const": "pymupdf_page_render"},
         "corrections": {
           "type": "array",

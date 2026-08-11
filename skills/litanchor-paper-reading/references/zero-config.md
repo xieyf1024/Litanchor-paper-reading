@@ -93,6 +93,28 @@ Zotero links and final crops.
 
 ## Natural-language paper request
 
+Two source/destination routes are supported. Infer the route from the supplied
+paper and requested destination; do not force Zotero or Obsidian into a direct
+PDF request.
+
+### Direct PDF to standalone Markdown
+
+For a request such as:
+
+```text
+精读这篇 PDF，并在 D:\Notes 生成 Markdown 笔记。
+```
+
+run `scripts/litanchor_setup.py run-plan --pdf-path <paper.pdf>` with an
+optional `--output-note <note.md>` and one reading mode. The input must be one
+existing PDF and the output must be a new `.md` file. This route does not
+require Zotero, an Obsidian Vault, or prior setup. It still uses the same
+evidence-first workflow, physical-page validation, conditional MinerU policy,
+quality gates, preview, and no-overwrite contract. Markdown is the sole formal
+note output; do not generate a separate PDF note.
+
+### Zotero to Obsidian
+
 For a request such as:
 
 ```text

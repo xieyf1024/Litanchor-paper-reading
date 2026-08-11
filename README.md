@@ -1,8 +1,8 @@
 <div align="center">
   <img src="docs/assets/litanchor-logo.png" alt="LitAnchor logo" width="112">
-  <h1>LitAnchor · 文锚</h1>
-  <p><strong>Anchor every insight to the source.</strong></p>
-  <p><code>LitAnchor = Literature + Anchor</code> —— 把每一条文献理解锚定到原文。</p>
+  <h1>LitAnchor Notes · 文锚笔记</h1>
+  <p><strong>Anchor every note to its source.</strong></p>
+  <p><code>LitAnchor = Literature + Anchor</code> —— 从文献出发，让每一条笔记都锚定来源。</p>
 
   <p>
     <a href="https://github.com/xieyf1024/Litanchor-paper-reading/releases"><img alt="Release" src="https://img.shields.io/github/v/release/xieyf1024/Litanchor-paper-reading?include_prereleases&label=release"></a>
@@ -22,7 +22,7 @@
   </p>
 </div>
 
-LitAnchor 是面向 Zotero + Obsidian 用户的证据优先型学术精读 Skill。给它一篇论文，它会依据原文完成结构化精读、核验重要主张与页码，并生成可直接沉淀到 Obsidian 的中文 Markdown 笔记。
+LitAnchor Notes 是证据优先型笔记品牌；当前公开模块 `litanchor-paper-reading` 专注单篇学术论文。你可以直接提供 PDF 生成独立 Markdown 笔记，也可以从 Zotero 获取论文并安全写入 Obsidian。
 
 ## 两句话开始
 
@@ -32,13 +32,19 @@ LitAnchor 是面向 Zotero + Obsidian 用户的证据优先型学术精读 Skill
 帮我安装这个 Skill：https://github.com/xieyf1024/Litanchor-paper-reading
 ```
 
-安装完成后，直接说：
+安装完成后，可直接提供 PDF：
+
+```text
+精读这篇 PDF，并在同一目录生成 Markdown 笔记。
+```
+
+也可以使用完整的 Zotero → Obsidian 路线：
 
 ```text
 精读《论文标题》，把笔记保存到我的 Research Vault。
 ```
 
-不需要逐字照抄。Agent 应识别含义相近的安装、粗读、精读、内化和导出请求。首次使用最多确认 Obsidian Vault、Literature Inbox 和 MinerU 授权策略。
+不需要逐字照抄。Agent 应识别含义相近的安装、粗读、精读、内化和导出请求。直接 PDF 路线不要求 Zotero 或 Obsidian；集成路线首次使用最多确认 Obsidian Vault、Literature Inbox 和 MinerU 授权策略。
 
 ## 你会得到什么
 
@@ -62,10 +68,10 @@ LitAnchor 是面向 Zotero + Obsidian 用户的证据优先型学术精读 Skill
 
 ```mermaid
 flowchart LR
-    source["Zotero / PDF"] --> parse["解析与页码映射<br/>PyMuPDF + 可选 MinerU"]
+    source["PDF / Zotero"] --> parse["解析与页码映射<br/>PyMuPDF + 可选 MinerU"]
     parse --> ground["全文精读与证据化<br/>Evidence → Claims"]
     ground --> review["双重审查<br/>忠实度 + 召回"]
-    review --> note["Obsidian 笔记<br/>页码链接 + 关键图表"]
+    review --> note["Markdown / Obsidian<br/>页码定位 + 关键图表"]
 
     classDef sourceNode fill:#E8F1FF,stroke:#2563EB,color:#172554
     classDef processNode fill:#FFF7E6,stroke:#D97706,color:#451A03
@@ -96,8 +102,8 @@ PyMuPDF 始终是物理页码、引文、坐标和原图裁剪的权威来源。
 
 - Windows 10/11 x64；
 - Python 3.10 或更高版本；
-- Zotero 7 或更高版本，已启用本机应用通信，并具有本地 PDF 附件；
-- Obsidian Desktop 与本地文件系统 Vault；
+- Zotero 7 或更高版本（仅 Zotero 集成路线需要）；
+- Obsidian Desktop 与本地 Vault（仅 Obsidian 导出路线需要）；
 - 可执行本地命令、读写授权目录并下载依赖的 Agent。
 
 Python 和 Zotero 只设置最低版本。未覆盖的新版本由 `doctor` 进行能力探测，而不是被武断拒绝。
@@ -107,6 +113,7 @@ Python 和 Zotero 只设置最低版本。未覆盖的新版本由 `doctor` 进�
 .\litanchor.ps1 doctor
 .\litanchor.ps1 setup -Vault "Vault 名称" -Inbox "LitAnchor\00_Inbox" -MinerUConsent ask_each_time -CreateInbox
 .\litanchor.ps1 run-plan -Paper "论文标题" -Vault "Vault 名称"
+.\litanchor.ps1 run-plan -PdfPath "D:\Papers\paper.pdf" -OutputNote "D:\Notes\paper.md"
 ```
 
 这些是 Agent 和贡献者接口，不是普通用户必须手动执行的步骤。更多信息见[安装要求](docs/INSTALLATION_REQUIREMENTS.md)和[集成说明](docs/INTEGRATIONS.md)。
@@ -125,6 +132,7 @@ Python 和 Zotero 只设置最低版本。未覆盖的新版本由 `doctor` 进�
 
 - 一次处理一篇论文，不做批量综述或知识图谱。
 - 原生文本 PDF 是稳定路径；扫描件和异常版式可能降级或阻断。
+- Markdown 是唯一正式笔记输出；LitAnchor 不生成独立的 PDF 格式笔记。
 - 不写回 Zotero，不做双向同步，也不静默覆盖已有笔记。
 - 长期保存前仍建议人工复核关键图、核心数值和引用定位。
 

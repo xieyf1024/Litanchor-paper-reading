@@ -75,6 +75,42 @@ class LitAnchorSetupTests(unittest.TestCase):
             self.assertFalse(plan["obsidian"]["overwrite"])
             self.assertTrue(plan["mineru"]["automatic_for_eligible_files"])
 
+    def test_direct_pdf_run_plan_needs_no_zotero_or_obsidian_config(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "paper.pdf"
+            source.write_bytes(b"%PDF-1.7\n")
+
+            plan = litanchor_setup.build_run_plan(
+                pdf_path=source,
+                reading_mode="deep",
+            )
+
+            self.assertEqual(plan["status"], "ready_for_agent_execution")
+            self.assertEqual(plan["source"]["type"], "user_pdf")
+            self.assertEqual(plan["destination"]["type"], "standalone_markdown")
+            self.assertEqual(
+                Path(plan["destination"]["output_path"]),
+                source.with_name("paper.litanchor.md").resolve(),
+            )
+            self.assertIsNone(plan["zotero"])
+            self.assertIsNone(plan["obsidian"])
+            self.assertIn("safe_non_overwrite_markdown_export", plan["stages"])
+
+    def test_direct_pdf_run_plan_rejects_existing_output(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "paper.pdf"
+            output = root / "note.md"
+            source.write_bytes(b"%PDF-1.7\n")
+            output.write_text("existing", encoding="utf-8")
+
+            with self.assertRaises(litanchor_setup.SetupError):
+                litanchor_setup.build_run_plan(
+                    pdf_path=source,
+                    output_note=output,
+                )
+
     def test_setup_rejects_inbox_outside_vault(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
