@@ -58,7 +58,7 @@ flowchart TB
     class sourceFailure,fallback,qualityFailure failureLayer
 ```
 
-## Implemented autonomous path (v0.5 baseline, current v0.6 beta)
+## Implemented autonomous path
 
 The bundled scripts and Skill implement this local autonomous path:
 

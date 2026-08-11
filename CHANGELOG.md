@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Streamlined the public documentation tree while preserving historical release
+  records in GitHub Releases, Git Tags and this changelog.
+- Added a private security-reporting policy and pull-request template, refreshed
+  public issue forms for `v1.0.0-rc1`, and clarified the active RC-to-stable
+  release gate without changing runtime behavior.
+
 ## v1.0.0-rc1 — 2026-08-11 — Public Release Candidate
 
 - Recorded the three completed frozen-checklist evaluations and completed a

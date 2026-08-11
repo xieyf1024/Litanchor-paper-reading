@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Report a security or privacy vulnerability
+    url: https://github.com/xieyf1024/Litanchor-paper-reading/security/advisories/new
+    about: Report credentials, path containment, overwrite, or unintended-upload vulnerabilities privately.
   - name: Documentation
     url: https://github.com/xieyf1024/Litanchor-paper-reading/blob/main/docs/README.md
     about: Read the current product, installation, workflow, evaluation, and roadmap documents first.

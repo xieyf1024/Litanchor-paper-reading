@@ -22,7 +22,7 @@ Release evidence:
   Markdown-link, privacy and anti-leak checks for the RC freeze;
 - the final unseen note and its split-page figure crops accepted by the user.
 
-See `v0.5-final-validation.md`, `../evals/cross-paper-metrics.json`,
+See `v1.0.0-rc1-frozen-validation.md`, `../evals/cross-paper-metrics.json`,
 `../evals/failure-taxonomy.md`, `../evals/v0.6-public-beta-metrics.json`,
 `../evals/reports/v0.6-public-beta-validation.md` and
 `release-checklist.md`.
