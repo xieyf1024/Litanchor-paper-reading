@@ -214,6 +214,36 @@ def _related_figure_text_blocks(
     return matches
 
 
+def _post_caption_text_blocks(
+    page: Any,
+    caption_rect: Any,
+    clip: Any,
+    pymupdf: Any,
+) -> list[dict[str, Any]]:
+    """Return non-caption text below the caption that enters a proposed crop."""
+    matches: list[dict[str, Any]] = []
+    for block in page.get_text("blocks"):
+        rectangle = pymupdf.Rect(block[:4])
+        text = " ".join(str(block[4]).split())
+        if not text or rectangle.intersects(caption_rect):
+            continue
+        if rectangle.y1 <= caption_rect.y1 + 0.5:
+            continue
+        if rectangle.y0 >= clip.y1 - 0.5:
+            continue
+        if _horizontal_overlap(rectangle, clip) <= 1.0:
+            continue
+        matches.append(
+            {
+                "bbox": [round(value, 3) for value in rectangle],
+                "text": text,
+                "_rect": rectangle,
+            }
+        )
+    matches.sort(key=lambda item: (item["_rect"].y0, item["_rect"].x0))
+    return matches
+
+
 def _expand_rect(pymupdf: Any, rectangle: Any, page_rect: Any, margin: float) -> Any:
     return pymupdf.Rect(
         max(page_rect.x0, rectangle.x0 - margin),
@@ -541,6 +571,22 @@ def crop_figure(
             clip = explicit_rect
             crop_method = "explicit_bbox"
 
+        post_caption_blocks: list[dict[str, Any]] = []
+        if caption_page_number == page_number:
+            post_caption_blocks = _post_caption_text_blocks(
+                page,
+                caption_rect,
+                clip,
+                pymupdf,
+            )
+            if post_caption_blocks:
+                first = post_caption_blocks[0]
+                raise FigureCropError(
+                    "Crop includes non-caption text below the figure caption at "
+                    f"bbox {first['bbox']}: {first['text'][:120]!r}. "
+                    "End the crop after the caption and before the following body text."
+                )
+
         (
             pixmap,
             clip,
@@ -571,6 +617,7 @@ def crop_figure(
             range(caption_page_number, caption_end_page_number + 1)
         ),
         "caption_original": caption_text,
+        "caption_bbox": [round(value, 3) for value in caption_rect],
         "source_pdf": str(pdf_path),
         "source_pdf_sha256": sha256_file(pdf_path),
         "crop_method": crop_method,
@@ -582,6 +629,10 @@ def crop_figure(
         "related_figure_text_blocks": [
             {key: value for key, value in item.items() if key != "_rect"}
             for item in related_text_blocks
+        ],
+        "post_caption_text_blocks": [
+            {key: value for key, value in item.items() if key != "_rect"}
+            for item in post_caption_blocks
         ],
         "preceding_figure_caption": (
             {key: value for key, value in preceding_caption.items() if key != "_rect"}

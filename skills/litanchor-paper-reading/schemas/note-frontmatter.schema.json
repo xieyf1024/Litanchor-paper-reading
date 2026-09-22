@@ -23,7 +23,11 @@
     "tags"
   ],
   "properties": {
-    "title": {"type": "string", "minLength": 1},
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Complete verified English title followed by a newline and a faithful Chinese translation."
+    },
     "first_author": {"type": ["string", "null"]},
     "year": {"type": ["integer", "null"]},
     "journal": {"type": ["string", "null"]},

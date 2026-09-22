@@ -62,6 +62,44 @@ DEPTH_MINIMUMS = {
     "deep": {"claims": 2, "characters": 120},
 }
 
+CJK_PATTERN = re.compile(r"[\u3400-\u9fff]")
+INVALID_NOTE_STEM_PATTERN = re.compile(r'[<>:"/\\|?*#^\[\]\x00-\x1f]')
+
+
+def validate_note_identity(value: Any) -> dict[str, str]:
+    """Validate one bilingual-title/Chinese-filename identity without translating."""
+    if not isinstance(value, dict):
+        raise SemanticContractError("semantic-draft note_identity is required.")
+    title_zh = re.sub(r"\s+", " ", str(value.get("title_zh") or "")).strip()
+    filename_stem_zh = re.sub(
+        r"\s+", " ", str(value.get("filename_stem_zh") or "")
+    ).strip()
+    if not 4 <= len(title_zh) <= 200 or not CJK_PATTERN.search(title_zh):
+        raise SemanticContractError(
+            "note_identity.title_zh must be a one-line faithful Chinese title."
+        )
+    if not 2 <= len(filename_stem_zh) <= 40 or not CJK_PATTERN.search(
+        filename_stem_zh
+    ):
+        raise SemanticContractError(
+            "note_identity.filename_stem_zh must be a concise Chinese filename stem."
+        )
+    if (
+        INVALID_NOTE_STEM_PATTERN.search(filename_stem_zh)
+        or filename_stem_zh.endswith((".", " "))
+    ):
+        raise SemanticContractError(
+            "note_identity.filename_stem_zh contains unsafe Obsidian/Windows characters."
+        )
+    if any(
+        marker in filename_stem_zh
+        for marker in ("论文精读", "阅读笔记", "论文笔记", "文献笔记")
+    ):
+        raise SemanticContractError(
+            "note_identity.filename_stem_zh must identify the paper, not the note type."
+        )
+    return {"title_zh": title_zh, "filename_stem_zh": filename_stem_zh}
+
 
 def _normalized_clause(text: str) -> str:
     return re.sub(r"[\s。；！？!?]+$", "", re.sub(r"\s+", "", text)).strip()
@@ -490,6 +528,11 @@ def materialize_semantic_ledgers(
     """Resolve an agent semantic draft against original PyMuPDF pages."""
     run_dir = run_dir.resolve()
     draft = json.loads(draft_path.resolve().read_text(encoding="utf-8"))
+    note_identity = validate_note_identity(draft.get("note_identity"))
+    run_path = run_dir / "run.json"
+    run_record = json.loads(run_path.read_text(encoding="utf-8"))
+    run_record["note_identity"] = note_identity
+    _write_json(run_path, run_record)
     pages = json.loads((run_dir / "pymupdf-pages.json").read_text(encoding="utf-8"))
     pages_by_index = {
         int(page["page_index"]): page
@@ -604,6 +647,7 @@ def materialize_semantic_ledgers(
             "draft_file": draft_path.resolve().name,
             "evidence_count": len(evidence),
             "claim_count": len(claims),
+            "note_identity": note_identity,
             "completed": utc_now(),
         }
     )

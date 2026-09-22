@@ -82,7 +82,15 @@ class AutonomousSemanticTests(unittest.TestCase):
                 json.dumps({"status": "pending"}),
                 encoding="utf-8",
             )
+            (run_dir / "run.json").write_text(
+                json.dumps({"reading_mode": "deep"}),
+                encoding="utf-8",
+            )
             draft = {
+                "note_identity": {
+                    "title_zh": "所选强迫下的区间模拟",
+                    "filename_stem_zh": "强迫区间模拟",
+                },
                 "evidence": [
                     {
                         "evidence_id": "E-RANGE",
@@ -120,10 +128,17 @@ class AutonomousSemanticTests(unittest.TestCase):
                 run_dir,
                 draft_path,
             )
+            stored_identity = json.loads(
+                (run_dir / "run.json").read_text(encoding="utf-8")
+            )["note_identity"]
 
         self.assertEqual(
             evidence[0]["symbol_verification"]["corrections"][0]["verified"],
             "12–18",
+        )
+        self.assertEqual(
+            stored_identity["filename_stem_zh"],
+            "强迫区间模拟",
         )
 
     def test_visual_analysis_must_cover_every_selected_figure(self):

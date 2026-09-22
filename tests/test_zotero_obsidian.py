@@ -124,6 +124,10 @@ class ObsidianExportTests(unittest.TestCase):
             export_obsidian.safe_note_stem('A: Paper / With * Invalid? Chars', 'paper'),
             'A_ Paper _ With _ Invalid_ Chars',
         )
+        self.assertEqual(
+            export_obsidian.safe_note_stem('中文#标题^[草稿]', 'paper'),
+            '中文_标题__草稿_',
+        )
         title_a = 'A very long paper title ' + ('about evidence grounded reading ' * 8)
         title_b = title_a + 'revised'
         stem_a = export_obsidian.safe_note_stem(title_a, 'paper')
@@ -244,6 +248,10 @@ class ObsidianExportTests(unittest.TestCase):
             "reading_mode": "skim",
             "created": "2026-01-01T00:00:00+00:00",
             "status": "prepared",
+            "note_identity": {
+                "title_zh": "测试论文",
+                "filename_stem_zh": "模型测试",
+            },
             "artifacts": {},
         }
         write_json(run_dir / "source-bundle.json", source)
@@ -483,6 +491,10 @@ class ObsidianExportTests(unittest.TestCase):
                 confirmed=True,
                 asset_slug="test-paper",
             )
+            renamed_candidate = Path(candidate["note"]).with_name(
+                "用户重命名的候选笔记.candidate.md"
+            )
+            Path(candidate["note"]).rename(renamed_candidate)
             run["review_status"] = "user_visual_review_passed"
             write_json(run_dir / "run.json", run)
             validation["status"] = "completed"
@@ -496,9 +508,9 @@ class ObsidianExportTests(unittest.TestCase):
                 asset_slug="test-paper",
             )
 
-            self.assertTrue(Path(candidate["note"]).is_file())
+            self.assertTrue(renamed_candidate.is_file())
             self.assertTrue(Path(promoted["note"]).is_file())
-            self.assertTrue(promoted["note"].endswith("Test Paper.md"))
+            self.assertTrue(promoted["note"].endswith("模型测试.md"))
             self.assertNotEqual(
                 Path(candidate["receipt"]).parent,
                 Path(promoted["receipt"]).parent,

@@ -267,7 +267,7 @@ class RepositoryContractTests(unittest.TestCase):
         fields = [
             line.split(":", 1)[0]
             for line in frontmatter
-            if line and not line.startswith("  - ")
+            if line and not line.startswith(" ")
         ]
         self.assertEqual(
             fields,

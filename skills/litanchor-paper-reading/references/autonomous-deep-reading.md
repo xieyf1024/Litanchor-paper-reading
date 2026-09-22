@@ -123,7 +123,10 @@ python scripts/autonomous_semantic.py `
 The draft must record `reference_notes_used=false`,
 `human_prefill_count=0`, and `human_edit_count=0` for a blind run. Evidence is
 resolved against original PyMuPDF text blocks before any ClaimRecord can be
-written.
+written. It must also include `note_identity.title_zh` and
+`note_identity.filename_stem_zh` under the generic naming rules in
+`workflow.md`; this identity is validated and copied into `run.json` before
+composition.
 
 ## Independent review
 

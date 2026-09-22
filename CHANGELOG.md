@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Improved automatic Skill routing for Chinese paper-reading requests.
+- Added bilingual frontmatter titles and concise Chinese semantic note filenames,
+  with deterministic validation for Obsidian and Windows safety.
+- Added candidate-to-final promotion when a candidate was renamed in Obsidian,
+  plus an explicit reviewed-run cleanup policy that retains final audit sidecars.
+- Added a caption-boundary crop gate that rejects headings or body text below a
+  figure caption even when pixel-edge checks pass.
 - Streamlined the public documentation tree while preserving historical release
   records in GitHub Releases, Git Tags and this changelog.
 - Added a private security-reporting policy and pull-request template, refreshed

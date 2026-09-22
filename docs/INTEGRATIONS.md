@@ -118,24 +118,24 @@ Every `deep` or `internalize` note must complete a Visual Selection Pass:
 3. select zero to three indispensable method/result visuals;
 4. record a reason when none qualifies;
 5. render or crop with `scripts/pdf_figures.py`;
-6. verify source hash, page, caption, crop geometry, edges and output hash;
+6. verify source hash, page, caption boundary, crop geometry, edges and output hash;
 7. embed the accepted PNG with a Vault-relative Obsidian wikilink.
 8. show it directly under `Figure/Table x`, followed by the source subsection
    number/title with a linked `p.x`, the selection reason, and a two-to-four-
    sentence interpretation.
 
 Ambiguous, clipped or contaminated crops remain review items and cannot enter
-the final note.
+the final note. For a same-page figure, the crop ends after the complete caption
+and before the next heading, paragraph, footer or adjacent-column prose block.
 
 ## Obsidian export contract
 
 - Resolve one explicit Vault root and one allowed child directory.
 - Validate Markdown, frontmatter, evidence references, image targets and
   filename before writing.
-- Derive the note filename from the paper title. Replace filesystem-invalid
-  characters; for a title longer than 120 characters, keep a readable prefix
-  and append a stable eight-character content hash. Preserve the full title in
-  frontmatter and never add a duplicate H1 heading.
+- Use a validated, concise Chinese noun phrase for the note filename. Preserve
+  the complete verified English title and its faithful Chinese translation as
+  two lines in the `title` property, and never add a duplicate H1 heading.
 - Verify the candidate Markdown SHA-256 immediately before export.
 - Run all collision checks before creating any final file.
 - Write temporary files in the destination and promote them atomically.
@@ -145,10 +145,14 @@ the final note.
   location.
 - Report every created path and confirm that no existing file was replaced.
 
+After user review and successful final export, retain the final note, selected
+assets, final export receipt and final audit sidecars. Delete only the exact
+completed `runtime/runs/<run-id>` directory after explicit authorization.
+
 Formal output:
 
 ```text
-<paper-title>.md
+<concise-Chinese-paper-identity>.md
 _assets/<paper-slug>/<selected-figure>.png
 .litanchor/<paper-id>/evidence.json
 .litanchor/<paper-id>/claims.json

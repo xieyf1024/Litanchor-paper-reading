@@ -1,5 +1,7 @@
 ---
-title:
+title: |-
+  Complete English paper title
+  完整、忠实的中文译名
 first_author:
 year:
 journal:
