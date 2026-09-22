@@ -1,6 +1,6 @@
 ---
 name: litanchor-paper-reading
-description: Installs, configures, diagnoses, upgrades, or runs LitAnchor Notes and creates evidence-grounded Chinese close-reading notes from one academic paper as standalone Markdown or through safe Zotero-to-Obsidian export. Use when the user's intent is to set up LitAnchor or to skim, close-read, internalize, explain, validate, or export a paper from Zotero, a PDF, or an existing LitAnchor run, regardless of exact wording.
+description: Installs, configures, diagnoses, upgrades, or runs LitAnchor Notes and creates evidence-grounded Chinese close-reading notes from one academic paper as standalone Markdown or through safe Zotero-to-Obsidian export. Use when handling paper reading, literature notes, Zotero or Obsidian paper workflows, including Chinese requests such as 精读、文献精读、论文笔记、整理文献、内化论文, regardless of exact wording.
 ---
 
 # LitAnchor Notes: Paper Reading
@@ -14,6 +14,8 @@ description: Installs, configures, diagnoses, upgrades, or runs LitAnchor Notes 
 - Distinguish `原文未说明`, `不适用`, `待用户补充`, and `解析失败`. Omit sections excluded by the selected reading mode instead of displaying an AI-facing mode placeholder.
 - Block formal export on extraction, evidence, content, format, permission, or collision errors.
 - Keep Zotero read-only and never overwrite an existing Obsidian note.
+- Promote an accepted Obsidian candidate by updating and renaming that receipt-tracked `.candidate.md`; a successful promotion leaves one reader-facing note, while a missing, moved, renamed, or hand-edited candidate blocks for review.
+- Render `title` as the complete verified English title followed on the next line by a faithful Chinese translation. Export with a concise, semantic Chinese filename stem that is safe for Obsidian and Windows.
 - Use evaluation papers only to discover general failure classes; never encode their answers or paper-specific corrections in the Skill.
 - Run only versioned bundled scripts during a paper task. Record a failure instead of creating an inline replacement parser or patching the formal Skill mid-run.
 - Keep the user-facing note properties fixed to `schemas/note-frontmatter.schema.json`. Represent the reading mode only with exactly one `skim`, `deep`, or `internalize` tag alongside `LitAnchor`; never emit a `reading_mode` property.
@@ -35,7 +37,7 @@ Keep detailed rules in `references/`, deterministic behavior in `scripts/`, outp
 ## Execute the evidence-first workflow
 
 1. Resolve one mode (`skim`, `deep`, or `internalize`), exactly one paper, and one destination: standalone Markdown or an authorized Obsidian Inbox.
-2. Record source identity, metadata, file hash, physical page count, write intent, and `external_knowledge_allowed=false`.
+2. Record source identity, metadata, file hash, physical page count, bilingual note identity, write intent, and `external_knowledge_allowed=false`.
 3. Preflight and extract the complete PDF by physical page. Stop on unreadable required pages.
 4. Map paper type and structure, then read all relevant pages in separate structure, method, result/visual, discussion/limit, and omission-review passes.
 5. Build EvidenceUnits before ClaimRecords. For each core experiment, state the tested claim, comparison and conditions, observed result, supported conclusion, and unsupported stronger interpretation. Never use retrieval snippets or one short claim as a substitute for reading a required section.

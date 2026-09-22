@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Prepared the next managed package version as `1.0.0-rc2` so the field-tested
+  workflow changes can be upgraded and rolled back independently of RC1.
+- Improved automatic Skill routing for Chinese paper-reading requests.
+- Added bilingual frontmatter titles and concise Chinese semantic note filenames,
+  with deterministic validation for Obsidian and Windows safety.
+- Changed candidate-to-final promotion to update and rename the receipt-tracked
+  candidate in place, blocking on moved or edited candidates so one reviewed
+  paper cannot leave duplicate reader-facing notes. Added an explicit reviewed-
+  run cleanup policy that retains final audit sidecars.
+- Added a caption-boundary crop gate that rejects headings or body text below a
+  figure caption even when pixel-edge checks pass.
 - Streamlined the public documentation tree while preserving historical release
   records in GitHub Releases, Git Tags and this changelog.
 - Added a private security-reporting policy and pull-request template, refreshed

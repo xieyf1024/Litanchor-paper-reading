@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "name": "litanchor-paper-reading",
   "display_name": "LitAnchor Notes · 文锚笔记",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "release_channel": "rc",
   "supported_platforms": [
     {

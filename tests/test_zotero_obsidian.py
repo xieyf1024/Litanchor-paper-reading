@@ -124,6 +124,10 @@ class ObsidianExportTests(unittest.TestCase):
             export_obsidian.safe_note_stem('A: Paper / With * Invalid? Chars', 'paper'),
             'A_ Paper _ With _ Invalid_ Chars',
         )
+        self.assertEqual(
+            export_obsidian.safe_note_stem('中文#标题^[草稿]', 'paper'),
+            '中文_标题__草稿_',
+        )
         title_a = 'A very long paper title ' + ('about evidence grounded reading ' * 8)
         title_b = title_a + 'revised'
         stem_a = export_obsidian.safe_note_stem(title_a, 'paper')
@@ -244,6 +248,10 @@ class ObsidianExportTests(unittest.TestCase):
             "reading_mode": "skim",
             "created": "2026-01-01T00:00:00+00:00",
             "status": "prepared",
+            "note_identity": {
+                "title_zh": "测试论文",
+                "filename_stem_zh": "模型测试",
+            },
             "artifacts": {},
         }
         write_json(run_dir / "source-bundle.json", source)
@@ -298,6 +306,24 @@ class ObsidianExportTests(unittest.TestCase):
             self.assertTrue(any(path.endswith("coverage_receipt.json") for path in result["sidecars"]))
             with self.assertRaises(litanchor_local.PipelineError):
                 export_obsidian.export_run(run_dir, vault, inbox, confirmed=True)
+
+    def test_final_export_blocks_candidate_from_a_different_authorized_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_dir = self.make_run(root)
+            vault = root / "vault"
+            inbox = vault / "00_Inbox"
+            inbox.mkdir(parents=True)
+            candidate = inbox / "模型测试.candidate.md"
+            candidate.write_text("candidate", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                litanchor_local.PipelineError,
+                "original export root",
+            ):
+                export_obsidian.export_run(run_dir, vault, inbox, confirmed=True)
+
+            self.assertFalse((inbox / "模型测试.md").exists())
 
     def test_warning_and_post_validation_tamper_are_blocked(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -434,7 +460,7 @@ class ObsidianExportTests(unittest.TestCase):
             )
         )
 
-    def test_accepted_review_promotes_candidate_without_overwriting_audit_files(self):
+    def test_accepted_review_promotes_the_same_candidate_note(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             run_dir = self.make_run(root, zotero=True)
@@ -483,10 +509,43 @@ class ObsidianExportTests(unittest.TestCase):
                 confirmed=True,
                 asset_slug="test-paper",
             )
+            candidate_note = Path(candidate["note"])
+            candidate_bytes = candidate_note.read_bytes()
             run["review_status"] = "user_visual_review_passed"
             write_json(run_dir / "run.json", run)
             validation["status"] = "completed"
             write_json(run_dir / "validation.json", validation)
+
+            candidate_note.write_bytes(candidate_bytes + b"\nmanual edit\n")
+            with self.assertRaisesRegex(
+                litanchor_local.PipelineError,
+                "changed after export",
+            ):
+                export_obsidian.export_run(
+                    run_dir,
+                    vault,
+                    inbox,
+                    confirmed=True,
+                    asset_slug="test-paper",
+                )
+            candidate_note.write_bytes(candidate_bytes)
+
+            renamed_candidate = candidate_note.with_name(
+                "用户重命名的候选笔记.candidate.md"
+            )
+            candidate_note.rename(renamed_candidate)
+            with self.assertRaisesRegex(
+                litanchor_local.PipelineError,
+                "missing",
+            ):
+                export_obsidian.export_run(
+                    run_dir,
+                    vault,
+                    inbox,
+                    confirmed=True,
+                    asset_slug="test-paper",
+                )
+            renamed_candidate.rename(candidate_note)
 
             promoted = export_obsidian.export_run(
                 run_dir,
@@ -496,19 +555,26 @@ class ObsidianExportTests(unittest.TestCase):
                 asset_slug="test-paper",
             )
 
-            self.assertTrue(Path(candidate["note"]).is_file())
+            self.assertFalse(candidate_note.exists())
             self.assertTrue(Path(promoted["note"]).is_file())
-            self.assertTrue(promoted["note"].endswith("Test Paper.md"))
+            self.assertTrue(promoted["note"].endswith("模型测试.md"))
+            exported_notes = list(inbox.glob("*.md"))
+            self.assertEqual(len(exported_notes), 1)
+            self.assertEqual(exported_notes[0].name, Path(promoted["note"]).name)
+            self.assertTrue(promoted["promoted_in_place"])
             self.assertNotEqual(
                 Path(candidate["receipt"]).parent,
                 Path(promoted["receipt"]).parent,
             )
             self.assertTrue(Path(promoted["receipt"]).parent.name.endswith("-final"))
-            self.assertEqual(
-                json.loads(Path(promoted["receipt"]).read_text(encoding="utf-8"))[
-                    "promoted_from"
-                ],
-                candidate["receipt"],
+            promoted_receipt = json.loads(
+                Path(promoted["receipt"]).read_text(encoding="utf-8")
+            )
+            self.assertEqual(promoted_receipt["promoted_from"], candidate["receipt"])
+            self.assertTrue(promoted_receipt["promoted_in_place"])
+            self.assertIn(
+                ".litanchor/run-final/visuals/figure-1.json",
+                promoted_receipt["visuals"][0]["crop_manifest"],
             )
             self.assertEqual(candidate["assets"], promoted["assets"])
             with self.assertRaises(litanchor_local.PipelineError):

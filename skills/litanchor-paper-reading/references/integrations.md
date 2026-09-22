@@ -36,15 +36,34 @@ For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with
 - Accept one explicitly authorized output directory, preferably a dedicated Literature Inbox.
 - Never scan, edit or reorganize the rest of the Vault.
 - Validate Markdown, frontmatter, evidence references and filename before writing.
-- Use the paper title as the readable note filename. Sanitize invalid Windows
-  characters and shorten titles over 120 characters with a stable hash suffix;
-  keep the complete title in frontmatter and do not render a duplicate H1.
+- Use the validated `note_identity.filename_stem_zh` as the readable note
+  filename. It must be a concise Chinese semantic summary of the subject or
+  central contribution, not a translation dump or generic reading-note label.
+  Sanitize invalid Obsidian/Windows characters and keep the complete English
+  title plus Chinese translation in the multiline `title` property. Do not
+  render a duplicate H1.
 - Write a temporary file in the destination, then atomically rename only if the final path does not exist.
 - When the destination exists, stop or create a clearly named candidate after user approval. Never overwrite automatically.
 - Never overwrite an existing note during regeneration; write a separately named candidate so user-authored content remains untouched.
+- After the user accepts a candidate, verify its receipt path and hash, apply the validated title, properties, and requested corrections to that same logical note, then rename `.candidate.md` to `.md`. Successful promotion leaves exactly one reader-facing Markdown note; it does not create a second final note beside the candidate.
+- Treat a missing, moved, renamed, or hash-changed candidate as user-owned. Stop for review or an explicit merge rather than overwriting it or creating a duplicate final note.
+- Reuse the candidate export's original authorized root during promotion. If a same-name candidate exists but its receipt is not under the supplied root, stop and resolve the root instead of treating the run as a first-time final export.
 - Write evidence sidecars to `.litanchor/<paper-id>/` only when that hidden directory is authorized.
 
 Report every created path and confirm that no existing file was replaced.
+
+## Runtime retention and cleanup
+
+After a final note is user-reviewed and the export receipt, note hash, asset
+hashes, embeds, and Zotero locators have been verified, report the exact size of
+that run and offer cleanup. Never delete runtime data automatically.
+
+Retain the final Vault note, selected assets, export receipt, and final
+`.litanchor/<run-id>-final/` audit sidecars. With explicit user authorization,
+the disposable workspace copy may remove only the exact completed run under
+`runtime/runs/<run-id>`; this includes the copied PDF, page-extraction caches,
+failed crop attempts, and optional MinerU output. Retain failed or unreviewed
+runs until the failure is resolved or the user explicitly discards them.
 
 Use `scripts/export_obsidian.py` after a successful `build`. Supply the authorized test root and child Inbox separately, add `--confirm-export`, and add `--allow-warnings` only after reviewing the warnings. The exporter must verify the Markdown hash and reject repeated exports.
 
@@ -57,4 +76,5 @@ Use `scripts/export_obsidian.py` after a successful `build`. Supply the authoriz
   source subsection number/title and linked `p.x`, the selection reason, and a
   two-to-four-sentence interpretation.
 - If automatic caption/image geometry is ambiguous, stop for visual review or use an explicit reviewed bounding box.
+- For same-page figures, end the crop after the complete caption and before the next non-caption text block. Treat a heading, paragraph, footer, or adjacent-column prose below the caption as contamination even when edge-ink checks pass.
 - MinerU may assist structure/label discovery only after explicit external-upload consent. Align every accepted result back to the original PDF; unmatched content is not evidence.

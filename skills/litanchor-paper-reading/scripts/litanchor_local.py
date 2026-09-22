@@ -42,7 +42,7 @@ from paper_quality_gate import (  # noqa: E402
 from pdf_reading_order import extract_page_text as extract_pymupdf_page_text  # noqa: E402
 
 SCHEMA_VERSION = "0.1"
-SKILL_VERSION = "1.0.0-rc1"
+SKILL_VERSION = "1.0.0-rc2"
 ID_PATTERN = re.compile(r"^[EC]-[A-Za-z0-9_-]+$")
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_])[+-]?\d+(?:[.,]\d+)?%?")
 BLOCKING_SEVERITIES = {"blocker", "error"}
@@ -1410,9 +1410,21 @@ def render_note_frontmatter(
     reading_mode = str(run_record.get("reading_mode") or "deep")
     today = utc_date()
     created = _date_only(run_record.get("note_created_at"), fallback=today)
+    english_title = re.sub(r"\s+", " ", str(metadata.get("title") or "")).strip()
+    note_identity = run_record.get("note_identity")
+    chinese_title = (
+        re.sub(r"\s+", " ", str(note_identity.get("title_zh") or "")).strip()
+        if isinstance(note_identity, dict)
+        else ""
+    )
+    title_lines = (
+        ["title: |-", f"  {english_title}", f"  {chinese_title}"]
+        if chinese_title
+        else [f"title: {yaml_scalar(english_title)}"]
+    )
     lines = [
         "---",
-        f"title: {yaml_scalar(metadata.get('title'))}",
+        *title_lines,
         f"first_author: {yaml_scalar(first_author_name(metadata.get('authors', [])))}",
         f"year: {yaml_scalar(metadata.get('year'))}",
         f"journal: {yaml_scalar(metadata.get('journal'))}",

@@ -1115,13 +1115,25 @@ def validate_note_frontmatter(markdown: str) -> list[dict[str, str]]:
     scalars: dict[str, Any] = {}
     tags: list[str] = []
     active: str | None = None
+    literal_field: str | None = None
     for line in lines[1:closing]:
         match = re.fullmatch(r"([a-z][a-z0-9_]*):(.*)", line)
         if match:
             active = match.group(1)
             fields.append(active)
-            scalars[active] = _frontmatter_scalar(match.group(2))
+            raw_value = match.group(2).strip()
+            if raw_value in {"|", "|-", "|+"}:
+                scalars[active] = []
+                literal_field = active
+            else:
+                scalars[active] = _frontmatter_scalar(match.group(2))
+                literal_field = None
             continue
+        if literal_field and line.startswith("  "):
+            literal_lines = scalars.get(literal_field)
+            if isinstance(literal_lines, list):
+                literal_lines.append(line[2:])
+                continue
         tag_match = re.fullmatch(r"\s+-\s+(.+)", line)
         if active == "tags" and tag_match:
             tags.append(str(_frontmatter_scalar(tag_match.group(1))))
@@ -1133,6 +1145,9 @@ def validate_note_frontmatter(markdown: str) -> list[dict[str, str]]:
                     "message": f"Unsupported frontmatter line: {line}",
                 }
             )
+    for field, value in list(scalars.items()):
+        if isinstance(value, list) and field != "tags":
+            scalars[field] = "\n".join(str(item) for item in value)
     if tuple(fields) != NOTE_FRONTMATTER_FIELDS:
         issues.append(
             {
@@ -1143,6 +1158,26 @@ def validate_note_frontmatter(markdown: str) -> list[dict[str, str]]:
                 ),
             }
         )
+    title = scalars.get("title")
+    if not isinstance(title, str) or not title.strip():
+        issues.append(
+            {
+                "issue_type": "title_required",
+                "message": "title must contain the verified paper title.",
+            }
+        )
+    elif "\n" in title:
+        title_lines = [item.strip() for item in title.splitlines() if item.strip()]
+        if len(title_lines) != 2 or not re.search(r"[\u3400-\u9fff]", title_lines[1]):
+            issues.append(
+                {
+                    "issue_type": "bilingual_title_contract",
+                    "message": (
+                        "Multiline title must contain the complete English title "
+                        "followed by one Chinese translation line."
+                    ),
+                }
+            )
     if isinstance(scalars.get("first_author"), list):
         issues.append(
             {

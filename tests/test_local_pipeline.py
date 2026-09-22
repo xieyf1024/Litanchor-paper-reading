@@ -193,12 +193,17 @@ class LocalPipelineTests(unittest.TestCase):
                     "reading_mode": mode,
                     "created": "2020-05-06T07:08:09+00:00",
                     "note_created_at": "2026-01-02T03:04:05+00:00",
+                    "note_identity": {
+                        "title_zh": "带标签论文",
+                        "filename_stem_zh": "标签研究",
+                    },
                     "user_tags": ["my-project", "#skim", "LitAnchor"],
                 },
                 "completed",
                 "empirical-research",
             )
             self.assertNotIn("reading_mode:", frontmatter)
+            self.assertIn("title: |-\n  Tagged Paper\n  带标签论文", frontmatter)
             self.assertIn(f'  - "{mode}"', frontmatter)
             self.assertIn('  - "LitAnchor"', frontmatter)
             self.assertIn('  - "my-project"', frontmatter)

@@ -160,6 +160,28 @@ class FigureCropTests(unittest.TestCase):
                 "explicit_bbox_preserved",
             )
 
+    def test_explicit_bbox_rejects_body_text_below_caption(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "source.pdf"
+            image = root / "figure-1.png"
+            self.make_pdf(pdf)
+
+            with self.assertRaisesRegex(
+                MODULE.FigureCropError,
+                "non-caption text below the figure caption",
+            ):
+                MODULE.crop_figure(
+                    pdf,
+                    page_number=1,
+                    label="Figure 1",
+                    output_path=image,
+                    bbox="45,30,260,285",
+                    dpi=144,
+                )
+
+            self.assertFalse(image.exists())
+
     def test_caption_detection_allows_short_axis_prefix_but_ignores_body_reference(self):
         import pymupdf
 
