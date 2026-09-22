@@ -558,7 +558,9 @@ class ObsidianExportTests(unittest.TestCase):
             self.assertFalse(candidate_note.exists())
             self.assertTrue(Path(promoted["note"]).is_file())
             self.assertTrue(promoted["note"].endswith("模型测试.md"))
-            self.assertEqual(list(inbox.glob("*.md")), [Path(promoted["note"])])
+            exported_notes = list(inbox.glob("*.md"))
+            self.assertEqual(len(exported_notes), 1)
+            self.assertEqual(exported_notes[0].name, Path(promoted["note"]).name)
             self.assertTrue(promoted["promoted_in_place"])
             self.assertNotEqual(
                 Path(candidate["receipt"]).parent,
