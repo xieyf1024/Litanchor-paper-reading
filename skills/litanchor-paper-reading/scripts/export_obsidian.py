@@ -164,16 +164,34 @@ def export_run(
     is_candidate = candidate_export_required(run_record)
     note_suffix = ".candidate.md" if is_candidate else ".md"
     note_path = inbox / f"{safe_note_stem(filename_stem_zh or title, paper_id)}{note_suffix}"
+    expected_candidate = inbox / f"{note_path.stem}.candidate.md"
     sidecar_parent = allowed_root / ".litanchor"
     if sidecar_parent.exists() and not _inside(sidecar_parent.resolve(strict=True), allowed_root):
         raise PipelineError("Existing .litanchor directory escapes the authorized root")
-    sidecar_dir = sidecar_parent / run_id
+    candidate_sidecar_dir = sidecar_parent / run_id
+    sidecar_dir = candidate_sidecar_dir
     promoted_from: Path | None = None
+    candidate_note: Path | None = None
     previous_receipt: dict[str, object] | None = None
-    if sidecar_dir.exists() and not _inside(sidecar_dir.resolve(strict=True), allowed_root):
+    if candidate_sidecar_dir.exists() and not _inside(
+        candidate_sidecar_dir.resolve(strict=True), allowed_root
+    ):
         raise PipelineError("Existing paper sidecar directory escapes the authorized root")
-    previous_receipt_path = sidecar_dir / "export-receipt.json"
-    if sidecar_dir.exists() and not is_candidate and previous_receipt_path.is_file():
+    if (
+        not is_candidate
+        and not candidate_sidecar_dir.exists()
+        and expected_candidate.exists()
+    ):
+        raise PipelineError(
+            "A candidate note already exists without its receipt under this authorized root; "
+            "retry with the candidate's original export root"
+        )
+    previous_receipt_path = candidate_sidecar_dir / "export-receipt.json"
+    if candidate_sidecar_dir.exists() and not is_candidate:
+        if not previous_receipt_path.is_file():
+            raise PipelineError(
+                "Reviewed-run promotion requires the candidate export receipt"
+            )
         candidate_receipt = load_json(previous_receipt_path)
         previous_note_value = candidate_receipt.get("note")
         previous_note = (
@@ -181,18 +199,38 @@ def export_run(
             if isinstance(previous_note_value, str) and previous_note_value
             else None
         )
-        if (
+        promotion_identity_matches = (
             candidate_receipt.get("run_id") == run_id
             and candidate_receipt.get("paper_id") == paper_id
             and candidate_receipt.get("review_status") == "user_visual_review_pending"
-            and previous_note is not None
-            and previous_note.name.endswith(".candidate.md")
             and run_record.get("review_status")
             in {"user_visual_review_passed", "independently_reviewed"}
+        )
+        if not promotion_identity_matches or previous_note is None:
+            raise PipelineError(
+                "Existing export does not match a review-pending candidate for this run"
+            )
+        previous_note = previous_note.resolve(strict=False)
+        if (
+            previous_note != expected_candidate.resolve(strict=False)
+            or previous_note.parent != inbox
         ):
-            promoted_from = previous_receipt_path
-            previous_receipt = candidate_receipt
-            sidecar_dir = sidecar_parent / f"{run_id}-final"
+            raise PipelineError(
+                "Candidate note was renamed or moved; promotion stops instead of creating a duplicate"
+            )
+        if not previous_note.is_file():
+            raise PipelineError(
+                "Candidate note is missing; promotion stops instead of creating a duplicate"
+            )
+        previous_hash = candidate_receipt.get("note_sha256")
+        if not isinstance(previous_hash, str) or _sha256(previous_note) != previous_hash:
+            raise PipelineError(
+                "Candidate note changed after export; review and merge its edits before promotion"
+            )
+        promoted_from = previous_receipt_path
+        candidate_note = previous_note
+        previous_receipt = candidate_receipt
+        sidecar_dir = sidecar_parent / f"{run_id}-final"
     sidecar_names = [
         *SIDECAR_FILES,
         *(
@@ -309,7 +347,9 @@ def export_run(
                     "source_image": str(source_image),
                     "exported_embed": f"_assets/{slug}/{destination.name}",
                     "sha256": _sha256(source_image),
-                    "crop_manifest": f".litanchor/{run_id}/visuals/{manifest_source.name}",
+                    "crop_manifest": (
+                        f".litanchor/{sidecar_dir.name}/visuals/{manifest_source.name}"
+                    ),
                 }
             )
         receipt = {
@@ -330,6 +370,7 @@ def export_run(
             "visuals": exported_visuals,
             "overwritten": False,
             "promoted_from": str(promoted_from) if promoted_from else None,
+            "promoted_in_place": candidate_note is not None,
             "reused_visual_assets": reuse_visual_assets,
         }
         atomic_write_text(
@@ -345,8 +386,20 @@ def export_run(
             asset_dir.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(staged_assets), str(asset_dir))
             moved.append(asset_dir)
-        shutil.move(str(staged_note), str(note_path))
-        moved.append(note_path)
+        if candidate_note is None:
+            shutil.move(str(staged_note), str(note_path))
+            moved.append(note_path)
+        else:
+            candidate_backup = staging_dir / "candidate-backup.md"
+            shutil.copy2(candidate_note, candidate_backup)
+            candidate_note.rename(note_path)
+            try:
+                staged_note.replace(note_path)
+            except Exception:
+                if note_path.exists():
+                    note_path.unlink()
+                shutil.copy2(candidate_backup, candidate_note)
+                raise
     except Exception:
         for path in reversed(moved):
             if path.is_dir():
@@ -364,6 +417,7 @@ def export_run(
         "assets": [str(destination) for _, destination in visual_sources],
         "overwritten": False,
         "promoted_from": str(promoted_from) if promoted_from else None,
+        "promoted_in_place": candidate_note is not None,
     }
 
 

@@ -45,7 +45,9 @@ For the Local API path, run `scripts/zotero_local.py check`, then `prepare` with
 - Write a temporary file in the destination, then atomically rename only if the final path does not exist.
 - When the destination exists, stop or create a clearly named candidate after user approval. Never overwrite automatically.
 - Never overwrite an existing note during regeneration; write a separately named candidate so user-authored content remains untouched.
-- Treat a candidate note renamed inside Obsidian as user-owned. Final promotion may use the receipt even when the receipt's original candidate path no longer exists; create a new final note and leave the renamed candidate untouched.
+- After the user accepts a candidate, verify its receipt path and hash, apply the validated title, properties, and requested corrections to that same logical note, then rename `.candidate.md` to `.md`. Successful promotion leaves exactly one reader-facing Markdown note; it does not create a second final note beside the candidate.
+- Treat a missing, moved, renamed, or hash-changed candidate as user-owned. Stop for review or an explicit merge rather than overwriting it or creating a duplicate final note.
+- Reuse the candidate export's original authorized root during promotion. If a same-name candidate exists but its receipt is not under the supplied root, stop and resolve the root instead of treating the run as a first-time final export.
 - Write evidence sidecars to `.litanchor/<paper-id>/` only when that hidden directory is authorized.
 
 Report every created path and confirm that no existing file was replaced.

@@ -139,6 +139,12 @@ and before the next heading, paragraph, footer or adjacent-column prose block.
 - Verify the candidate Markdown SHA-256 immediately before export.
 - Run all collision checks before creating any final file.
 - Write temporary files in the destination and promote them atomically.
+- Promote an accepted receipt-tracked `.candidate.md` in place: update its
+  validated content and rename it to `.md`, leaving one reader-facing note.
+- Stop when that candidate is missing, moved, renamed or hash-changed; require
+  review or an explicit merge instead of creating a duplicate final note.
+- Reuse the candidate's original authorized export root; a same-name candidate
+  without a receipt under the supplied root blocks first-time final export.
 - Stop when the destination exists; never overwrite automatically.
 - Preserve user-owned content markers during later regeneration.
 - Write sidecars under `.litanchor/<paper-id>/` only inside the authorized

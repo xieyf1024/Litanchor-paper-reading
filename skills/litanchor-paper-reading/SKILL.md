@@ -14,6 +14,7 @@ description: Installs, configures, diagnoses, upgrades, or runs LitAnchor Notes 
 - Distinguish `原文未说明`, `不适用`, `待用户补充`, and `解析失败`. Omit sections excluded by the selected reading mode instead of displaying an AI-facing mode placeholder.
 - Block formal export on extraction, evidence, content, format, permission, or collision errors.
 - Keep Zotero read-only and never overwrite an existing Obsidian note.
+- Promote an accepted Obsidian candidate by updating and renaming that receipt-tracked `.candidate.md`; a successful promotion leaves one reader-facing note, while a missing, moved, renamed, or hand-edited candidate blocks for review.
 - Render `title` as the complete verified English title followed on the next line by a faithful Chinese translation. Export with a concise, semantic Chinese filename stem that is safe for Obsidian and Windows.
 - Use evaluation papers only to discover general failure classes; never encode their answers or paper-specific corrections in the Skill.
 - Run only versioned bundled scripts during a paper task. Record a failure instead of creating an inline replacement parser or patching the formal Skill mid-run.
