@@ -14,6 +14,18 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
 
 
+class ChineseEvidenceSentenceBoundaryTests(unittest.TestCase):
+    def test_chinese_full_stop_is_a_complete_sentence(self):
+        self.assertEqual(
+            MODULE.evidence_quote_completeness("result", "轨道强迫改变了季节输送。"),
+            (True, None),
+        )
+
+    def test_chinese_clause_without_ending_still_fails(self):
+        complete, _ = MODULE.evidence_quote_completeness("result", "轨道强迫改变了季节输送")
+        self.assertFalse(complete)
+
+
 def write_json(path: Path, payload):
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 

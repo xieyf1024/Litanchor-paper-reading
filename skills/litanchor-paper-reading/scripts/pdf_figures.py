@@ -36,9 +36,9 @@ def _load_pymupdf() -> Any:
 
 
 def _caption_pattern(label: str) -> re.Pattern[str]:
-    match = re.fullmatch(r"\s*(?:fig(?:ure)?\.?)\s*(\d+[A-Za-z]?)\s*", label, re.IGNORECASE)
+    match = re.fullmatch(r"\s*(?:fig(?:ure)?\.?)\s*(\d+(?:-\d+)?[A-Za-z]?)\s*", label, re.IGNORECASE)
     if match is None:
-        raise FigureCropError("Figure label must look like 'Figure 1' or 'Fig. 2'")
+        raise FigureCropError("Figure label must look like 'Figure 1' or 'Figure 4-1'")
     number = re.escape(match.group(1))
     figure_word = r"f\s*i\s*g(?:\s*u\s*r\s*e)?"
     return re.compile(
@@ -50,7 +50,8 @@ def _caption_pattern(label: str) -> re.Pattern[str]:
 def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]]:
     pattern = _caption_pattern(label)
     matches: list[tuple[Any, str]] = []
-    for block in page.get_text("blocks"):
+    blocks = sorted(page.get_text("blocks"), key=lambda block: (block[1], block[0]))
+    for index, block in enumerate(blocks):
         text = " ".join(str(block[4]).split())
         direct_match = pattern.search(text)
         if direct_match is None:
@@ -70,7 +71,23 @@ def _caption_blocks(page: Any, label: str, pymupdf: Any) -> list[tuple[Any, str]
         elif len(text[direct_match.end() :].strip()) < 20:
             continue
         if direct_match is not None or embedded_match is not None:
-            matches.append((pymupdf.Rect(block[:4]), text))
+            caption_rect = pymupdf.Rect(block[:4])
+            caption_parts = [text]
+            previous_rect = caption_rect
+            for continuation in blocks[index + 1 : index + 9]:
+                continuation_rect = pymupdf.Rect(continuation[:4])
+                continuation_text = " ".join(str(continuation[4]).split())
+                if (
+                    not continuation_text
+                    or continuation_rect.y0 - previous_rect.y1 > 18.0
+                    or _horizontal_overlap(continuation_rect, caption_rect) <= 1.0
+                    or re.match(r"^\s*(?:fig(?:ure)?\.?|图)\s*\d", continuation_text, re.IGNORECASE)
+                ):
+                    break
+                caption_rect |= continuation_rect
+                caption_parts.append(continuation_text)
+                previous_rect = continuation_rect
+            matches.append((caption_rect, " ".join(caption_parts)))
     return matches
 
 
@@ -92,7 +109,7 @@ def _split_caption_text(
         )
     first_rect, first_text = matches[0]
     generic_caption = re.compile(
-        r"^\s*f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*\d+[A-Za-z]?"
+        r"^\s*f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*\d+(?:-\d+)?[A-Za-z]?"
         r"(?:\s*[:.]|\s+)",
         re.IGNORECASE,
     )
@@ -125,7 +142,7 @@ def _preceding_figure_caption(
 ) -> dict[str, Any] | None:
     """Return the closest earlier figure caption as a vertical crop boundary."""
     generic_pattern = re.compile(
-        r"f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*(\d+[A-Za-z]?)"
+        r"f\s*i\s*g(?:\s*u\s*r\s*e)?\.?\s*(\d+(?:-\d+)?[A-Za-z]?)"
         r"(?:\s*[:.]|\s+)",
         re.IGNORECASE,
     )
@@ -201,7 +218,9 @@ def _related_figure_text_blocks(
         if (
             -3.0 <= vertical_gap <= maximum_gap
             and overlap / minimum_width >= 0.25
-            and len(text) <= 240
+            and len(text) <= 60
+            and not re.search(r"[。！？.!?]\s*$", text)
+            and not re.match(r"^\s*(?:第.{1,8}章|Chapter\s+\d+)", text, re.IGNORECASE)
         ):
             matches.append(
                 {

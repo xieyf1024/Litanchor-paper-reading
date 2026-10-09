@@ -57,6 +57,86 @@ class FigureCropTests(unittest.TestCase):
             self.assertFalse(manifest["needs_human_review"])
             self.assertEqual(result["figure_label"], "Figure 1")
 
+    def test_chapter_numbered_caption_crop(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "chapter.pdf"
+            image = root / "figure-4-1.png"
+            document = pymupdf.open()
+            page = document.new_page(width=300, height=400)
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 120, 120), False)
+            pixmap.clear_with(0x88CCFF)
+            page.insert_image(pymupdf.Rect(70, 40, 230, 200), pixmap=pixmap)
+            page.insert_text((40, 225), "Figure 4-1: Annual transport response.")
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 4-1",
+                output_path=image,
+                dpi=144,
+            )
+            self.assertEqual(result["figure_label"], "Figure 4-1")
+            self.assertEqual(result["crop_validation_status"], "pass")
+
+    def test_multiline_caption_excludes_following_body(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "multiline.pdf"
+            image = root / "figure-4-1.png"
+            document = pymupdf.open()
+            page = document.new_page(width=300, height=400)
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 120, 120), False)
+            pixmap.clear_with(0x88CCFF)
+            page.insert_image(pymupdf.Rect(70, 40, 230, 180), pixmap=pixmap)
+            page.insert_text((30, 210), "Figure 4-1: Annual transport response")
+            page.insert_text((60, 224), "under two orbital states.")
+            page.insert_text((40, 270), "Body text must not enter the crop.")
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 4-1",
+                output_path=image,
+                dpi=144,
+            )
+            self.assertIn("under two orbital states.", result["caption_original"])
+            self.assertEqual(result["post_caption_text_blocks"], [])
+
+    def test_chapter_heading_above_image_is_not_in_crop(self):
+        import pymupdf
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pdf = root / "heading.pdf"
+            image = root / "figure-4-1.png"
+            document = pymupdf.open()
+            page = document.new_page(width=300, height=400)
+            page.insert_text((80, 30), "Chapter 4 Results")
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 120, 120), False)
+            pixmap.clear_with(0x88CCFF)
+            page.insert_image(pymupdf.Rect(70, 50, 230, 200), pixmap=pixmap)
+            page.insert_text((40, 225), "Figure 4-1: Annual transport response.")
+            document.save(pdf)
+            document.close()
+
+            result = MODULE.crop_figure(
+                pdf,
+                page_number=1,
+                label="Figure 4-1",
+                output_path=image,
+                dpi=144,
+            )
+            self.assertEqual(result["related_figure_text_blocks"], [])
+
     def test_dynamic_margin_includes_title_above_embedded_image(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

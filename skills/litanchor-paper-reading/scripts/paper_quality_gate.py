@@ -229,7 +229,7 @@ def evidence_quote_completeness(
     if first_alnum.isalpha() and first_alnum != first_alnum.upper():
         return False, "The quote starts inside a sentence."
     stripped_end = text.rstrip("\"'”’)]}")
-    if not stripped_end or stripped_end[-1] not in ".?!":
+    if not stripped_end or stripped_end[-1] not in ".?!。？！":
         return False, "The quote does not end at a sentence boundary."
     return True, None
 
